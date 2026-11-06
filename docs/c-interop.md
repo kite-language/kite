@@ -84,7 +84,7 @@ clang main.c target/mathlib.o -o program
 | no return value | `void` | |
 
 Lists, tuples, dicts, and structs can't cross a function boundary in
-Kite v0.1 at all (see `docs/architecture.md`) -- including the boundary
+Kite at all (see `docs/architecture.md`) -- including the boundary
 to/from C -- so they never appear in a generated header or in a valid
 `extern` declaration. `kite check`/`kite build` reject them with a clear
 error before you'd ever get to the link step.

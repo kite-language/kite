@@ -4,6 +4,8 @@ use diag
 use lexer
 use ast
 use parser
+use types
+use desugar
 
 make read_source(path: string) -> string:
     return read_file(path)
@@ -38,7 +40,22 @@ make cmd_ast(path: string):
 // this to decide how far the bootstrap can go; "build" appears once the whole
 // pipeline (lex -> parse -> desugar -> sema -> ir -> codegen -> driver) exists.
 make capabilities() -> [string]:
-    return ["lexer", "parser", "diagnostics"]
+    return ["lexer", "parser", "diagnostics", "desugar"]
+
+make cmd_desugar(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    print(dump_node(ast, root, 0))
 
 make main():
     if arg_count() == 1 and arg(0) == "--capabilities":
@@ -46,7 +63,7 @@ make main():
             print(c)
         exit(0)
     if arg_count() == 1 and arg(0) == "--version":
-        print("kitec 0.3.0")
+        print("kitec 0.3.1")
         exit(0)
     if arg_count() < 2:
         eprint_line("usage: kitec tokens|ast FILE")
@@ -57,6 +74,8 @@ make main():
         cmd_tokens(path)
     orif cmd == "ast":
         cmd_ast(path)
+    orif cmd == "desugar":
+        cmd_desugar(path)
     else:
         eprint_line("kitec: unknown command `" + cmd + "`")
         exit(2)

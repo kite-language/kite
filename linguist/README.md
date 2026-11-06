@@ -10,7 +10,6 @@ This directory contains everything needed for the pull request that makes GitHub
 | `apply.py` | applies entry + samples (+ grammar) to your fork of Linguist |
 | `validate.py` | static checks mirroring Linguist's tests (ordering, ids, colour, samples ...) |
 | `PULL_REQUEST.md` | the pull-request text, already filled in following Linguist's template |
-| `export-grammar-repo.sh` | creates the standalone grammar repository Linguist needs |
 
 ## Important: Linguist's usage requirements
 Linguist only accepts a language once it is widely used on GitHub (see its CONTRIBUTING.md,
@@ -22,25 +21,19 @@ shows enough results:
     https://github.com/search?type=code&q=NOT+is%3Afork+path%3A*.ki+%22make+main%22
 
 ## Step by step
-1. **Grammar repository.** Linguist vendors grammars as git submodules, so the grammar must live in its own
-   public repo with an open-source licence (MIT here):
-   ```
-   linguist/export-grammar-repo.sh /tmp/vscode-kite     # copies editors/vscode (grammar, tests, LICENSE)
-   cd /tmp/vscode-kite && git remote add origin git@github.com:yo-le-zz/vscode-kite.git && git push -u origin main
-   ```
-2. **Fork + clone** `github-linguist/linguist` (your fork: `yo-le-zz/linguist`).
+1. The grammar repository already exists: [`kite-language/vscode-kite`](https://github.com/kite-language/vscode-kite)
+   (TextMate grammar, MIT, with tests). Linguist vendors it as a git submodule.
+2. **Fork + clone** `github-linguist/linguist` into your account.
 3. **Apply** (needs Ruby + `bundle install` for the grammar step):
    ```
-   python3 linguist/apply.py /path/to/linguist --grammar-repo https://github.com/yo-le-zz/vscode-kite
+   python3 linguist/apply.py /path/to/linguist --grammar-repo https://github.com/kite-language/vscode-kite
    ```
    It inserts the entry between `Kit` and `KoLmafia ASH` (Linguist keeps `languages.yml` in byte order),
-   copies `samples/Kite`, and runs `script/add-grammar` (which adds the submodule, `grammars.yml`, the
-   licence file and `vendor/README.md`).
-   `language_id` is `sha256("Kite") % (2**30 - 1)` = **1007285693**, exactly what `script/update-ids` computes;
-   run `script/update-ids --check` if you want Linguist to confirm.
-4. **Check**: `python3 linguist/validate.py /path/to/linguist` then, in the fork, `bundle exec rake test`
-   (and `bundle exec script/cross-validation --test` for the classifier).
-5. **Open the PR** against `github-linguist/linguist` using `PULL_REQUEST.md` (the template must be used).
+   copies `samples/Kite`, and runs `script/add-grammar` (submodule, `grammars.yml`, licence, `vendor/README.md`).
+   `language_id` is `sha256("Kite") % (2**30 - 1)` = **1007285693**, exactly what `script/update-ids` computes.
+4. **Check**: `python3 linguist/validate.py /path/to/linguist`, then in the fork `bundle exec rake test`.
+5. **Open the PR** against `github-linguist/linguist` with the text of `PULL_REQUEST.md`.
+You do all git operations yourself; these scripts only edit files.
 
 ## Why these choices
 * `type: programming`, `ace_mode: text` (no Ace mode for Kite), no `codemirror_mode`.

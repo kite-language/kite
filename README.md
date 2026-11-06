@@ -2,39 +2,56 @@
 
 # Kite
 
-Readable like Python, fast like C, with a pinch of Rust-style safety. Version 0.3.0.
+Readable like Python, fast like C, with a pinch of Rust-style safety. Current version: **0.3.1**.
+
+```
+make main():
+    name = "Kite"
+    print(f"Hello, {name}!")
+```
 
 ## Install
 ```
 curl -fsSL https://kite-lang.pages.dev/install.sh | sh                 # Linux
-curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --deb     # Debian/Ubuntu (.deb)
-curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --rpm     # Fedora/RHEL/openSUSE (.rpm)
+curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --deb     # Debian / Ubuntu
+curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --rpm     # Fedora / RHEL / openSUSE
 curl -fsSL https://kite-lang.pages.dev/install-macos.sh | sh           # macOS
 irm https://kite-lang.pages.dev/install.ps1 | iex                      # Windows (PowerShell)
 ```
-Kite needs `clang` to produce native executables.
+Kite needs `clang` to produce executables.
 
-## Build from source
+## Work on Kite
 ```
-./build.sh          # Rust stage0 -> kitec (the compiler written in Kite)
-./build.sh test     # + Kite-vs-Rust differential tests
-./clean.sh --deep   # remove every build output
+./build.sh              # Rust seed compiler → kitec (the compiler written in Kite)
+./build.sh test         # + Kite-vs-Rust differential tests
+./clean.sh --deep       # remove every build output
+scripts/dev-install.sh  # local dev setup of everything (compiler + editors); see --help
 ```
 
-## Layout
+## Repositories ([github.com/kite-language](https://github.com/kite-language))
+| repository | content |
+|---|---|
+| **kite** (this one) | compiler, docs, prelude, examples, install scripts, Linguist material |
+| [tree-sitter-kite](https://github.com/kite-language/tree-sitter-kite) | tree-sitter grammar |
+| [vscode-kite](https://github.com/kite-language/vscode-kite) | VS Code extension |
+| [zed-kite](https://github.com/kite-language/zed-kite) | Zed extension |
+| [kate-kite](https://github.com/kite-language/kate-kite) | Kate / KWrite / KDevelop syntax definition |
+| [notepadpp-kite](https://github.com/kite-language/notepadpp-kite) | Notepad++ language definition |
+
+Each one has its own version: [docs/versions.md](docs/versions.md).
+
+## Layout of this repository
 | path | content |
 |---|---|
 | `compiler/` | the Kite compiler written in Kite (`kitec`) |
-| `archive/rust-stage0/` | the original Rust compiler (stage0, kept as the bootstrap seed) |
+| `archive/rust-stage0/` | the original Rust compiler (seed of the bootstrap) |
 | `stdlib/prelude/` | library code written in Kite |
-| `docs/` | `language-0.2.md`, `bootstrap.md`, `architecture.md`, ... |
-| `examples/` | sample programs (`stable/`, `lang5/` have recorded outputs) |
-| `scripts/` | `package-release.sh`, `cross-build.sh`, `difftest.sh` |
-| `editors/`, `tree-sitter-kite/`, `linguist/` | VS Code + Zed + tree-sitter support, GitHub Linguist PR material (`docs/editors.md`) |
-| `installer/` | the GUI installer (Rust + iced) |
-| `website/` | kite-lang.pages.dev (install scripts + landing page) |
+| `docs/` | documentation ([index](docs/README.md)) |
+| `examples/` | programs (`stable/` and `lang5/` have recorded outputs) |
+| `scripts/` | `package-release.sh`, `dev-install.sh`, `cross-build.sh`, `difftest.sh` |
+| `linguist/` | GitHub Linguist pull-request material |
+| `website/` | kite-lang.pages.dev |
 
 ## Releases
-`scripts/package-release.sh` builds the Linux and Windows (x64, arm64) archives, the `.deb`
-packages, the `.rpm` packages and `checksums.txt` into `dist/release/`. It packages the stable Rust compiler until the
-bootstrap is complete (`compiler/BOOTSTRAPPED`), then the self-hosted one.
+`scripts/package-release.sh` builds the Linux and Windows archives (x64, arm64), `.deb`, `.rpm` and
+`checksums.txt` into `dist/release/`. It packages the Rust compiler until the bootstrap is complete.

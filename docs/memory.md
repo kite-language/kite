@@ -24,7 +24,7 @@ compiler itself.
 
 ## What "you don't manage it" actually means today
 
-Kite v0.1.3 does **not** have a garbage collector. What it has instead
+Kite 0.3 does **not** have a garbage collector. What it has instead
 is simpler and worth understanding honestly:
 
 - Numbers (`int`, `float`), `bool`, and struct instances live on the
@@ -40,7 +40,7 @@ is simpler and worth understanding honestly:
   process's entire lifetime, with one narrow exception: when a list
   outgrows its current buffer and gets reallocated, the *old* buffer
   is `free`'d right after copying (see `emit_list_append` in
-  `src/codegen.rs`) -- otherwise nothing is ever freed.
+  `archive/rust-stage0/src/codegen.rs`) -- otherwise nothing is ever freed.
 
 For a short-lived CLI tool, script, or anything that processes a
 bounded amount of data and exits, this genuinely doesn't matter -- the
@@ -50,7 +50,7 @@ program (a server, a daemon) that keeps allocating in a loop forever:
 that will keep growing its memory usage without bound. If you're
 writing something like that today, that's the one thing to be aware
 of. A real garbage collector (or some other reclamation strategy) is
-future work, not something v0.1.3 has yet.
+future work, not something Kite has yet.
 
 ## Why this is a reasonable place to start
 
@@ -91,17 +91,17 @@ A few concrete facts, if you'd rather not read IR:
   the same representation C uses. This is exactly why Kite can hand a
   `string` straight to an `extern` C function (see
   `docs/c-interop.md`) with no conversion step.
-- **1-based indexing, everywhere that touches memory by index** --
-  lists, `char_at`, `substr`. This is a Kite-level convention, not a
-  memory-layout detail: the compiler subtracts 1 before it ever
-  touches the underlying (0-based) buffer.
+- **0-based indexing, everywhere** -- lists, `char_at`, `substr`
+  (`substr(s, start, end)` is half-open). Every access is bounds-checked.
+- **Lists of structs and struct fields that are lists** are stored inline;
+  element size comes from LLVM's `sizeof`, so any element type works.
 - **List growth doubles capacity** once the current buffer is full
-  (see `emit_list_append` in `src/codegen.rs` for the exact growth
+  (see `emit_list_append` in `archive/rust-stage0/src/codegen.rs` for the exact growth
   check and the `realloc`-by-hand-via-`malloc`+copy+`free` sequence).
 - **Every heap allocation goes through plain `malloc`/`free`** (`i8*
   @malloc(i64)` / `void @free(i8*)`, declared at the top of every
   generated `.ll` file) -- there's no custom allocator, arena, or
-  bump-allocator underneath it in v0.1.3.
+  bump-allocator underneath it in Kite 0.3.
 - **`--freestanding` builds** (see `docs/architecture.md`) still emit
   the same `malloc`/`free` calls for strings/lists -- they're your
   responsibility to provide symbols for, exactly like every other

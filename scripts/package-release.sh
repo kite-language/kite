@@ -13,7 +13,6 @@
 #   scripts/package-release.sh --targets linux-x64,windows-x64
 #   scripts/package-release.sh --compiler rust|kite|auto
 #   scripts/package-release.sh --no-deb --no-rpm
-#   scripts/package-release.sh --no-installer     skip the GUI installer (installer/)
 #
 # --compiler selects which `kite` goes into the packages:
 #   rust   the stable Rust compiler (archive/rust-stage0)   <- default today
@@ -31,14 +30,12 @@ COMPILER=auto
 TARGETS=linux-x64,linux-arm64,windows-x64,windows-arm64
 DEB=1
 RPM=1
-INSTALLER=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --compiler) COMPILER=$2; shift 2 ;;
     --targets)  TARGETS=$2;  shift 2 ;;
     --no-deb)   DEB=0; shift ;;
     --no-rpm)   RPM=0; shift ;;
-    --no-installer) INSTALLER=0; shift ;;
     -h|--help)  sed -n '2,24p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
@@ -89,8 +86,8 @@ Priority: optional
 Architecture: $arch
 Depends: clang
 Installed-Size: $(du -sk "$pkg" | cut -f1)
-Maintainer: yo-le-zz <noreply@example.com>
-Homepage: https://github.com/yo-le-zz/Kite
+Maintainer: Kite Language <noreply@example.com>
+Homepage: https://github.com/kite-language/kite
 Description: The Kite programming language
  Readable like Python, fast like C, with a pinch of Rust-style safety.
  Compiles through LLVM; needs clang to produce native executables.
@@ -115,7 +112,7 @@ Version:        $VERSION
 Release:        1
 Summary:        The Kite programming language
 License:        MIT
-URL:            https://github.com/yo-le-zz/Kite
+URL:            https://github.com/kite-language/kite
 Requires:       clang
 AutoReqProv:    no
 %global debug_package %{nil}
@@ -153,46 +150,6 @@ if [ "$DEB" = 1 ]; then
   case ",$TARGETS," in *,linux-arm64,*) make_deb linux-arm64 arm64 ;; esac
 fi
 
-# 3. the GUI installer (Rust + iced): same Linux/Windows targets. windows-arm64 and macOS
-#    are not buildable by cross (see installer/build.sh); they are built by the CI workflows.
-if [ "$INSTALLER" = 1 ]; then
-  ITARGETS=""
-  for t in ${TARGETS//,/ }; do
-    case "$t" in windows-arm64|macos-*) echo "   installer: $t is built by CI (not cross-buildable), skipping" ;; *) ITARGETS="$ITARGETS,$t" ;; esac
-  done
-  ITARGETS="${ITARGETS#,}"
-  if [ -n "$ITARGETS" ]; then
-    echo "==> installer (GUI): $ITARGETS"
-    # The GUI installer's dependencies need Rust >= 1.86; use a newer toolchain when the active one is older.
-    rust_ok() { v=$(rustc --version 2>/dev/null | awk '{print $2}'); [ -n "$v" ] && [ "$(printf '%s\n1.86.0\n' "$v" | sort -V | head -1)" = "1.86.0" ]; }
-    if ! rust_ok; then
-      echo "   active rustc ($(rustc --version 2>/dev/null)) is older than 1.86: switching to the stable toolchain for the installer"
-      if command -v rustup >/dev/null 2>&1 && rustup toolchain install stable --profile minimal >/dev/null 2>&1; then
-        export RUSTUP_TOOLCHAIN=stable
-        for t in ${ITARGETS//,/ }; do
-          case "$t" in
-            linux-arm64) rustup target add aarch64-unknown-linux-gnu --toolchain stable >/dev/null 2>&1 || true ;;
-            linux-x64)   rustup target add x86_64-unknown-linux-gnu  --toolchain stable >/dev/null 2>&1 || true ;;
-            windows-x64) rustup target add x86_64-pc-windows-gnu     --toolchain stable >/dev/null 2>&1 || true ;;
-          esac
-        done
-      else
-        echo "   cannot get a newer Rust (no rustup): skipping the GUI installer" >&2
-        ITARGETS=""
-      fi
-    fi
-  fi
-  if [ -n "$ITARGETS" ]; then
-    ITMP="$OUT/.installer"
-    if "$ROOT/installer/build.sh" --targets "$ITARGETS" --output-dir "$ITMP"; then :; else
-      echo "   (some installer targets were skipped, see above)"
-    fi
-    # flatten dist/<os>/<arch>/kite-installer-* into the release directory
-    find "$ITMP" -type f \( -name 'kite-installer*' \) -exec cp {} "$OUT/" \; 2>/dev/null || true
-    rm -rf "$ITMP"
-  fi
-fi
-
-# 4. checksums
+# 3. checksums
 ( cd "$OUT" && ls | grep -v checksums.txt | xargs -r sha256sum > checksums.txt ) || true
 echo "==> done:"; ls -la "$OUT"

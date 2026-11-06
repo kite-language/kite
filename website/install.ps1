@@ -3,16 +3,16 @@
   install.ps1 -- installs the latest (or a pinned) `kite` release on Windows.
 
     irm https://kite-lang.pages.dev/install.ps1 | iex
-    $env:KITE_VERSION="0.3.0"; irm https://kite-lang.pages.dev/install.ps1 | iex
+    $env:KITE_VERSION="0.3.1"; irm https://kite-lang.pages.dev/install.ps1 | iex
     irm https://kite-lang.pages.dev/install.ps1 -OutFile install.ps1; ./install.ps1 -Uninstall
 
   Env / param overrides:
-    KITE_REPO / -Repo               GitHub "owner/repo"   (default: yo-le-zz/Kite)
+    KITE_REPO / -Repo               GitHub "owner/repo"   (default: kite-language/kite)
     KITE_VERSION / -Version          release tag to install (default: latest)
     KITE_INSTALL_DIR / -InstallDir    where to put kite.exe   (default: %LOCALAPPDATA%\Kite\bin)
 #>
 param(
-  [string]$Repo = $(if ($env:KITE_REPO) { $env:KITE_REPO } else { "yo-le-zz/Kite" }),
+  [string]$Repo = $(if ($env:KITE_REPO) { $env:KITE_REPO } else { "kite-language/kite" }),
   [string]$Version = $(if ($env:KITE_VERSION) { $env:KITE_VERSION } else { "" }),
   [string]$InstallDir = $(if ($env:KITE_INSTALL_DIR) { $env:KITE_INSTALL_DIR } else { Join-Path $env:LOCALAPPDATA "Kite\bin" }),
   [switch]$Uninstall,

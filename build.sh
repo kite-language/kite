@@ -72,4 +72,5 @@ if [ "${1:-}" = "test" ]; then
   export KITE_STAGE0_TARGET="$STAGE0_TARGET"
   scripts/difftest.sh tokens $FILES
   scripts/difftest.sh ast $FILES
+  scripts/difftest.sh desugar $FILES
 fi

@@ -1,7 +1,6 @@
 name: release
 # Builds the release files on native runners and attaches them to the GitHub
-# release of a v* tag. Uses the stable Rust toolchain (the GUI installer's dependencies need Rust >= 1.86;
-# ci.yml keeps the compiler itself pinned for fmt/clippy).
+# release of a v* tag, with the stable Rust compiler (archive/rust-stage0) until the bootstrap is complete.
 on:
   push:
     tags: ["v*"]
@@ -45,16 +44,6 @@ jobs:
           Copy-Item target/release/kite.exe ../../stage/
           Copy-Item ../../LICENSE ../../stage/
           Compress-Archive -Path ../../stage/* -DestinationPath "../../dist/release/kite-$v-${{ matrix.short }}.zip"
-      - name: build and zip the GUI installer
-        continue-on-error: true   # the Kite archive is published even if the GUI installer fails
-        shell: pwsh
-        run: |
-          Set-Location installer
-          cargo build --release
-          $iv = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.*)"').Matches[0].Groups[1].Value
-          New-Item -ItemType Directory -Force -Path ../stage-installer | Out-Null
-          Copy-Item target/release/Kite-Installer.exe ../stage-installer/kite-installer.exe
-          Compress-Archive -Path ../stage-installer/* -DestinationPath "../dist/release/kite-installer-$iv-${{ matrix.short }}.zip"
       - uses: actions/upload-artifact@v4
         with: { name: "release-${{ matrix.short }}", path: dist/release/*.zip }
 

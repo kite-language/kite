@@ -2,16 +2,16 @@
 # install.sh -- installs the latest (or a pinned) `kite` release on Linux.
 #
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh
-#   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.3.0
+#   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.3.1
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --deb        (Debian/Ubuntu: .deb via dpkg)
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --rpm        (Fedora/RHEL/openSUSE: .rpm via dnf)
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --uninstall
 #
 # Options:  --version X   --prefix DIR   --deb   --rpm   --no-modify-path   --uninstall   --help
-# Env:      KITE_REPO (yo-le-zz/Kite)  KITE_VERSION  KITE_INSTALL_DIR ($HOME/.local/bin)
+# Env:      KITE_REPO (kite-language/kite)  KITE_VERSION  KITE_INSTALL_DIR ($HOME/.local/bin)
 set -eu
 
-REPO="${KITE_REPO:-yo-le-zz/Kite}"
+REPO="${KITE_REPO:-kite-language/kite}"
 INSTALL_DIR="${KITE_INSTALL_DIR:-$HOME/.local/bin}"
 VERSION="${KITE_VERSION:-}"
 USE_DEB=0; USE_RPM=0; MODIFY_PATH=1; UNINSTALL=0

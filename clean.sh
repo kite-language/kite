@@ -2,7 +2,7 @@
 # Remove every build output and cache of this repository.
 #
 #   ./clean.sh          clean build outputs (stage0, stage1, dist, example targets, temp dirs)
-#   ./clean.sh --deep   also remove cargo target dirs of every sub-project (installer, ...)
+#   ./clean.sh --deep   also remove cargo target dirs of every sub-project
 #                       and run `cargo clean` where a Cargo.toml exists
 #
 # It never touches ~/.cargo, your sources, or anything outside this directory
@@ -18,7 +18,6 @@ rm_dir archive/rust-stage0/target
 rm_dir compiler/target
 rm_dir target                      # legacy location of the Rust build
 rm_dir dist
-rm_dir installer/target
 rm_dir stage2
 
 # Kite projects built anywhere in the tree (examples, tests, bootstrap): target/ + kite.lock caches

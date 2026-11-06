@@ -1,7 +1,7 @@
 <!-- Title: Add Kite language -->
 
 ## Description
-Adds **Kite** (https://github.com/yo-le-zz/Kite), a compiled, indentation-based programming language
+Adds **Kite** (https://github.com/kite-language/kite), a compiled, indentation-based programming language
 (readable like Python, fast like C, compiled through LLVM). Its compiler is written in Kite itself.
 Source files use the `.ki` extension, which no other Linguist language uses.
 
@@ -14,12 +14,12 @@ Source files use the `.ki` extension, which no other Linguist language uses.
       - Result count at submission time: **TODO (fill in: N files, M distinct repositories)**
   - [x] I have included a real-world usage sample for all extensions added in this PR:
     - Sample source(s):
-      - https://github.com/yo-le-zz/Kite/tree/main/compiler/src (the Kite compiler, written in Kite)
-      - https://github.com/yo-le-zz/Kite/blob/main/stdlib/prelude/core.ki (the standard prelude)
-      - https://github.com/yo-le-zz/Kite/blob/main/examples/stable/calc.ki (a parser/evaluator)
-      - https://github.com/yo-le-zz/Kite/blob/main/examples/stable/virtual_dispatch.ki (classes)
-    - Sample license(s): MIT (https://github.com/yo-le-zz/Kite/blob/main/LICENSE). I wrote these files and am happy for them to be included under Linguist's MIT licence.
-  - [x] I have included a syntax highlighting grammar: https://github.com/yo-le-zz/vscode-kite (MIT)
+      - https://github.com/kite-language/kite/tree/main/compiler/src (the Kite compiler, written in Kite)
+      - https://github.com/kite-language/kite/blob/main/stdlib/prelude/core.ki (the standard prelude)
+      - https://github.com/kite-language/kite/blob/main/examples/stable/calc.ki (a parser/evaluator)
+      - https://github.com/kite-language/kite/blob/main/examples/stable/virtual_dispatch.ki (classes)
+    - Sample license(s): MIT (https://github.com/kite-language/kite/blob/main/LICENSE). I wrote these files and am happy for them to be included under Linguist's MIT licence.
+  - [x] I have included a syntax highlighting grammar: https://github.com/kite-language/vscode-kite (MIT)
   - [x] I have added a color
     - Hex value: `#8B5CF6`
     - Rationale: the violet end of the gradient in the Kite logo (a feather); checked that no existing language uses this value.

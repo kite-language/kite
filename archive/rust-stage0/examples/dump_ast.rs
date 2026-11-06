@@ -260,7 +260,15 @@ fn main() {
         eprintln!("parse errors");
         std::process::exit(1);
     }
-    let p = prog.unwrap();
+    let mut p = prog.unwrap();
+    if cmd == "desugar" {
+        let d3 = kite::desugar::desugar_program(&mut p);
+        if d3.had_errors() {
+            d3.emit("input", &src);
+            eprintln!("desugar errors");
+            std::process::exit(1);
+        }
+    }
     let s0 = Span { start: 0, end: 0, line: 0, column: 0 };
     let imports = list(
         s0,

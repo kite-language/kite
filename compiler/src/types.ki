@@ -1,0 +1,50 @@
+// Helpers on textual types ("int", "[int]", "(int, string)", "ptr<T>", "Name").
+// The Kite AST keeps types as their source text; these functions take them apart.
+
+make ty_is_list(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 91 and char_at(t, len(t) - 1) == 93
+
+// "[T]" -> "T" ("" if `t` is not a list type)
+make ty_list_elem(t: string) -> string:
+    if ty_is_list(t):
+        return substr(t, 1, len(t) - 1)
+    return ""
+
+make ty_list_of(t: string) -> string:
+    return "[" + t + "]"
+
+make ty_is_ptr(t: string) -> bool:
+    return starts_with(t, "ptr<") and ends_with(t, ">")
+
+// "ptr<T>" -> "T" ("" if `t` is not a pointer type)
+make ty_ptr_inner(t: string) -> string:
+    if ty_is_ptr(t):
+        return substr(t, 4, len(t) - 1)
+    return ""
+
+make ty_ptr_of(t: string) -> string:
+    return "ptr<" + t + ">"
+
+// A user-defined (struct/class/enum) type is a plain identifier that is not a primitive.
+make ty_is_named(t: string) -> bool:
+    if len(t) == 0:
+        return false
+    if t == "int" or t == "float" or t == "bool" or t == "string" or t == "void":
+        return false
+    if not is_alpha(char_at(t, 0)):
+        return false
+    i = 0
+    while i < len(t):
+        if not is_alnum(char_at(t, i)):
+            return false
+        i += 1
+    return true
+
+// The struct/class name behind `t` (`Name` or `ptr<Name>`), "" otherwise.
+make ty_struct_or_ptr(t: string) -> string:
+    if ty_is_named(t):
+        return t
+    inner = ty_ptr_inner(t)
+    if ty_is_named(inner):
+        return inner
+    return ""

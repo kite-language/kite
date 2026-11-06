@@ -71,7 +71,7 @@ def copy_samples(fork):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("fork")
-    ap.add_argument("--grammar-repo", default="https://github.com/yo-le-zz/vscode-kite")
+    ap.add_argument("--grammar-repo", default="https://github.com/kite-language/vscode-kite")
     ap.add_argument("--skip-grammar", action="store_true")
     ap.add_argument("--run-tests", action="store_true")
     a = ap.parse_args()

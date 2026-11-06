@@ -303,7 +303,7 @@ fn emit_function(func: &IrFunction, ctx: &mut ModuleCtx, freestanding: bool, out
         func.name,
         params_sig.join(", ")
     );
-    out.push_str("entry:\n");
+    out.push_str("kite.entry:\n");
     let mut body_out = String::new();
     if is_main {
         body_out.push_str("  store i32 %argc, i32* @.kite.argc\n");

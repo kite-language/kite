@@ -163,7 +163,7 @@ make main():
 ```
 
 **What doesn't work yet:** reading or writing a field *directly*
-through the pointer -- `(*p).x = 3` or `print((*p).x)` -- reports a
+through the pointer with the old `(*p).x` spelling reports a
 clear `E0099` error rather than silently doing something wrong.
 `*p` gives you an independent **copy** of the struct (see
 `docs/memory.md` on struct value semantics), so mutating that copy's
@@ -183,7 +183,7 @@ lands.
   check has a real cost, and code reaching for `ptr<T>` in the first
   place is usually code that specifically wants to avoid paying it.
 - No `ptr<ptr<T>>` (pointers to pointers).
-- No field/element mutation directly through a pointer (`(*p).x = 3`,
+- `(*p).x = 3` is still rejected: write `p.x = 3` (a `ptr<Struct>` auto-dereferences) (
   `(*p)[i] = 3`) -- see above.
 - No pointer-to-list/tuple/dict (`alloc([int])` is rejected) --
   `alloc`/`alloc_n` only take a scalar type or a struct name.

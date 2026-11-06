@@ -1,39 +1,27 @@
-# Changelog
+# Changelog (kite repository)
 
-## 0.2.0 -- stable, pre-bootstrap
-- f-strings, `str()`, compound operators everywhere, 0-based indexing.
-- Default / named / variadic parameters, tuple unpacking.
-- Lists, tuples, structs, classes pass through function boundaries (by reference) and are returned (`sret`).
-- Classes: methods, `init`, single inheritance, virtual dispatch, upcasting.
-- Data enums with `match`/`case`, recursive data through `ptr<T>`, pointer auto-deref, typed `null`.
-- Structs containing lists/structs, lists of structs, `pop/remove/insert/clear`.
-- String ordering, prelude in Kite (string helpers, `StrMap_T` hash maps).
-- Codegen: allocas hoisted to the entry block, LLVM `sizeof`-based list layout.
-- Bootstrap milestone 1: `bootstrap/lexer.ki` (Kite lexer in Kite, verified against the Rust lexer).
+Editor repositories have their own changelogs: see docs/versions.md.
 
-## 0.3.0 -- bootstrap milestone 2
-- Repository reorganised: Rust compiler archived in `archive/rust-stage0/`.
-- `compiler/`: lexer + parser + diagnostics of Kite written in Kite; token and AST
-  dumps are byte-identical to the Rust compiler on all sample files.
-- `build.sh` / `Makefile` for the stage0 -> stage1 build and the differential tests.
-- Stage0 improvements needed by the port: receiver-type inference through fields,
-  list elements, `alloc`, pointers; `p.method()` on `ptr<Class>`; `exit(code)` builtin;
-  generated LLVM temporaries renamed `%.tN` so user variables can't collide;
-  bare struct constructors usable as values.
-- `build.sh` no longer depends on cargo's target-dir configuration; `scripts/package.sh`
-  builds `.deb` (amd64/arm64) and Windows (x64/arm64) packages; release workflow added.
-- Fix: `build.sh` built only the examples (`cargo build --examples`), not the `kite` binary; it now builds `--bins --examples`.
-- `clean.sh` (`--deep`) removes every build output and cache of the repository.
-- Repository cleanup: removed `bootstrap/`, duplicated installer scripts, `scripts/package.sh`; `.gitignore` rewritten.
-- `build.sh` runs the bootstrap stages (stage0 -> stage1 -> stage2) and reports progress (`./build.sh status`).
-- `scripts/package-release.sh`: Linux/Windows archives, `.deb`, checksums; selects the Rust or the self-hosted compiler.
-- Installers (`website/install.sh`, `install-macos.sh`, `install.ps1`): SHA-256 verification, `--version`, `--prefix`,
-  `--deb`, wget fallback, clang detection with install hints, automatic PATH setup.
-- Website refreshed for 0.3.0; CI updated for the new layout and a bootstrap job added.
-- Fix: the Rust crate is self-contained again (own copy of the prelude), so `cross`/Docker builds work; `package-release.sh` now fails clearly when no target could be built.
-- Fix: Windows zip packaging with an absolute --output-dir; partial cross-builds no longer reported as total failure.
-- Fix: release workflow uses the stable Rust toolchain (the GUI installer's dependencies require Rust >= 1.86).
-- `.rpm` packages (x86_64, aarch64) built by `package-release.sh`; installer option `--rpm`.
-- Release workflow: the retired `macos-13` Intel runner (which never started) is replaced by one macOS job that builds both architectures; job timeouts; publish no longer waits on blocked jobs.
-- Editor support rewritten for Kite 0.3: tree-sitter grammar (classes, match/case, f-strings, defaults, named/variadic params, tuples, ptr<T>, compound operators), 23 corpus tests; Zed queries (highlights, brackets, indents, outline, overrides); new VS Code extension (TextMate grammar, snippets, language configuration, tests, .vsix).
-- `linguist/`: everything for a GitHub Linguist pull request (entry, real-world samples, apply/validate scripts, PR text, grammar-repo export); verified against Linguist's own sorting, sample and classifier tests.
+## 0.3.1
+- **Bootstrap**: the desugar pass (classes, virtual dispatch, `match`, data enums, defaults, named args, `*args`,
+  unpacking) is ported to Kite: `kitec desugar FILE` is identical to the Rust desugar on all 37 sample files,
+  diagnostics included. `./build.sh test` now runs this comparison too.
+- **Rust stage0 fixes** needed by the port: the LLVM entry label is `kite.entry` so a variable named `entry`
+  cannot collide with it.
+- **Editors**: all integrations are 1.0.0 and live in their own repositories: `tree-sitter-kite`, `vscode-kite`,
+  `zed-kite`, `kate-kite`, `notepadpp-kite` (see docs/versions.md). Target of 0.4.0: complete bootstrap.
+
+## 0.3.0
+- **Language**: f-strings, `str()`, compound operators, 0-based indexes, default / named / variadic parameters,
+  tuple unpacking, aggregates passed to and returned from functions, classes with inheritance and virtual dispatch,
+  data enums with `match`, pointers with auto-dereference and typed `null`, lists of structs, structs containing
+  lists, `pop/remove/insert/clear`, string ordering, `exit`, prelude (string helpers, `StrMap_T` hash maps).
+- **Bootstrap**: the Rust compiler is archived in `archive/rust-stage0/`; `compiler/` holds the lexer and parser
+  written in Kite (identical to Rust on every sample). `build.sh` runs stage0 → stage1 and the differential tests.
+- **Packaging**: `scripts/package-release.sh` (Linux/Windows archives, `.deb`, `.rpm`, checksums);
+  installers with SHA-256 verification, `--deb`, `--rpm`, `--version`, `--prefix`; release workflow for
+  Linux, Windows and macOS (one job builds both macOS architectures).
+- **Repositories**: editor support moved to `tree-sitter-kite`, `vscode-kite`, `zed-kite`;
+  Kate and Notepad++ definitions added under `editors/`; `scripts/dev-install.sh`.
+- **Removed**: the GUI installer.
+- **Fixes**: Rust crate self-contained for `cross` builds; temporaries renamed `%.tN`; Windows zip packaging.

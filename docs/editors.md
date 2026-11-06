@@ -1,17 +1,15 @@
-# Editor support
+# Editors
 
-| editor | where | how |
+Editor support lives in separate repositories of the [kite-language](https://github.com/kite-language) organization,
+each with its **own version** (see `versions.md`).
+
+| editor | repository / path | how to use |
 |---|---|---|
-| **Zed** | `editors/zed/` | tree-sitter grammar from `tree-sitter-kite/` + queries (highlights, brackets, indents, outline, overrides). `editors/zed/dev-setup.sh` installs it as a dev extension. |
-| **VS Code** | `editors/vscode/` | TextMate grammar (`source.kite`), snippets, indentation rules. `npm run package` builds `kite-lang-<version>.vsix`; `code --install-extension kite-lang-0.3.0.vsix`. |
-| **Neovim / Helix** | `tree-sitter-kite/` | the same tree-sitter grammar and `queries/*.scm`. |
-| **GitHub** | `linguist/` | entry + samples + grammar for a pull request to `github-linguist/linguist` (language statistics and highlighting in repositories). Only possible once Kite is widely used; see `linguist/README.md`. |
+| VS Code | [`vscode-kite`](https://github.com/kite-language/vscode-kite) | install the `.vsix` (`kite-language.kite-language-vscode`) |
+| Zed | [`zed-kite`](https://github.com/kite-language/zed-kite) (grammar from [`tree-sitter-kite`](https://github.com/kite-language/tree-sitter-kite)) | `zed: install dev extension`, or the registry once published |
+| Neovim, Helix | [`tree-sitter-kite`](https://github.com/kite-language/tree-sitter-kite) | tree-sitter grammar + `queries/` |
+| Kate, KWrite, KDevelop | [`kate-kite`](https://github.com/kite-language/kate-kite) | `scripts/install.sh` (copies `kite.xml` to `~/.local/share/org.kde.syntax-highlighting/syntax/`) |
+| Notepad++ | [`notepadpp-kite`](https://github.com/kite-language/notepadpp-kite) | run `install.ps1` or import `Kite.xml` |
+| GitHub | `linguist/` (this repo) | material for a pull request to `github-linguist/linguist` |
 
-## Tests
-* `tree-sitter-kite`: `npx tree-sitter test` (23 corpus tests) and every `.ki` file of the repository must parse without error (CI).
-* `editors/vscode`: `npm test` runs scope assertions (`test/assertions.test.ki`) and token snapshots (`test/snap/*.ki.snap`).
-* `linguist/validate.py`: static checks mirroring Linguist's own tests.
-
-## Keeping the grammars in sync with the language
-When the syntax changes: edit `tree-sitter-kite/grammar.js` (then `npm run generate`), the corpus tests, and
-`editors/vscode/syntaxes/kite.tmLanguage.json`; update the snapshots with `npm run snap` after reviewing the diff.
+Local development of everything at once: `scripts/dev-install.sh --help`.
