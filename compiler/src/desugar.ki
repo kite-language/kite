@@ -1,0 +1,1001 @@
+// Front-end desugaring (port of src/desugar.rs): rewrites conveniences into the core
+// language before semantic analysis.
+//   * data enums            -> tagged struct + constructor functions
+//   * match / case          -> if / orif chain on the tag
+//   * classes               -> struct + free functions, constructors, virtual dispatchers
+//   * method calls          -> plain calls (receiver class inferred statically)
+//   * defaults, named args, *args, tuple unpacking, typed empty lists
+//   * functions without `return <value>` get the explicit return type `void`
+
+use diag
+use ast
+use types
+
+type StrList:
+    items: [string]
+
+type FieldInfo:
+    names: [string]
+    types: [string]
+
+type SigInfo:
+    names: [string]
+    types: [string]
+    variadic: [bool]
+    defaults: [int]
+
+type EnumInfo:
+    names: [string]
+    nodes: [int]
+
+type IntList:
+    items: [int]
+
+type VariantRef:
+    enum_name: string
+    idx: int
+
+// ---- free helpers ---------------------------------------------------------------
+
+make block_returns_value(ast: Ast, b: int) -> bool:
+    if b < 0:
+        return false
+    iter_1 = ast.nodes[b].kids
+    for s in iter_1:
+        k = ast.nodes[s].kind
+        if k == "Return":
+            if ast.nodes[s].kids[0] >= 0:
+                return true
+        orif k == "If":
+            kids = ast.nodes[s].kids
+            if block_returns_value(ast, kids[1]):
+                return true
+            iter_2 = ast.nodes[kids[2]].kids
+            for o in iter_2:
+                if block_returns_value(ast, ast.nodes[o].kids[1]):
+                    return true
+            if block_returns_value(ast, kids[3]):
+                return true
+        orif k == "Until" or k == "While":
+            if block_returns_value(ast, ast.nodes[s].kids[1]):
+                return true
+        orif k == "Infinit" or k == "Thread":
+            if block_returns_value(ast, ast.nodes[s].kids[0]):
+                return true
+        orif k == "ForRange":
+            if block_returns_value(ast, ast.nodes[s].kids[2]):
+                return true
+        orif k == "ForEach":
+            if block_returns_value(ast, ast.nodes[s].kids[1]):
+                return true
+        orif k == "Try":
+            kids = ast.nodes[s].kids
+            if block_returns_value(ast, kids[0]) or block_returns_value(ast, kids[1]) or block_returns_value(ast, kids[2]):
+                return true
+    return false
+
+// Deep copy of an expression subtree (spans preserved).
+make clone_node(ast: Ast, id: int) -> int:
+    if id < 0:
+        return -1
+    n = ast.nodes[id]
+    kids: [int] = []
+    for k in n.kids:
+        append(kids, clone_node(ast, k))
+    return ast.addl(n.kind, n.text, n.span, kids)
+
+// Index of `name` in `xs`, or -1.
+make index_of(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+// Split "A__b" at the first "__": returns the part before ("" if there is none).
+make split_cls(name: string) -> string:
+    i = find(name, "__")
+    if i <= 0:
+        return ""
+    return substr(name, 0, i)
+
+make split_member(name: string) -> string:
+    i = find(name, "__")
+    if i <= 0:
+        return ""
+    return substr(name, i + 2, len(name))
+
+// NOTE: `for x in ast.nodes[i].kids:` reads the list through the arena slot; when the arena is
+// reallocated inside the loop body the slot moves and the loop reads freed memory. Hence every
+// such loop first copies the list header into a local (`iter_N = ...`).
+class Desugarer:
+    ast: Ast
+    diags: Diags
+    tmp: int
+    prog: int
+    // class tables
+    bases: StrMap_string
+    base_of: StrMap_string
+    method_idx: StrMap_int
+    method_lists: [StrList]
+    vcalls: StrMap_int
+    // data enums
+    enum_idx: StrMap_int
+    enum_infos: [EnumInfo]
+    variant_idx: StrMap_int
+    variant_refs: [VariantRef]
+    // function tables
+    sig_idx: StrMap_int
+    sig_infos: [SigInfo]
+    rets: StrMap_string
+    // struct field types after inheritance flattening
+    field_idx: StrMap_int
+    field_infos: [FieldInfo]
+    // per-function environments
+    env: StrMap_string
+    tenv: StrMap_string
+
+    // ---- node constructors (spans follow the Rust sources) ----------------------
+    make mk_ident(self, name: string, span: Span) -> int:
+        return self.ast.add0("Ident", name, span)
+
+    make mk_int(self, v: int, span: Span) -> int:
+        return self.ast.add0("Int", str(v), span)
+
+    make mk_type(self, text: string, span: Span) -> int:
+        return self.ast.add0("Type", text, span)
+
+    make mk_flags(self, text: string, span: Span) -> int:
+        return self.ast.add0("Flags", text, span)
+
+    make mk_lident(self, name: string) -> int:
+        return self.ast.add0("LIdent", name, span_dummy())
+
+    make mk_lfield(self, base: int, field: string, span: Span) -> int:
+        return self.ast.add1("LField", field, span, base)
+
+    make mk_assign(self, lv: int, ann: int, value: int, span: Span) -> int:
+        return self.ast.add3("Assign", "", span, lv, ann, value)
+
+    make mk_call(self, name: string, args: [int], span: Span) -> int:
+        return self.ast.addl("Call", name, span, args)
+
+    make mk_field(self, base: int, field: string, span: Span) -> int:
+        return self.ast.add1("Field", field, span, base)
+
+    make mk_binary(self, op: string, l: int, r: int, span: Span) -> int:
+        return self.ast.add2("Binary", op, span, l, r)
+
+    make mk_block(self, stmts: [int], span: Span) -> int:
+        return self.ast.addl("Block", "", span, stmts)
+
+    make mk_list(self, items: [int], span: Span) -> int:
+        return self.ast.addl("List", "", span, items)
+
+    make mk_param(self, name: string, ty: int, default: int, variadic: bool, span: Span) -> int:
+        flag = ""
+        if variadic:
+            flag = "variadic"
+        return self.ast.add3("Param", name, span, ty, default, self.mk_flags(flag, span))
+
+    make mk_function(self, name: string, params: [int], ret: int, flags: string, body: int, span: Span) -> int:
+        pl = self.mk_list(params, span)
+        return self.ast.add4("Function", name, span, pl, ret, self.mk_flags(flags, span), body)
+
+    make err(self, code: string, msg: string, span: Span):
+        self.diags.add(code, msg, span)
+
+    // ---- program accessors ----------------------------------------------------------
+    make list_node(self, which: int) -> int:
+        return self.ast.nodes[self.prog].kids[which]
+
+    make structs(self) -> int:
+        return self.list_node(1)
+
+    make enums(self) -> int:
+        return self.list_node(2)
+
+    make functions(self) -> int:
+        return self.list_node(3)
+
+    // ---- data enums -> tagged struct + constructors -------------------------------------
+    make prepare_enums(self):
+        el = self.enums()
+        old = self.ast.nodes[el].kids
+        plain: [int] = []
+        data: [int] = []
+        for e in old:
+            has_data = false
+            iter_3 = self.ast.nodes[self.ast.nodes[e].kids[0]].kids
+            for v in iter_3:
+                if len(self.ast.nodes[v].kids) > 0:
+                    has_data = true
+            if has_data:
+                append(data, e)
+            else:
+                append(plain, e)
+        self.ast.nodes[el].kids = plain
+        for e in data:
+            span = self.ast.nodes[e].span
+            name = self.ast.nodes[e].text
+            variants = self.ast.nodes[self.ast.nodes[e].kids[0]].kids
+            fields: [int] = []
+            append(fields, self.ast.add1("Field", "tag", span, self.mk_type("int", span)))
+            for v in variants:
+                vname = self.ast.nodes[v].text
+                iter_4 = self.ast.nodes[v].kids
+                for vf in iter_4:
+                    fty = self.ast.nodes[self.ast.nodes[vf].kids[0]].text
+                    append(fields, self.ast.add1("Field", vname + "__" + self.ast.nodes[vf].text, span, self.mk_type(fty, span)))
+            fl = self.mk_list(fields, span)
+            append(self.ast.nodes[self.structs()].kids, self.ast.add2("Struct", name, span, -1, fl))
+            info = EnumInfo()
+            i = 0
+            while i < len(variants):
+                v = variants[i]
+                vname = self.ast.nodes[v].text
+                vr = VariantRef()
+                vr.enum_name = name
+                vr.idx = i
+                append(self.variant_refs, vr)
+                self.variant_idx.set(vname, len(self.variant_refs))
+                params: [int] = []
+                iter_5 = self.ast.nodes[v].kids
+                for vf in iter_5:
+                    pty = self.ast.nodes[self.ast.nodes[vf].kids[0]].text
+                    append(params, self.mk_param(self.ast.nodes[vf].text, self.mk_type(pty, span), -1, false, span))
+                stmts: [int] = []
+                a0: [int] = []
+                append(stmts, self.mk_assign(self.mk_lident("__r"), -1, self.mk_call(name, a0, span), span))
+                append(stmts, self.mk_assign(self.mk_lfield(self.mk_ident("__r", span), "tag", span), -1, self.mk_int(i, span), span))
+                iter_6 = self.ast.nodes[v].kids
+                for vf in iter_6:
+                    fname = self.ast.nodes[vf].text
+                    append(stmts, self.mk_assign(self.mk_lfield(self.mk_ident("__r", span), vname + "__" + fname, span), -1, self.mk_ident(fname, span), span))
+                append(stmts, self.ast.add1("Return", "", span, self.mk_ident("__r", span)))
+                body = self.mk_block(stmts, span)
+                fn = self.mk_function(name + "__" + vname, params, self.mk_type(name, span), "", body, span)
+                append(self.ast.nodes[self.functions()].kids, fn)
+                append(info.names, vname)
+                append(info.nodes, v)
+                i += 1
+            append(self.enum_infos, info)
+            self.enum_idx.set(name, len(self.enum_infos))
+
+    // ---- match -> if chain -------------------------------------------------------------------
+    make expand_match(self, m: int) -> [int]:
+        subject = self.ast.nodes[m].kids[0]
+        arms = self.ast.nodes[self.ast.nodes[m].kids[1]].kids
+        else_body = self.ast.nodes[m].kids[2]
+        span = self.ast.nodes[m].span
+        tmp = "__match" + str(self.tmp)
+        self.tmp += 1
+        out: [int] = []
+        append(out, self.mk_assign(self.mk_lident(tmp), -1, subject, span))
+        conds: [int] = []
+        bodies: [int] = []
+        for arm in arms:
+            vname = self.ast.nodes[arm].text
+            aspan = self.ast.nodes[arm].span
+            if not self.variant_idx.has(vname):
+                self.err("E0108", "`" + vname + "` is not a variant of any data enum", aspan)
+                continue
+            vr = self.variant_refs[self.variant_idx.get(vname) - 1]
+            info = self.enum_infos[self.enum_idx.get(vr.enum_name) - 1]
+            variant = info.nodes[vr.idx]
+            vfields = self.ast.nodes[variant].kids
+            akids = self.ast.nodes[arm].kids
+            nbinds = len(akids) - 1
+            if len(vfields) != nbinds:
+                self.err("E0109", "variant `" + vname + "` has " + str(len(vfields)) + " field(s), but the pattern binds " + str(nbinds), aspan)
+                continue
+            cond = self.mk_binary("Eq", self.mk_field(self.mk_ident(tmp, span), "tag", span), self.mk_int(vr.idx, span), span)
+            stmts: [int] = []
+            bi = 0
+            while bi < nbinds:
+                bname = self.ast.nodes[akids[bi]].text
+                if bname != "_":
+                    fname = self.ast.nodes[vfields[bi]].text
+                    value = self.mk_field(self.mk_ident(tmp, span), vname + "__" + fname, span)
+                    append(stmts, self.mk_assign(self.mk_lident(bname), -1, value, span))
+                bi += 1
+            body = akids[nbinds]
+            iter_7 = self.ast.nodes[body].kids
+            for s in iter_7:
+                append(stmts, s)
+            self.ast.nodes[body].kids = stmts
+            append(conds, cond)
+            append(bodies, body)
+        if len(conds) == 0:
+            if else_body >= 0:
+                iter_8 = self.ast.nodes[else_body].kids
+                for s in iter_8:
+                    append(out, s)
+            return out
+        orifs: [int] = []
+        i = 1
+        while i < len(conds):
+            append(orifs, self.ast.add2("Orif", "", self.ast.nodes[bodies[i]].span, conds[i], bodies[i]))
+            i += 1
+        ol = self.mk_list(orifs, span)
+        append(out, self.ast.add4("If", "", span, conds[0], bodies[0], ol, else_body))
+        return out
+
+    // ---- class helpers ------------------------------------------------------------------
+    make methods_of(self, c: string) -> [string]:
+        i = self.method_idx.get(c)
+        if i == 0:
+            out: [string] = []
+            return out
+        return self.method_lists[i - 1].items
+
+    make has_method(self, c: string, m: string) -> bool:
+        return index_of(self.methods_of(c), m) >= 0
+
+    // First class in `c`'s inheritance chain that declares `m` ("" if none).
+    make owner_of(self, c: string, m: string) -> string:
+        cur = c
+        guard = 0
+        while len(cur) > 0:
+            if self.has_method(cur, m):
+                return cur
+            cur = self.bases.get(cur)
+            guard += 1
+            if guard > 64:
+                break
+        return ""
+
+    make is_ancestor(self, c: string, x: string) -> bool:
+        cur = self.bases.get(x)
+        guard = 0
+        while len(cur) > 0:
+            if cur == c:
+                return true
+            cur = self.bases.get(cur)
+            guard += 1
+            if guard > 64:
+                break
+        return false
+
+    make find_function(self, name: string) -> int:
+        iter_9 = self.ast.nodes[self.functions()].kids
+        for f in iter_9:
+            if self.ast.nodes[f].text == name:
+                return f
+        return -1
+
+    // ---- static types of expressions (text; "" when unknown) -------------------------------
+    make field_type(self, sname: string, field: string) -> string:
+        i = self.field_idx.get(sname)
+        if i == 0:
+            return ""
+        info = self.field_infos[i - 1]
+        j = index_of(info.names, field)
+        if j < 0:
+            return ""
+        return info.types[j]
+
+    make class_of_call(self, e: int) -> string:
+        k = self.ast.nodes[e].kind
+        if k == "Ident":
+            return self.env.get(self.ast.nodes[e].text)
+        if k == "Call":
+            name = self.ast.nodes[e].text
+            if self.bases.has(name):
+                return name
+            if ends_with(name, "__new"):
+                base = substr(name, 0, len(name) - 5)
+                if self.bases.has(base):
+                    return base
+            r = self.rets.get(name)
+            if ty_is_named(r):
+                return r
+        return ""
+
+    make type_of(self, e: int) -> string:
+        k = self.ast.nodes[e].kind
+        kids = self.ast.nodes[e].kids
+        if k == "Ident":
+            n = self.ast.nodes[e].text
+            if self.tenv.has(n):
+                return self.tenv.get(n)
+            if self.env.has(n):
+                return self.env.get(n)
+            return ""
+        if k == "Field":
+            sname = ty_struct_or_ptr(self.type_of(kids[0]))
+            if len(sname) == 0:
+                return ""
+            return self.field_type(sname, self.ast.nodes[e].text)
+        if k == "Index":
+            return ty_list_elem(self.type_of(kids[0]))
+        if k == "ListLit":
+            if len(kids) == 0:
+                return ""
+            t = self.type_of(kids[0])
+            if len(t) == 0:
+                return ""
+            return ty_list_of(t)
+        if k == "Alloc" or k == "AllocN":
+            return ty_ptr_of(self.ast.nodes[kids[0]].text)
+        if k == "Unary" and self.ast.nodes[e].text == "Deref":
+            return ty_ptr_inner(self.type_of(kids[0]))
+        if k == "Call":
+            c = self.class_of_call(e)
+            if len(c) > 0:
+                return c
+            return self.rets.get(self.ast.nodes[e].text)
+        return ""
+
+    make class_of(self, e: int) -> string:
+        t = self.type_of(e)
+        c = ty_struct_or_ptr(t)
+        if len(c) > 0:
+            return c
+        return self.class_of_call(e)
+
+    // ---- classes: flatten fields, constructors, virtual dispatchers ---------------------------
+    // Returns the ids of the new functions (constructors then dispatchers); the caller appends them.
+    make prepare_classes(self) -> [int]:
+        structs = self.ast.nodes[self.structs()].kids
+        for st in structs:
+            self.bases.set(self.ast.nodes[st].text, self.base_name(st))
+        iter_10 = self.ast.nodes[self.functions()].kids
+        for f in iter_10:
+            fname = self.ast.nodes[f].text
+            c = split_cls(fname)
+            if len(c) > 0 and self.bases.has(c):
+                m = split_member(fname)
+                i = self.method_idx.get(c)
+                if i == 0:
+                    append(self.method_lists, StrList())
+                    i = len(self.method_lists)
+                    self.method_idx.set(c, i)
+                append(self.method_lists[i - 1].items, m)
+
+        // classes taking part in an inheritance hierarchy carry a hidden `__cls` tag
+        hier = StrMap_int()
+        for st in structs:
+            b = self.base_name(st)
+            if len(b) > 0:
+                hier.set(self.ast.nodes[st].text, 1)
+                cur = b
+                guard = 0
+                while len(cur) > 0:
+                    hier.set(cur, 1)
+                    cur = self.bases.get(cur)
+                    guard += 1
+                    if guard > 64:
+                        break
+        for st in structs:
+            name = self.ast.nodes[st].text
+            if hier.has(name) and self.base_name(st) == "":
+                span = self.ast.nodes[st].span
+                fl = self.ast.nodes[st].kids[1]
+                insert(self.ast.nodes[fl].kids, 0, self.ast.add1("Field", "__cls", span, self.mk_type("int", span)))
+        class_ids = StrMap_int()
+        i = 0
+        while i < len(structs):
+            class_ids.set(self.ast.nodes[structs[i]].text, i)
+            i += 1
+
+        // snapshot of each struct's own fields, before flattening
+        orig_idx = StrMap_int()
+        orig_lists: [IntList] = []
+        for st in structs:
+            lst = IntList()
+            iter_11 = self.ast.nodes[self.ast.nodes[st].kids[1]].kids
+            for f in iter_11:
+                append(lst.items, f)
+            append(orig_lists, lst)
+            orig_idx.set(self.ast.nodes[st].text, len(orig_lists))
+
+        for st in structs:
+            sname = self.ast.nodes[st].text
+            sspan = self.ast.nodes[st].span
+            chain: [string] = []
+            cur = self.base_name(st)
+            guard = 0
+            while len(cur) > 0:
+                if cur == sname or guard > 64:
+                    self.err("E0104", "class `" + sname + "` inherits from itself", sspan)
+                    break
+                if not orig_idx.has(cur):
+                    self.err("E0105", "unknown base class `" + cur + "`", sspan)
+                    break
+                append(chain, cur)
+                cur = self.bases.get(cur)
+                guard += 1
+            fields: [int] = []
+            names: [string] = []
+            ci = len(chain) - 1
+            while ci >= 0:
+                for f in orig_lists[orig_idx.get(chain[ci]) - 1].items:
+                    fname = self.ast.nodes[f].text
+                    if index_of(names, fname) < 0:
+                        append(names, fname)
+                        append(fields, clone_node(self.ast, f))
+                ci -= 1
+            fl = self.ast.nodes[st].kids[1]
+            iter_12 = self.ast.nodes[fl].kids
+            for f in iter_12:
+                fname = self.ast.nodes[f].text
+                if index_of(names, fname) < 0:
+                    append(names, fname)
+                    append(fields, f)
+            self.ast.nodes[fl].kids = fields
+
+        for st in structs:
+            info = FieldInfo()
+            iter_13 = self.ast.nodes[self.ast.nodes[st].kids[1]].kids
+            for f in iter_13:
+                append(info.names, self.ast.nodes[f].text)
+                append(info.types, self.ast.nodes[self.ast.nodes[f].kids[0]].text)
+            append(self.field_infos, info)
+            self.field_idx.set(self.ast.nodes[st].text, len(self.field_infos))
+
+        extra: [int] = []
+        for st in structs:
+            cname = self.ast.nodes[st].text
+            span = self.ast.nodes[st].span
+            owner = self.owner_of(cname, "init")
+            if len(owner) == 0 and not hier.has(cname):
+                continue
+            init = -1
+            if len(owner) > 0:
+                init = self.find_function(owner + "__init")
+            params: [int] = []
+            init_params: [int] = []
+            if init >= 0:
+                init_params = self.ast.nodes[self.ast.nodes[init].kids[0]].kids
+                pi = 1
+                while pi < len(init_params):
+                    append(params, clone_node(self.ast, init_params[pi]))
+                    pi += 1
+            stmts: [int] = []
+            a0: [int] = []
+            append(stmts, self.mk_assign(self.mk_lident("self"), -1, self.mk_call(cname, a0, span), span))
+            if hier.has(cname):
+                append(stmts, self.mk_assign(self.mk_lfield(self.mk_ident("self", span), "__cls", span), -1, self.mk_int(class_ids.get(cname), span), span))
+            if len(owner) > 0:
+                args: [int] = [self.mk_ident("self", span)]
+                for p in params:
+                    append(args, self.mk_ident(self.ast.nodes[p].text, span))
+                call = self.mk_call(owner + "__init", args, span)
+                append(stmts, self.ast.add1("ExprStmt", "", span, call))
+            append(stmts, self.ast.add1("Return", "", span, self.mk_ident("self", span)))
+            body = self.mk_block(stmts, span)
+            append(extra, self.mk_function(cname + "__new", params, self.mk_type(cname, span), "", body, span))
+
+        // virtual-call dispatchers for overridden methods
+        all_names: [string] = []
+        for st in structs:
+            append(all_names, self.ast.nodes[st].text)
+        for c in all_names:
+            own = self.methods_of(c)
+            for m in own:
+                if m == "init" or not hier.has(c):
+                    continue
+                arm_ids: [int] = []
+                arm_owners: [string] = []
+                for d in all_names:
+                    if d != c and self.is_ancestor(c, d):
+                        o = self.owner_of(d, m)
+                        if len(o) > 0 and o != c:
+                            append(arm_ids, class_ids.get(d))
+                            append(arm_owners, o)
+                if len(arm_ids) == 0:
+                    continue
+                base_fn = self.find_function(c + "__" + m)
+                if base_fn < 0:
+                    continue
+                bk = self.ast.nodes[base_fn].kids
+                span = self.ast.nodes[base_fn].span
+                ret_text = ""
+                if bk[1] >= 0:
+                    ret_text = self.ast.nodes[bk[1]].text
+                returns_value = (bk[1] >= 0 and ret_text != "()") or block_returns_value(self.ast, bk[3])
+                base_params = self.ast.nodes[bk[0]].kids
+                stmts: [int] = []
+                ai = 0
+                while ai < len(arm_ids):
+                    cond = self.mk_binary("Eq", self.mk_field(self.mk_ident("self", span), "__cls", span), self.mk_int(arm_ids[ai], span), span)
+                    then_b = self.mk_block(self.dispatch_call(arm_owners[ai] + "__" + m, base_params, returns_value, span), span)
+                    none: [int] = []
+                    stmts_if = self.ast.add4("If", "", span, cond, then_b, self.mk_list(none, span), -1)
+                    append(stmts, stmts_if)
+                    ai += 1
+                for s in self.dispatch_call(c + "__" + m, base_params, returns_value, span):
+                    append(stmts, s)
+                vparams: [int] = []
+                for p in base_params:
+                    append(vparams, clone_node(self.ast, p))
+                vret = -1
+                if bk[1] >= 0:
+                    vret = clone_node(self.ast, bk[1])
+                orif not returns_value:
+                    vret = self.mk_type("()", span)
+                body = self.mk_block(stmts, span)
+                append(extra, self.mk_function(c + "__" + m + "__vcall", vparams, vret, "", body, span))
+                self.vcalls.set(c + "\t" + m, 1)
+        return extra
+
+    make base_name(self, st: int) -> string:
+        b = self.ast.nodes[st].kids[0]
+        if b < 0:
+            return ""
+        return self.ast.nodes[b].text
+
+    // `return target(self, ...)` or `target(self, ...); return` as statements.
+    make dispatch_call(self, target: string, params: [int], returns_value: bool, span: Span) -> [int]:
+        args: [int] = []
+        for p in params:
+            append(args, self.mk_ident(self.ast.nodes[p].text, span))
+        call = self.mk_call(target, args, span)
+        out: [int] = []
+        if returns_value:
+            append(out, self.ast.add1("Return", "", span, call))
+        else:
+            append(out, self.ast.add1("ExprStmt", "", span, call))
+            append(out, self.ast.add1("Return", "", span, -1))
+        return out
+
+    // ---- statement / expression walkers ----------------------------------------------------
+    make walk_block(self, b: int):
+        old = self.ast.nodes[b].kids
+        out: [int] = []
+        for st in old:
+            k = self.ast.nodes[st].kind
+            if k == "Match":
+                expanded = self.expand_match(st)
+                tb = self.mk_block(expanded, self.ast.nodes[st].span)
+                self.walk_block(tb)
+                iter_14 = self.ast.nodes[tb].kids
+                for s in iter_14:
+                    append(out, s)
+                continue
+            self.walk_stmt(st)
+            if k == "Unpack":
+                span = self.ast.nodes[st].span
+                tmp = "__unpack" + str(self.tmp)
+                self.tmp += 1
+                kids = self.ast.nodes[st].kids
+                append(out, self.mk_assign(self.mk_lident(tmp), -1, kids[1], span))
+                targets = self.ast.nodes[kids[0]].kids
+                i = 0
+                while i < len(targets):
+                    name = self.ast.nodes[targets[i]].text
+                    idx = self.ast.add2("Index", "", span, self.mk_ident(tmp, span), self.mk_int(i, span))
+                    append(out, self.mk_assign(self.mk_lident(name), -1, idx, span))
+                    i += 1
+            else:
+                append(out, st)
+        self.ast.nodes[b].kids = out
+
+    make walk_opt_block(self, b: int):
+        if b >= 0:
+            self.walk_block(b)
+
+    make walk_stmt(self, st: int):
+        k = self.ast.nodes[st].kind
+        kids = self.ast.nodes[st].kids
+        if k == "Assign":
+            lv = kids[0]
+            ann = kids[1]
+            value = kids[2]
+            ann_text = ""
+            if ann >= 0:
+                ann_text = self.ast.nodes[ann].text
+            // `xs: [T] = []` -- a typed empty list
+            if ty_is_list(ann_text) and self.ast.nodes[value].kind == "ListLit" and len(self.ast.nodes[value].kids) == 0:
+                sp = self.ast.nodes[value].span
+                elem = self.mk_type(ty_list_elem(ann_text), sp)
+                self.ast.nodes[value].kind = "EmptyList"
+                self.ast.nodes[value].kids = [elem]
+            lk = self.ast.nodes[lv].kind
+            lname = self.ast.nodes[lv].text
+            if lk == "LIdent" and len(ann_text) > 0:
+                if ty_is_named(ann_text):
+                    self.env.set(lname, ann_text)
+                self.tenv.set(lname, ann_text)
+            if lk == "LField" or lk == "LDeref":
+                self.walk_expr(self.ast.nodes[lv].kids[0])
+            orif lk == "LIndex":
+                self.walk_expr(self.ast.nodes[lv].kids[0])
+                self.walk_expr(self.ast.nodes[lv].kids[1])
+            self.walk_expr(value)
+            if lk == "LIdent":
+                c = self.class_of(value)
+                if len(c) > 0:
+                    self.env.set(lname, c)
+                if len(ann_text) == 0:
+                    t = self.type_of(value)
+                    if len(t) > 0:
+                        self.tenv.set(lname, t)
+        orif k == "Unpack":
+            self.walk_expr(kids[1])
+        orif k == "ExprStmt":
+            self.walk_expr(kids[0])
+        orif k == "Return":
+            if kids[0] >= 0:
+                self.walk_expr(kids[0])
+        orif k == "If":
+            self.walk_expr(kids[0])
+            self.walk_block(kids[1])
+            iter_15 = self.ast.nodes[kids[2]].kids
+            for o in iter_15:
+                self.walk_expr(self.ast.nodes[o].kids[0])
+                self.walk_block(self.ast.nodes[o].kids[1])
+            self.walk_opt_block(kids[3])
+        orif k == "Until" or k == "While":
+            self.walk_expr(kids[0])
+            self.walk_block(kids[1])
+        orif k == "Infinit" or k == "Thread":
+            self.walk_block(kids[0])
+        orif k == "ForRange":
+            self.walk_expr(kids[0])
+            self.walk_expr(kids[1])
+            self.walk_block(kids[2])
+        orif k == "ForEach":
+            var = self.ast.nodes[st].text
+            self.walk_expr(kids[0])
+            elem_ty = ty_list_elem(self.type_of(kids[0]))
+            if len(elem_ty) > 0:
+                if ty_is_named(elem_ty):
+                    self.env.set(var, elem_ty)
+                self.tenv.set(var, elem_ty)
+            self.walk_block(kids[1])
+        orif k == "Try":
+            self.walk_block(kids[0])
+            self.walk_opt_block(kids[1])
+            self.walk_opt_block(kids[2])
+
+    // overwrite node `id` in place with a plain call (keeps its span)
+    make become_call(self, id: int, name: string, args: [int]):
+        self.ast.nodes[id].kind = "Call"
+        self.ast.nodes[id].text = name
+        self.ast.nodes[id].kids = args
+
+    make walk_expr(self, e: int):
+        k = self.ast.nodes[e].kind
+        kids = self.ast.nodes[e].kids
+        if k == "ListLit" or k == "TupleLit":
+            for x in kids:
+                self.walk_expr(x)
+        orif k == "DictLit":
+            for entry in kids:
+                self.walk_expr(self.ast.nodes[entry].kids[0])
+        orif k == "Index" or k == "Binary":
+            self.walk_expr(kids[0])
+            self.walk_expr(kids[1])
+        orif k == "Unary" or k == "Await" or k == "Named":
+            self.walk_expr(kids[0])
+        orif k == "AllocN":
+            self.walk_expr(kids[1])
+        orif k == "Field":
+            base = kids[0]
+            field = self.ast.nodes[e].text
+            if self.ast.nodes[base].kind == "Ident":
+                en = self.ast.nodes[base].text
+                if self.enum_idx.has(en) and not self.env.has(en) and self.variant_enum(field) == en:
+                    none: [int] = []
+                    self.become_call(e, en + "__" + field, none)
+                    return
+            self.walk_expr(base)
+        orif k == "MethodCall":
+            self.walk_method_call(e)
+        orif k == "Call":
+            for a in kids:
+                self.walk_expr(a)
+            name = self.ast.nodes[e].text
+            if self.sig_idx.has(name + "__new"):
+                name = name + "__new"
+                self.ast.nodes[e].text = name
+            if self.sig_idx.has(name):
+                taken = self.ast.nodes[e].kids
+                self.ast.nodes[e].kids = self.normalize_call(name, self.sig_idx.get(name) - 1, taken, self.ast.nodes[e].span)
+
+    // enum a variant belongs to ("" if `v` is not a data-enum variant)
+    make variant_enum(self, v: string) -> string:
+        if not self.variant_idx.has(v):
+            return ""
+        return self.variant_refs[self.variant_idx.get(v) - 1].enum_name
+
+    make walk_method_call(self, e: int):
+        kids = self.ast.nodes[e].kids
+        recv = kids[0]
+        name = self.ast.nodes[e].text
+        span = self.ast.nodes[e].span
+        self.walk_expr(recv)
+        args: [int] = []
+        i = 1
+        while i < len(kids):
+            self.walk_expr(kids[i])
+            append(args, kids[i])
+            i += 1
+        recv_is_ident = self.ast.nodes[recv].kind == "Ident"
+        rname = ""
+        if recv_is_ident:
+            rname = self.ast.nodes[recv].text
+        // `Enum.Variant(args)` -- data-enum constructor
+        if recv_is_ident and self.enum_idx.has(rname) and not self.env.has(rname) and self.variant_enum(name) == rname:
+            self.become_call(e, rname + "__" + name, args)
+            self.walk_expr(e)
+            return
+        // `Base.method(self, ..)` -- explicit class-qualified call
+        qualified = ""
+        if recv_is_ident and not self.env.has(rname) and self.bases.has(rname):
+            qualified = self.owner_of(rname, name)
+        if len(qualified) > 0:
+            self.become_call(e, qualified + "__" + name, args)
+            self.walk_expr(e)
+            return
+        cls = self.class_of(recv)
+        if len(cls) == 0:
+            return
+        owner = self.owner_of(cls, name)
+        if len(owner) == 0:
+            self.err("E0106", "class `" + cls + "` has no method `" + name + "`", span)
+            return
+        recv_arg = recv
+        if ty_is_ptr(self.type_of(recv)):
+            recv_arg = self.ast.add1("Unary", "Deref", span, clone_node(self.ast, recv))
+        else:
+            recv_arg = clone_node(self.ast, recv)
+        full: [int] = [recv_arg]
+        for a in args:
+            append(full, a)
+        target = owner + "__" + name
+        if self.vcalls.has(owner + "\t" + name):
+            target = owner + "__" + name + "__vcall"
+        self.become_call(e, target, full)
+        if self.sig_idx.has(target):
+            taken = self.ast.nodes[e].kids
+            self.ast.nodes[e].kids = self.normalize_call(target, self.sig_idx.get(target) - 1, taken, span)
+
+    // positional + named arguments -> one value per parameter (defaults filled in, `*args` packed)
+    make normalize_call(self, fname: string, sig: int, args: [int], span: Span) -> [int]:
+        info = self.sig_infos[sig]
+        positional: [int] = []
+        named_names: [string] = []
+        named_vals: [int] = []
+        named_spans: [Span] = []
+        for a in args:
+            if self.ast.nodes[a].kind == "Named":
+                nname = self.ast.nodes[a].text
+                nspan = self.ast.nodes[a].span
+                if index_of(named_names, nname) >= 0:
+                    self.err("E0095", "argument `" + nname + "` given twice in call to `" + fname + "`", nspan)
+                else:
+                    append(named_names, nname)
+                    append(named_vals, self.ast.nodes[a].kids[0])
+                    append(named_spans, nspan)
+            else:
+                if len(named_names) > 0:
+                    self.err("E0096", "positional argument after a named argument", self.ast.nodes[a].span)
+                append(positional, a)
+        out: [int] = []
+        pos = 0
+        pi = 0
+        while pi < len(info.names):
+            pname = info.names[pi]
+            if info.variadic[pi]:
+                rest: [int] = []
+                while pos < len(positional):
+                    append(rest, positional[pos])
+                    pos += 1
+                if len(rest) == 0:
+                    append(out, self.ast.add1("EmptyList", "", span, self.mk_type(info.types[pi], span)))
+                else:
+                    append(out, self.ast.addl("ListLit", "", span, rest))
+                pi += 1
+                continue
+            ni = index_of(named_names, pname)
+            if pos < len(positional):
+                if ni >= 0:
+                    self.err("E0095", "argument `" + pname + "` given twice in call to `" + fname + "`", span)
+                append(out, positional[pos])
+                pos += 1
+            orif ni >= 0:
+                append(out, named_vals[ni])
+                remove(named_names, ni)
+                remove(named_vals, ni)
+                remove(named_spans, ni)
+            orif info.defaults[pi] >= 0:
+                append(out, clone_node(self.ast, info.defaults[pi]))
+            else:
+                self.err("E0097", "missing argument `" + pname + "` in call to `" + fname + "`", span)
+            pi += 1
+        leftover = len(positional) - pos
+        if leftover > 0:
+            self.err("E0099", "`" + fname + "` takes " + str(len(info.names)) + " argument(s), but " + str(len(info.names) + leftover) + " were given", self.ast.nodes[positional[pos]].span)
+        ri = 0
+        while ri < len(named_names):
+            self.err("E0100", "`" + fname + "` has no parameter named `" + named_names[ri] + "`", named_spans[ri])
+            ri += 1
+        return out
+
+    // ---- driver --------------------------------------------------------------------------------
+    make setup(self, ast: Ast, root: int, diags: Diags):
+        self.ast = ast
+        self.prog = root
+        self.diags = diags
+        self.bases = StrMap_string()
+        self.method_idx = StrMap_int()
+        self.vcalls = StrMap_int()
+        self.enum_idx = StrMap_int()
+        self.variant_idx = StrMap_int()
+        self.sig_idx = StrMap_int()
+        self.rets = StrMap_string()
+        self.field_idx = StrMap_int()
+        self.env = StrMap_string()
+        self.tenv = StrMap_string()
+
+    make record_sig(self, f: int):
+        name = self.ast.nodes[f].text
+        info = SigInfo()
+        iter_16 = self.ast.nodes[self.ast.nodes[f].kids[0]].kids
+        for p in iter_16:
+            pk = self.ast.nodes[p].kids
+            append(info.names, self.ast.nodes[p].text)
+            append(info.types, self.ast.nodes[pk[0]].text)
+            append(info.variadic, self.ast.nodes[pk[2]].text == "variadic")
+            append(info.defaults, pk[1])
+        append(self.sig_infos, info)
+        self.sig_idx.set(name, len(self.sig_infos))
+        ret = self.ast.nodes[f].kids[1]
+        if ret >= 0:
+            self.rets.set(name, self.ast.nodes[ret].text)
+
+    make run(self):
+        self.prepare_enums()
+        extra = self.prepare_classes()
+        fns = self.functions()
+        iter_17 = self.ast.nodes[fns].kids
+        for f in iter_17:
+            self.record_sig(f)
+        for f in extra:
+            self.record_sig(f)
+        iter_18 = self.ast.nodes[fns].kids
+        for f in iter_18:
+            self.env = StrMap_string()
+            self.tenv = StrMap_string()
+            fk = self.ast.nodes[f].kids
+            params = self.ast.nodes[fk[0]].kids
+            for p in params:
+                pty = self.ast.nodes[self.ast.nodes[p].kids[0]].text
+                pname = self.ast.nodes[p].text
+                variadic = self.ast.nodes[self.ast.nodes[p].kids[2]].text == "variadic"
+                if ty_is_named(pty):
+                    self.env.set(pname, pty)
+                if variadic:
+                    self.tenv.set(pname, ty_list_of(pty))
+                else:
+                    self.tenv.set(pname, pty)
+            if fk[3] >= 0:
+                self.walk_block(fk[3])
+            for p in params:
+                if self.ast.nodes[self.ast.nodes[p].kids[2]].text == "variadic":
+                    t = self.ast.nodes[p].kids[0]
+                    self.ast.nodes[t].text = ty_list_of(self.ast.nodes[t].text)
+        for f in extra:
+            append(self.ast.nodes[fns].kids, f)
+        // functions with no `return <value>` return nothing: say so explicitly
+        iter_19 = self.ast.nodes[fns].kids
+        for f in iter_19:
+            fk = self.ast.nodes[f].kids
+            if fk[1] < 0 and fk[3] >= 0 and not contains_str(self.ast.nodes[fk[2]].text, "extern"):
+                if not block_returns_value(self.ast, fk[3]):
+                    // build the node first: the arena may be reallocated by `mk_type`
+                    void_ty = self.mk_type("()", self.ast.nodes[f].span)
+                    self.ast.nodes[f].kids[1] = void_ty
+
+// Desugar the program rooted at `root` in place. Errors go to `diags`.
+make desugar_program(ast: Ast, root: int, diags: Diags):
+    d = Desugarer()
+    d.setup(ast, root, diags)
+    d.run()
+    // `Desugarer.ast` is a copy of the arena header: hand the grown node list back to the caller
+    ast.nodes = d.ast.nodes
+    diags.items = d.diags.items

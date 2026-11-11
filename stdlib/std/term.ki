@@ -1,0 +1,44 @@
+// std.term -- colours and terminal queries. Colours are only emitted when stdout is a terminal.
+
+use std.sys
+
+make term_is_tty() -> bool:
+    return sys_is_tty(1)
+
+make term_paint(code: string, s: string) -> string:
+    if not term_is_tty():
+        return s
+    return chr(27) + "[" + code + "m" + s + chr(27) + "[0m"
+
+make term_bold(s: string) -> string:
+    return term_paint("1", s)
+
+make term_dim(s: string) -> string:
+    return term_paint("2", s)
+
+make term_red(s: string) -> string:
+    return term_paint("31", s)
+
+make term_green(s: string) -> string:
+    return term_paint("32", s)
+
+make term_yellow(s: string) -> string:
+    return term_paint("33", s)
+
+make term_blue(s: string) -> string:
+    return term_paint("34", s)
+
+make term_cyan(s: string) -> string:
+    return term_paint("36", s)
+
+make term_clear() -> int:
+    if term_is_tty():
+        print(chr(27) + "[2J" + chr(27) + "[H")
+    return 0
+
+// Number of columns (80 when unknown).
+make term_width() -> int:
+    w = to_int(trim(sys_capture("tput cols")))
+    if w <= 0:
+        return 80
+    return w

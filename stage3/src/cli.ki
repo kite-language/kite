@@ -1,0 +1,410 @@
+// The `kite` command line (port of main.rs, cli.rs and commands/*).
+
+use diag
+use ast
+use irdef
+use sysx
+use project
+use resolve
+use driver
+use cheader
+
+make version_text() -> string:
+    return "0.4.0"
+
+make usage() -> string:
+    out = "The Kite programming language compiler and project manager\n\n"
+    out = out + "Usage: kite <COMMAND>\n\nCommands:\n"
+    out = out + "  init    Create a new Kite project (in a new directory, or in the current one)\n"
+    out = out + "  build   Compile the project to a native executable\n"
+    out = out + "  run     Build, then run the project\n"
+    out = out + "  check   Type-check without producing a binary\n"
+    out = out + "  clean   Remove the build directory\n"
+    out = out + "  bench   Build in release mode and time repeated runs\n"
+    out = out + "  add     Record a dependency in kite.toml\n"
+    out = out + "  remove  Remove a dependency from kite.toml\n"
+    out = out + "  update  Refresh kite.lock\n"
+    out = out + "  help    Print this message\n\n"
+    out = out + "Options:\n  -h, --help     Print help\n  -V, --version  Print version\n"
+    return out
+
+make now_ns() -> int:
+    return to_int(trim(capture("date +%s%N")))
+
+// seconds with two decimals from a nanosecond duration
+make fmt_secs(ns: int) -> string:
+    cs = (ns + 5000000) / 10000000
+    frac = cs % 100
+    fs = str(frac)
+    if frac < 10:
+        fs = "0" + fs
+    return str(cs / 100) + "." + fs
+
+// milliseconds with three decimals from a microsecond count
+make fmt_ms(us: int) -> string:
+    frac = us % 1000
+    fs = str(frac)
+    while len(fs) < 3:
+        fs = "0" + fs
+    return str(us / 1000) + "." + fs
+
+make isqrt(n: int) -> int:
+    if n <= 0:
+        return 0
+    x = n
+    y = (x + 1) / 2
+    while y < x:
+        x = y
+        y = (x + n / x) / 2
+    return x
+
+class Args:
+    items: [string]
+    pos: int
+
+    make done(self) -> bool:
+        return self.pos >= len(self.items)
+
+    make next(self) -> string:
+        v = self.items[self.pos]
+        self.pos += 1
+        return v
+
+    make value(self, flag: string) -> string:
+        if self.pos >= len(self.items):
+            die("a value is required for '" + flag + "' but none was supplied")
+        return self.next()
+
+class BuildOpts:
+    target: string
+    release: bool
+    quiet: bool
+    mode: string
+    static_link: bool
+    output: string
+    out_dir: string
+    links: [string]
+
+make cmd_init(name: string, has_name: bool):
+    project_dir = ""
+    package_name = ""
+    creating = has_name
+    if has_name:
+        project_dir = name
+        package_name = path_file_name(name)
+        if package_name == "":
+            package_name = name
+    else:
+        project_dir = cwd()
+        package_name = path_file_name(project_dir)
+        if package_name == "":
+            package_name = "kite_project"
+    if creating:
+        if file_exists(project_dir):
+            die("destination `" + project_dir + "` already exists; choose a different name or `cd` into it and rerun without one")
+        if not mkdir_all(project_dir):
+            die("failed to create directory " + project_dir)
+    manifest_path = path_join(project_dir, "kite.toml")
+    if file_exists(manifest_path):
+        die("`kite.toml` already exists in `" + project_dir + "` -- this is already a Kite project")
+    write_file(manifest_path, manifest_to_string(new_manifest(package_name)))
+    src_dir = path_join(project_dir, "src")
+    mkdir_all(src_dir)
+    write_file(path_join(src_dir, "main.ki"), "make main():\n    print(\"Hello, Kite!\")\n")
+    gi = path_join(project_dir, ".gitignore")
+    if not file_exists(gi):
+        write_file(gi, "/target\n/.kite-cache\n")
+    label = ""
+    if creating:
+        label = "new"
+    status("Created", label + " package `" + package_name + "`")
+    if creating:
+        print("       cd " + project_dir + " && kite build")
+    else:
+        print("       kite build")
+
+make build_run(o: BuildOpts) -> string:
+    p = project_discover(cwd())
+    mode_label = ""
+    if o.mode == "freestanding":
+        mode_label = " [freestanding]"
+    orif o.mode == "lib":
+        mode_label = " [lib]"
+    if not o.quiet:
+        status("Compiling", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")" + mode_label)
+    entry = project_main_path(p)
+    src_root = project_src_dir(p)
+    opt = p.manifest.opt_level
+    if o.release:
+        opt = 3
+    target = o.target
+    if target == "":
+        target = p.manifest.target
+    default_path = project_output_path(p)
+    base = default_path
+    if o.output != "":
+        base = o.output
+    orif o.out_dir != "":
+        base = path_join(o.out_dir, path_file_name(default_path))
+    out_path = base
+    if o.mode != "exe" and not path_has_extension(base):
+        out_path = path_with_extension(base, "o")
+    start = now_ns()
+    header_path = ""
+    if o.mode == "exe":
+        c = check_project(entry, src_root, false)
+        if not c.ok:
+            die("aborting build due to previous error(s)")
+        out_path = build_from_ir(c.prog, out_path, opt, target, "exe", o.static_link, o.links)
+    orif o.mode == "freestanding":
+        c2 = check_project(entry, src_root, true)
+        if not c2.ok:
+            die("aborting build due to previous error(s)")
+        build_from_ir(c2.prog, out_path, opt, target, "bare", false, o.links)
+    else:
+        c3 = check_project(entry, src_root, true)
+        if not c3.ok:
+            die("aborting build due to previous error(s)")
+        build_from_ir(c3.prog, out_path, opt, target, "obj", false, o.links)
+        stem = path_file_name(out_path)
+        dot = find(stem, ".")
+        if dot > 0:
+            stem = substr(stem, 0, dot)
+        header = generate_c_header(stem, c3.ast, c3.root)
+        header_path = path_with_extension(out_path, "h")
+        if not write_file(header_path, header):
+            die("failed to write C header to " + header_path)
+    elapsed = now_ns() - start
+    if not o.quiet:
+        extra = ""
+        if o.mode == "freestanding":
+            extra = " -> " + out_path + " (object file, not linked)"
+        orif o.mode == "lib":
+            extra = " -> " + out_path + " + " + header_path + " (object file + C header)"
+        profile = "dev [unoptimized]"
+        if o.release:
+            profile = "release [optimized]"
+        status("Finished", profile + " target(s) in " + fmt_secs(elapsed) + "s" + extra)
+    return out_path
+
+make parse_build_args(a: Args, allow_all: bool) -> BuildOpts:
+    o = BuildOpts()
+    o.mode = "exe"
+    while not a.done():
+        f = a.next()
+        if f == "--release":
+            o.release = true
+        orif f == "--quiet" or f == "-q":
+            o.quiet = true
+        orif f == "--target":
+            o.target = a.value(f)
+        orif f == "--freestanding" and allow_all:
+            o.mode = "freestanding"
+        orif f == "--lib" and allow_all:
+            o.mode = "lib"
+        orif f == "--static" and allow_all:
+            o.static_link = true
+        orif (f == "--output" or f == "-o") and allow_all:
+            o.output = a.value(f)
+        orif f == "--out-dir" and allow_all:
+            o.out_dir = a.value(f)
+        orif f == "--link" and allow_all:
+            append(o.links, a.value(f))
+        else:
+            die("unexpected argument '" + f + "' found")
+    return o
+
+make cmd_check(quiet: bool):
+    p = project_discover(cwd())
+    if not quiet:
+        status("Checking", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
+    entry = project_main_path(p)
+    if not is_file(entry):
+        die("`" + entry + "` not found -- does this project have a `src/main.ki`?")
+    c = check_project(entry, project_src_dir(p), false)
+    if not c.ok:
+        die("aborting due to previous error(s)")
+    if not quiet:
+        status("Checked", "no errors found")
+
+make cmd_clean():
+    p = project_discover(cwd())
+    bd = project_build_dir(p)
+    if file_exists(bd):
+        remove_dir_all(bd)
+        status("Removed", bd)
+    else:
+        status("Clean", "nothing to clean")
+
+make cmd_add(spec: string):
+    p = project_discover(cwd())
+    name = spec
+    version = "*"
+    at = find(spec, "@")
+    if at >= 0:
+        name = substr(spec, 0, at)
+        version = substr(spec, at + 1, len(spec))
+    if name == "":
+        die("package name cannot be empty")
+    present = false
+    i = 0
+    while i < len(p.manifest.dep_names):
+        if p.manifest.dep_names[i] == name:
+            present = true
+            p.manifest.dep_vers[i] = version
+        i += 1
+    if not present:
+        append(p.manifest.dep_names, name)
+        append(p.manifest.dep_vers, version)
+    project_save(p)
+    mkdir_all(path_join(p.root, ".kite-cache"))
+    verb = "Added"
+    if present:
+        verb = "Updated"
+    status(verb, name + " = \"" + version + "\"")
+    print(status_label("Note", "yellow") + " v0.1 records dependencies in `kite.toml` but does not yet fetch or compile them")
+
+make cmd_remove(name: string):
+    p = project_discover(cwd())
+    names: [string] = []
+    vers: [string] = []
+    found = false
+    i = 0
+    while i < len(p.manifest.dep_names):
+        if p.manifest.dep_names[i] == name:
+            found = true
+        else:
+            append(names, p.manifest.dep_names[i])
+            append(vers, p.manifest.dep_vers[i])
+        i += 1
+    if not found:
+        die("package `" + name + "` is not a dependency of `" + p.manifest.name + "`")
+    p.manifest.dep_names = names
+    p.manifest.dep_vers = vers
+    project_save(p)
+    status("Removed", name)
+
+make cmd_update():
+    p = project_discover(cwd())
+    write_file(path_join(p.root, "kite.lock"), lock_to_string(p.manifest))
+    if len(p.manifest.dep_names) == 0:
+        status("Update", "no dependencies to update")
+    else:
+        s = manifest_sorted(p.manifest)
+        i = 0
+        while i < len(s.dep_names):
+            status("Checked", s.dep_names[i] + " v" + s.dep_vers[i] + " (up to date -- no registry configured)")
+            i += 1
+
+make cmd_run(o: BuildOpts):
+    binary = build_run(o)
+    if not o.quiet:
+        status("Running", "`" + binary + "`")
+    code = sh(shell_quote(binary))
+    exit(code)
+
+make cmd_bench(runs: int, target: string):
+    if runs == 0:
+        die("--runs must be at least 1")
+    o = BuildOpts()
+    o.mode = "exe"
+    o.release = true
+    o.quiet = true
+    o.target = target
+    binary = build_run(o)
+    status("Benchmarking", binary)
+    times: [int] = []
+    i = 1
+    while i <= runs:
+        t0 = now_ns()
+        code = sh(shell_quote(binary) + " > /dev/null 2>&1")
+        t1 = now_ns()
+        if code != 0:
+            die("run " + str(i) + "/" + str(runs) + " exited with a non-zero status (Some(" + str(code) + ")) -- aborting benchmark")
+        append(times, (t1 - t0) / 1000)
+        i += 1
+    total = 0
+    mn = times[0]
+    mx = times[0]
+    for t in times:
+        total += t
+        if t < mn:
+            mn = t
+        if t > mx:
+            mx = t
+    avg = total / len(times)
+    var = 0
+    for t2 in times:
+        var += (t2 - avg) * (t2 - avg)
+    sd = isqrt(var / len(times))
+    print("")
+    print("Kite benchmark")
+    print("       Runs: " + str(runs))
+    print("    Average: " + fmt_ms(avg) + " ms")
+    print("        Min: " + fmt_ms(mn) + " ms")
+    print("        Max: " + fmt_ms(mx) + " ms")
+    print("    Std dev: " + fmt_ms(sd) + " ms")
+
+make cli_main():
+    a = Args()
+    n = arg_count()
+    i = 0
+    while i < n:
+        append(a.items, arg(i))
+        i += 1
+    if a.done():
+        print(usage())
+        exit(2)
+    cmd = a.next()
+    if cmd == "--version" or cmd == "-V":
+        print("kite " + version_text())
+    orif cmd == "--help" or cmd == "-h" or cmd == "help":
+        print(usage())
+    orif cmd == "init":
+        if a.done():
+            cmd_init("", false)
+        else:
+            cmd_init(a.next(), true)
+    orif cmd == "build":
+        cmd_build_args(a)
+    orif cmd == "run":
+        cmd_run(parse_build_args(a, false))
+    orif cmd == "check":
+        q = false
+        while not a.done():
+            f = a.next()
+            if f == "--quiet" or f == "-q":
+                q = true
+            else:
+                die("unexpected argument '" + f + "' found")
+        cmd_check(q)
+    orif cmd == "clean":
+        cmd_clean()
+    orif cmd == "add":
+        if a.done():
+            die("the following required arguments were not provided: <PACKAGE>")
+        cmd_add(a.next())
+    orif cmd == "remove":
+        if a.done():
+            die("the following required arguments were not provided: <PACKAGE>")
+        cmd_remove(a.next())
+    orif cmd == "update":
+        cmd_update()
+    orif cmd == "bench":
+        runs = 20
+        target = ""
+        while not a.done():
+            f2 = a.next()
+            if f2 == "--runs":
+                runs = to_int(a.value(f2))
+            orif f2 == "--target":
+                target = a.value(f2)
+            else:
+                die("unexpected argument '" + f2 + "' found")
+        cmd_bench(runs, target)
+    else:
+        die("unrecognized subcommand '" + cmd + "'")
+
+make cmd_build_args(a: Args):
+    o = parse_build_args(a, true)
+    build_run(o)

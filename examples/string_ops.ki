@@ -1,0 +1,19 @@
+// char_at/substr: inspecting and slicing strings. Both 0-based; substr
+// is half-open (exclusive on `end`), matching Python's `s[start:end]`.
+make count_vowels(s: string) -> int:
+    count = 0
+    i = 0
+    n = len(s)
+    while i < n:
+        c = char_at(s, i)
+        if c == 97 or c == 101 or c == 105 or c == 111 or c == 117:
+            count = count + 1
+        i = i + 1
+    return count
+
+make main():
+    s = "hello kite"
+    print(len(s))
+    print(substr(s, 0, 5))
+    print(substr(s, 6, 10))
+    print(count_vowels(s))

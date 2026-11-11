@@ -1,0 +1,1615 @@
+// AST -> IR lowering (port of src/ir.rs). See irdef.ki for the instruction record.
+
+use diag
+use ast
+use types
+use irdef
+
+type R:
+    v: V
+    ty: string
+
+// Global tables, immutable once built.
+class IrTab:
+    sig_idx: StrMap_int
+    sig_ret: [string]
+    st_idx: StrMap_int
+    st_fnames: [StrL]
+    st_ftys: [StrL]
+    en_idx: StrMap_int
+    en_vars: [StrL]
+    rl_idx: StrMap_int
+    rl_lays: [Layout]
+    pt_idx: StrMap_int
+    pt_tys: [StrL]
+
+make rr(v: V, ty: string) -> R:
+    r = R()
+    r.v = v
+    r.ty = ty
+    return r
+
+make is_extern_fn2(ast: Ast, f: int) -> bool:
+    return contains_str(ast.nodes[ast.nodes[f].kids[2]].text, "extern")
+
+// ---- helpers over the AST ---------------------------------------------------------------------
+
+make block_rebinds_in(ast: Ast, b: int, name: string) -> bool:
+    if b < 0:
+        return false
+    sl = ast.nodes[b].kids
+    for s in sl:
+        if stmt_rebinds(ast, s, name):
+            return true
+    return false
+
+make stmt_rebinds(ast: Ast, s: int, name: string) -> bool:
+    k = ast.nodes[s].kind
+    kids = ast.nodes[s].kids
+    if k == "Assign":
+        tg = kids[0]
+        return ast.nodes[tg].kind == "LIdent" and ast.nodes[tg].text == name
+    if k == "If":
+        if block_rebinds_in(ast, kids[1], name):
+            return true
+        ol = ast.nodes[kids[2]].kids
+        for o in ol:
+            if block_rebinds_in(ast, ast.nodes[o].kids[1], name):
+                return true
+        return block_rebinds_in(ast, kids[3], name)
+    if k == "Until" or k == "While":
+        return block_rebinds_in(ast, kids[1], name)
+    if k == "Infinit" or k == "Thread":
+        return block_rebinds_in(ast, kids[0], name)
+    if k == "ForRange":
+        return block_rebinds_in(ast, kids[2], name)
+    if k == "ForEach":
+        return block_rebinds_in(ast, kids[1], name)
+    if k == "Try":
+        return block_rebinds_in(ast, kids[0], name) or block_rebinds_in(ast, kids[1], name) or block_rebinds_in(ast, kids[2], name)
+    return false
+
+// Port of `quick_expr_type`: "" for None.
+make quick_expr_type(ast: Ast, e: int, t: IrTab) -> string:
+    n = ast.nodes[e]
+    k = n.kind
+    if k == "Int":
+        return "i64"
+    if k == "Float":
+        return "f64"
+    if k == "Bool":
+        return "bool"
+    if k == "Str":
+        return "str"
+    if k == "Binary":
+        op = n.text
+        if op == "Add" or op == "Sub" or op == "Mul" or op == "Div" or op == "Mod":
+            return quick_expr_type(ast, n.kids[0], t)
+        return "bool"
+    if k == "Unary":
+        if n.text == "Not":
+            return "bool"
+        return quick_expr_type(ast, n.kids[0], t)
+    if k == "Call":
+        nm = n.text
+        if nm == "len" or nm == "char_at":
+            return "i64"
+        if nm == "substr" or nm == "str":
+            return "str"
+        if nm == "pop" or nm == "remove" or nm == "insert" or nm == "clear":
+            return ""
+        if nm == "read_file" or nm == "arg":
+            return "str"
+        if nm == "write_file":
+            return "bool"
+        if nm == "arg_count":
+            return "i64"
+        if t.sig_idx.has(nm):
+            return t.sig_ret[t.sig_idx.get(nm) - 1]
+        return ""
+    if k == "Await":
+        return quick_expr_type(ast, n.kids[0], t)
+    return ""
+
+make find_first_return_type(ast: Ast, b: int, t: IrTab) -> string:
+    if b < 0:
+        return ""
+    sl = ast.nodes[b].kids
+    for s in sl:
+        k = ast.nodes[s].kind
+        kids = ast.nodes[s].kids
+        if k == "Return":
+            if kids[0] >= 0:
+                r = quick_expr_type(ast, kids[0], t)
+                if len(r) > 0:
+                    return r
+            else:
+                return "void"
+        orif k == "If":
+            r1 = find_first_return_type(ast, kids[1], t)
+            if len(r1) > 0:
+                return r1
+            ol = ast.nodes[kids[2]].kids
+            for o in ol:
+                r2 = find_first_return_type(ast, ast.nodes[o].kids[1], t)
+                if len(r2) > 0:
+                    return r2
+            r3 = find_first_return_type(ast, kids[3], t)
+            if len(r3) > 0:
+                return r3
+        orif k == "Until" or k == "While" or k == "ForEach":
+            r4 = find_first_return_type(ast, kids[1], t)
+            if len(r4) > 0:
+                return r4
+        orif k == "Infinit" or k == "Thread":
+            r5 = find_first_return_type(ast, kids[0], t)
+            if len(r5) > 0:
+                return r5
+        orif k == "ForRange":
+            r6 = find_first_return_type(ast, kids[2], t)
+            if len(r6) > 0:
+                return r6
+        orif k == "Try":
+            r7 = find_first_return_type(ast, kids[0], t)
+            if len(r7) > 0:
+                return r7
+            r8 = find_first_return_type(ast, kids[2], t)
+            if len(r8) > 0:
+                return r8
+    return ""
+
+make index_key(ast: Ast, e: int) -> string:
+    if ast.nodes[e].kind == "Str":
+        return ast.nodes[e].text
+    return norm_int(ast.nodes[e].text)
+
+make parse_pos(s: string) -> int:
+    if len(s) == 0:
+        return 0
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c < 48 or c > 57:
+            return 0
+        i += 1
+    return to_int(s)
+
+make list_pos(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+// ---- the per-function lowerer -----------------------------------------------------------------
+
+class Lower:
+    ast: Ast
+    t: IrTab
+    body: [Ins]
+    next_temp: int
+    next_label: int
+    lp_cont: [string]
+    lp_brk: [string]
+    lp_depth: [int]
+    sret: string
+    cur_ret: string
+    finally_stack: [int]
+
+    make emit(self, i: Ins):
+        append(self.body, i)
+
+    make fresh_temp(self) -> int:
+        t = self.next_temp
+        self.next_temp += 1
+        return t
+
+    make fresh_label(self, hint: string) -> string:
+        l = hint + "." + str(self.next_label)
+        self.next_label += 1
+        return l
+
+    make fresh_name(self, hint: string) -> string:
+        n = "__" + hint + "." + str(self.next_temp)
+        self.next_temp += 1
+        return n
+
+    make is_terminated(self) -> bool:
+        n = len(self.body)
+        if n == 0:
+            return false
+        op = self.body[n - 1].op
+        return op == "Return" or op == "RetAgg" or op == "Unreachable" or op == "Jump"
+
+    make materialize(self, v: V, ty: string) -> V:
+        if v.k == "L":
+            dest = self.fresh_temp()
+            i = mk_ins("Load")
+            i.dest = dest
+            i.name = v.s
+            i.ty = ty
+            self.emit(i)
+            return v_temp(dest)
+        return v
+
+    make replay_finally_from(self, from_depth: int):
+        if from_depth >= len(self.finally_stack):
+            return
+        blocks: [int] = []
+        j = from_depth
+        while j < len(self.finally_stack):
+            append(blocks, self.finally_stack[j])
+            j += 1
+        k = len(blocks) - 1
+        while k >= 0:
+            self.lower_block(blocks[k])
+            k -= 1
+
+    make lower_block(self, b: int):
+        sl = self.ast.nodes[b].kids
+        for s in sl:
+            self.lower_stmt(s)
+
+    // ---- statements --------------------------------------------------------------------------
+    make lower_stmt(self, s: int):
+        n = self.ast.nodes[s]
+        k = n.kind
+        kids = n.kids
+        if k == "Assign":
+            ann = ""
+            if kids[1] >= 0:
+                ann = ir_type(self.ast.nodes[kids[1]].text)
+            self.lower_assign(kids[0], ann, kids[2])
+        orif k == "ExprStmt":
+            self.lower_expr(kids[0])
+        orif k == "Return":
+            if kids[0] >= 0 and len(self.sret) > 0:
+                nm = self.require_named_base(kids[0])
+                self.replay_finally_from(0)
+                ri = mk_ins("RetAgg")
+                ri.name = nm
+                ri.ty = self.sret
+                self.emit(ri)
+            else:
+                ri2 = mk_ins("Return")
+                if kids[0] >= 0:
+                    rv = self.lower_expr_expecting(kids[0], self.cur_ret)
+                    ri2.v1 = self.materialize(rv.v, rv.ty)
+                    ri2.ty = rv.ty
+                    ri2.flag = true
+                self.replay_finally_from(0)
+                self.emit(ri2)
+        orif k == "Break":
+            top = len(self.lp_brk) - 1
+            lbl = self.lp_brk[top]
+            self.replay_finally_from(self.lp_depth[top])
+            ji = mk_ins("Jump")
+            ji.name = lbl
+            self.emit(ji)
+        orif k == "Continue":
+            top2 = len(self.lp_cont) - 1
+            lbl2 = self.lp_cont[top2]
+            self.replay_finally_from(self.lp_depth[top2])
+            ji2 = mk_ins("Jump")
+            ji2.name = lbl2
+            self.emit(ji2)
+        orif k == "If":
+            self.lower_if_chain(kids[0], kids[1], kids[2], kids[3])
+        orif k == "Until":
+            self.lower_conditional_loop(kids[0], kids[1], true, "until")
+        orif k == "While":
+            self.lower_conditional_loop(kids[0], kids[1], false, "while")
+        orif k == "Infinit":
+            self.lower_infinit(kids[0])
+        orif k == "ForRange":
+            self.lower_for_range(n.text, kids[0], kids[1], kids[2])
+        orif k == "ForEach":
+            self.lower_for_each(n.text, kids[0], kids[1])
+        orif k == "Try":
+            if kids[2] >= 0:
+                append(self.finally_stack, kids[2])
+                self.lower_block(kids[0])
+                pop(self.finally_stack)
+                if not self.is_terminated():
+                    self.lower_block(kids[2])
+            else:
+                self.lower_block(kids[0])
+        orif k == "Thread":
+            self.lower_block(kids[0])
+
+    make lower_assign(self, target: int, ann: string, value: int):
+        tn = self.ast.nodes[target]
+        tk = tn.kind
+        tkids = tn.kids
+        if tk == "LIdent":
+            name = tn.text
+            if self.is_aggregate_valued(value):
+                self.lower_aggregate_into(value, name)
+                return
+            expected = ann
+            if len(ann) == 0 and self.local_declared(name):
+                expected = self.infer_local_type(name)
+            rv = self.lower_expr_expecting(value, expected)
+            if not self.local_declared(name):
+                ai = mk_ins("Alloca")
+                ai.name = name
+                ai.ty = rv.ty
+                self.emit(ai)
+            si = mk_ins("Store")
+            si.name = name
+            si.v1 = rv.v
+            self.emit(si)
+            return
+        if tk == "LField":
+            field = tn.text
+            base_name = self.require_named_base(tkids[0])
+            declared = ""
+            if self.ast.nodes[value].kind == "Null":
+                declared = self.field_info_ty(base_name, field)
+            rv2 = self.lower_expr_expecting(value, declared)
+            lay = self.layout_of(base_name)
+            fi = mk_ins("FieldSet")
+            fi.name = base_name
+            self.resolve_field_position(lay, field, fi)
+            fi.v1 = rv2.v
+            fi.ty = rv2.ty
+            self.emit(fi)
+            return
+        if tk == "LIndex":
+            base_name2 = self.require_named_base(tkids[0])
+            rv3 = self.lower_expr(value)
+            lay2 = self.layout_of(base_name2)
+            if lay2.kind == "List":
+                iv = self.lower_expr(tkids[1])
+                li = mk_ins("ListIndexSet")
+                li.name = base_name2
+                li.v1 = iv.v
+                li.v2 = rv3.v
+                li.ty = lay2.elem
+                self.emit(li)
+            else:
+                key = index_key(self.ast, tkids[1])
+                fi2 = mk_ins("FieldSet")
+                fi2.name = base_name2
+                self.resolve_field_position(lay2, key, fi2)
+                fi2.v1 = rv3.v
+                fi2.ty = rv3.ty
+                self.emit(fi2)
+            return
+        // LDeref
+        pv = self.lower_expr(tkids[0])
+        pointee = irt_ptr_inner(pv.ty)
+        rv4 = self.lower_expr_expecting(value, pointee)
+        pi = mk_ins("PtrStore")
+        pi.v1 = pv.v
+        pi.v2 = rv4.v
+        pi.ty = pointee
+        self.emit(pi)
+
+    make is_ptr_to_struct_local(self, e: int) -> bool:
+        if self.ast.nodes[e].kind != "Ident":
+            return false
+        name = self.ast.nodes[e].text
+        if not self.local_declared(name):
+            return false
+        lt = self.infer_local_type(name)
+        return irt_is_ptr(lt) and irt_is_struct(irt_ptr_inner(lt))
+
+    make is_aggregate_valued(self, e: int) -> bool:
+        n = self.ast.nodes[e]
+        k = n.kind
+        if k == "ListLit" or k == "EmptyList" or k == "TupleLit" or k == "DictLit":
+            return true
+        if k == "Call":
+            return (len(n.kids) == 0 and self.t.st_idx.has(n.text)) or self.t.rl_idx.has(n.text)
+        if k == "Field":
+            st = self.static_ir_type(e)
+            return len(st) > 0 and has_layout_of_ir_type(st)
+        if k == "Index":
+            st2 = self.static_ir_type(e)
+            return len(st2) > 0 and irt_is_struct(st2)
+        if k == "Ident":
+            if not self.local_declared(n.text):
+                return false
+            lt = self.infer_local_type(n.text)
+            return irt_is_list(lt) or irt_is_tuple(lt) or irt_is_struct(lt)
+        if k == "Unary" and n.text == "Deref":
+            return self.is_ptr_to_struct_local(n.kids[0])
+        return false
+
+    make note_layout(self, name: string, lay: Layout):
+        i = mk_ins("NoteLayout")
+        i.name = name
+        i.lay = lay
+        self.emit(i)
+
+    make alloca(self, name: string, ty: string):
+        i = mk_ins("Alloca")
+        i.name = name
+        i.ty = ty
+        self.emit(i)
+
+    make lower_struct_zero(self, name: string, target_name: string):
+        fts = self.t.st_ftys[self.t.st_idx.get(name) - 1].items
+        zeros: [V] = []
+        for ft in fts:
+            append(zeros, zero_value(ft))
+        self.alloca(target_name, name)
+        ii = mk_ins("InitAggregate")
+        ii.name = target_name
+        ii.lay = layout_struct(name)
+        ii.vals = zeros
+        self.emit(ii)
+
+    make lower_aggregate_into(self, value: int, target_name: string):
+        n = self.ast.nodes[value]
+        k = n.kind
+        kids = n.kids
+        if k == "Unary" and n.text == "Deref":
+            pv = self.lower_expr(kids[0])
+            pointee = irt_ptr_inner(pv.ty)
+            self.alloca(target_name, pointee)
+            dest = self.fresh_temp()
+            pl = mk_ins("PtrLoad")
+            pl.dest = dest
+            pl.v1 = pv.v
+            pl.ty = pointee
+            self.emit(pl)
+            st = mk_ins("Store")
+            st.name = target_name
+            st.v1 = v_temp(dest)
+            self.emit(st)
+            self.note_layout(target_name, layout_struct(pointee))
+            return
+        if k == "Ident":
+            src_name = n.text
+            lay = self.layout_of(src_name)
+            ty = self.infer_local_type(src_name)
+            self.alloca(target_name, ty)
+            dest2 = self.fresh_temp()
+            ld = mk_ins("Load")
+            ld.dest = dest2
+            ld.name = src_name
+            ld.ty = ty
+            self.emit(ld)
+            st2 = mk_ins("Store")
+            st2.name = target_name
+            st2.v1 = v_temp(dest2)
+            self.emit(st2)
+            self.note_layout(target_name, lay)
+            return
+        if k == "EmptyList":
+            elem_ty = ir_type(self.ast.nodes[kids[0]].text)
+            self.alloca(target_name, irt_list_of(elem_ty))
+            li = mk_ins("ListInit")
+            li.name = target_name
+            li.ty = elem_ty
+            self.emit(li)
+            return
+        if k == "ListLit":
+            lowered: [V] = []
+            lelem = "i64"
+            for it in kids:
+                rv = self.lower_expr(it)
+                lelem = rv.ty
+                append(lowered, rv.v)
+            self.alloca(target_name, irt_list_of(lelem))
+            li2 = mk_ins("ListInit")
+            li2.name = target_name
+            li2.ty = lelem
+            li2.vals = lowered
+            self.emit(li2)
+            return
+        if k == "TupleLit":
+            tl: [V] = []
+            tys: [string] = []
+            for it2 in kids:
+                rv2 = self.lower_expr(it2)
+                append(tys, rv2.ty)
+                append(tl, rv2.v)
+            self.alloca(target_name, "(" + join(tys, ", ") + ")")
+            ia = mk_ins("InitAggregate")
+            ia.name = target_name
+            ia.lay.kind = "Tuple"
+            ia.lay.elems = tys
+            ia.vals = tl
+            self.emit(ia)
+            return
+        if k == "DictLit":
+            dl: [V] = []
+            dtys: [string] = []
+            dkeys: [string] = []
+            for en in kids:
+                rv3 = self.lower_expr(self.ast.nodes[en].kids[0])
+                append(dkeys, self.ast.nodes[en].text)
+                append(dtys, rv3.ty)
+                append(dl, rv3.v)
+            self.alloca(target_name, "(" + join(dtys, ", ") + ")")
+            ib = mk_ins("InitAggregate")
+            ib.name = target_name
+            ib.lay.kind = "Tuple"
+            ib.lay.elems = dtys
+            ib.lay.keys = dkeys
+            ib.lay.has_keys = true
+            ib.vals = dl
+            self.emit(ib)
+            return
+        if k == "Call" and self.t.rl_idx.has(n.text):
+            self.lower_agg_call(target_name, n.text, kids)
+            return
+        if k == "Field":
+            alias = self.require_named_base(value)
+            ty2 = self.infer_local_type(alias)
+            lay3 = self.layout_of(alias)
+            if not self.local_declared(target_name):
+                self.alloca(target_name, ty2)
+            st3 = mk_ins("Store")
+            st3.name = target_name
+            st3.v1 = v_local(alias)
+            self.emit(st3)
+            self.note_layout(target_name, lay3)
+            return
+        if k == "Index":
+            iv = self.lower_index_get(kids[0], kids[1])
+            if not self.local_declared(target_name):
+                self.alloca(target_name, iv.ty)
+            st4 = mk_ins("Store")
+            st4.name = target_name
+            st4.v1 = iv.v
+            self.emit(st4)
+            self.note_layout(target_name, layout_struct(iv.ty))
+            return
+        // struct constructor `Name()`
+        self.lower_struct_zero(n.text, target_name)
+
+    make lower_call_args(self, fname: string, args: [int], ca: CallArgs):
+        i = 0
+        have_pt = self.t.pt_idx.has(fname)
+        while i < len(args):
+            arg = args[i]
+            expected = ""
+            if have_pt:
+                pts = self.t.pt_tys[self.t.pt_idx.get(fname) - 1].items
+                if i < len(pts):
+                    expected = pts[i]
+            if self.is_aggregate_valued(arg):
+                nm = self.require_named_base(arg)
+                ty = self.infer_local_type(nm)
+                dest = self.fresh_temp()
+                ai = mk_ins("AddrOf")
+                ai.dest = dest
+                ai.name = nm
+                self.emit(ai)
+                if len(expected) > 0 and expected != ty and is_agg_ty(expected):
+                    cast = self.fresh_temp()
+                    pc = mk_ins("PtrCast")
+                    pc.dest = cast
+                    pc.v1 = v_temp(dest)
+                    pc.ty = ty
+                    pc.ty2 = expected
+                    self.emit(pc)
+                    append(ca.vals, v_temp(cast))
+                    append(ca.tys, irt_ptr_of(expected))
+                else:
+                    append(ca.vals, v_temp(dest))
+                    append(ca.tys, irt_ptr_of(ty))
+            else:
+                rv = self.lower_expr_expecting(arg, expected)
+                append(ca.vals, rv.v)
+                append(ca.tys, rv.ty)
+            i += 1
+
+    make lower_agg_call(self, target: string, name: string, args: [int]):
+        av = CallArgs()
+        self.lower_call_args(name, args, av)
+        ret_ty = "void"
+        if self.t.sig_idx.has(name):
+            ret_ty = self.t.sig_ret[self.t.sig_idx.get(name) - 1]
+        lay = self.t.rl_lays[self.t.rl_idx.get(name) - 1]
+        if not self.local_declared(target):
+            self.alloca(target, ret_ty)
+        ci = mk_ins("CallAgg")
+        ci.name = target
+        ci.n2 = name
+        ci.vals = av.vals
+        ci.argtys = av.tys
+        ci.ty = ret_ty
+        self.emit(ci)
+        self.note_layout(target, lay)
+
+    // Type of `field` of the aggregate named `base_name` ("" never: defaults to i64).
+    make field_info_ty(self, base_name: string, field: string) -> string:
+        lay = self.layout_of(base_name)
+        probe = mk_ins("FieldGet")
+        self.resolve_field_position(lay, field, probe)
+        return self.field_type_of(probe)
+
+    make field_type_of(self, i: Ins) -> string:
+        if i.fb.is_struct:
+            if self.t.st_idx.has(i.fb.name):
+                ftys = self.t.st_ftys[self.t.st_idx.get(i.fb.name) - 1].items
+                if i.pos < len(ftys):
+                    return ftys[i.pos]
+            return "i64"
+        if i.pos < len(i.fb.tys):
+            return i.fb.tys[i.pos]
+        return "i64"
+
+    make static_ir_type(self, e: int) -> string:
+        n = self.ast.nodes[e]
+        k = n.kind
+        if k == "Ident":
+            if self.local_declared(n.text):
+                return self.infer_local_type(n.text)
+            return ""
+        if k == "Field":
+            bt = self.static_ir_type(n.kids[0])
+            if len(bt) == 0:
+                return ""
+            sname = ""
+            if irt_is_struct(bt):
+                sname = bt
+            orif irt_is_ptr(bt) and irt_is_struct(irt_ptr_inner(bt)):
+                sname = irt_ptr_inner(bt)
+            else:
+                return ""
+            if not self.t.st_idx.has(sname):
+                return ""
+            si = self.t.st_idx.get(sname) - 1
+            fi = list_pos(self.t.st_fnames[si].items, n.text)
+            if fi < 0:
+                return ""
+            return self.t.st_ftys[si].items[fi]
+        if k == "Index":
+            bt2 = self.static_ir_type(n.kids[0])
+            if len(bt2) > 0 and irt_is_list(bt2):
+                return irt_list_elem(bt2)
+            return ""
+        return ""
+
+    make deref_if_struct_ptr(self, name: string) -> string:
+        if not self.local_declared(name):
+            return name
+        lt = self.infer_local_type(name)
+        if irt_is_ptr(lt) and irt_is_struct(irt_ptr_inner(lt)):
+            sname = irt_ptr_inner(lt)
+            alias = self.fresh_name("deref")
+            pa = mk_ins("PtrAlias")
+            pa.name = alias
+            pa.n2 = name
+            pa.ty = sname
+            self.emit(pa)
+            self.note_layout(alias, layout_struct(sname))
+            return alias
+        return name
+
+    make require_named_base(self, e: int) -> string:
+        n = self.ast.nodes[e]
+        k = n.kind
+        if k == "Ident":
+            return self.deref_if_struct_ptr(n.text)
+        if k == "Unary" and n.text == "Deref":
+            inner = n.kids[0]
+            if self.is_ptr_to_struct_local(inner):
+                return self.deref_if_struct_ptr(self.ast.nodes[inner].text)
+            nm = self.fresh_name("agg")
+            self.lower_aggregate_into(e, nm)
+            return nm
+        if k == "Field":
+            base_name = self.require_named_base(n.kids[0])
+            lay = self.layout_of(base_name)
+            fi = mk_ins("FieldAlias")
+            self.resolve_field_position(lay, n.text, fi)
+            fty = self.field_type_of(fi)
+            if has_layout_of_ir_type(fty):
+                alias = self.fresh_name("fld")
+                fi.name = alias
+                fi.n2 = base_name
+                fi.ty = fty
+                self.emit(fi)
+                self.note_layout(alias, layout_of_ir_type(fty))
+                return alias
+            if irt_is_ptr(fty) and irt_is_struct(irt_ptr_inner(fty)):
+                slot = self.fresh_name("fld")
+                fi.name = slot
+                fi.n2 = base_name
+                fi.ty = fty
+                self.emit(fi)
+                return self.deref_if_struct_ptr(slot)
+            nm2 = self.fresh_name("agg")
+            self.lower_aggregate_into(e, nm2)
+            return nm2
+        if k == "Index":
+            base_name2 = self.require_named_base(n.kids[0])
+            lay2 = self.layout_of(base_name2)
+            if lay2.kind == "List" and has_layout_of_ir_type(lay2.elem):
+                iv = self.lower_expr(n.kids[1])
+                alias2 = self.fresh_name("elem")
+                ea = mk_ins("ListElemAlias")
+                ea.name = alias2
+                ea.n2 = base_name2
+                ea.v1 = iv.v
+                ea.ty = lay2.elem
+                self.emit(ea)
+                self.note_layout(alias2, layout_of_ir_type(lay2.elem))
+                return alias2
+            nm3 = self.fresh_name("agg")
+            self.lower_aggregate_into(e, nm3)
+            return nm3
+        nm4 = self.fresh_name("agg")
+        self.lower_aggregate_into(e, nm4)
+        return nm4
+
+    make local_declared(self, name: string) -> bool:
+        i = 0
+        while i < len(self.body):
+            op = self.body[i].op
+            if op == "Alloca" or op == "BindParam" or op == "FieldAlias" or op == "ListElemAlias" or op == "PtrAlias":
+                if self.body[i].name == name:
+                    return true
+            i += 1
+        return false
+
+    make layout_of(self, name: string) -> Layout:
+        i = len(self.body) - 1
+        while i >= 0:
+            op = self.body[i].op
+            if self.body[i].name == name:
+                if op == "ListInit":
+                    return layout_list(self.body[i].ty)
+                if op == "InitAggregate" or op == "NoteLayout":
+                    return self.body[i].lay
+            i -= 1
+        return layout_list("i64")
+
+    // Fills `fb` and `pos` of `ins` for `field` in `lay`.
+    make resolve_field_position(self, lay: Layout, field: string, ins: Ins):
+        if lay.kind == "Struct":
+            pos = 0
+            if self.t.st_idx.has(lay.name):
+                p = list_pos(self.t.st_fnames[self.t.st_idx.get(lay.name) - 1].items, field)
+                if p >= 0:
+                    pos = p
+            ins.fb.is_struct = true
+            ins.fb.name = lay.name
+            ins.pos = pos
+        else:
+            pos2 = 0
+            if lay.has_keys:
+                p2 = list_pos(lay.keys, field)
+                if p2 >= 0:
+                    pos2 = p2
+            else:
+                pos2 = parse_pos(field)
+            ins.fb.is_struct = false
+            ins.fb.tys = lay.elems
+            ins.pos = pos2
+
+    make infer_local_type(self, name: string) -> string:
+        i = len(self.body) - 1
+        while i >= 0:
+            op = self.body[i].op
+            if self.body[i].name == name:
+                if op == "Alloca" or op == "BindParam" or op == "FieldAlias" or op == "ListElemAlias" or op == "PtrAlias":
+                    return self.body[i].ty
+            i -= 1
+        return "i64"
+
+    // ---- control flow ------------------------------------------------------------------------
+    make lower_if_chain(self, cond: int, then_b: int, orifs: int, else_b: int):
+        end_label = self.fresh_label("if.end")
+        ol = self.ast.nodes[orifs].kids
+        self.lower_one_branch(cond, then_b, ol, 0, else_b, 0, end_label)
+        li = mk_ins("Label")
+        li.name = end_label
+        self.emit(li)
+
+    make lower_one_branch(self, cond: int, b: int, orifs: [int], from_idx: int, else_b: int, depth: int, end_label: string):
+        then_label = self.fresh_label("if.then." + str(depth))
+        next_label = self.fresh_label("if.next." + str(depth))
+        cv = self.lower_expr(cond)
+        bi = mk_ins("Branch")
+        bi.v1 = cv.v
+        bi.name = then_label
+        bi.n2 = next_label
+        self.emit(bi)
+        l1 = mk_ins("Label")
+        l1.name = then_label
+        self.emit(l1)
+        self.lower_block(b)
+        if not self.is_terminated():
+            j1 = mk_ins("Jump")
+            j1.name = end_label
+            self.emit(j1)
+        l2 = mk_ins("Label")
+        l2.name = next_label
+        self.emit(l2)
+        if from_idx < len(orifs):
+            ok = self.ast.nodes[orifs[from_idx]].kids
+            self.lower_one_branch(ok[0], ok[1], orifs, from_idx + 1, else_b, depth + 1, end_label)
+        else:
+            if else_b >= 0:
+                self.lower_block(else_b)
+            if not self.is_terminated():
+                j2 = mk_ins("Jump")
+                j2.name = end_label
+                self.emit(j2)
+
+    make push_loop(self, cont: string, brk: string):
+        append(self.lp_cont, cont)
+        append(self.lp_brk, brk)
+        append(self.lp_depth, len(self.finally_stack))
+
+    make pop_loop(self):
+        pop(self.lp_cont)
+        pop(self.lp_brk)
+        pop(self.lp_depth)
+
+    make label(self, name: string):
+        i = mk_ins("Label")
+        i.name = name
+        self.emit(i)
+
+    make jump(self, name: string):
+        i = mk_ins("Jump")
+        i.name = name
+        self.emit(i)
+
+    make branch(self, cond: V, a: string, b: string):
+        i = mk_ins("Branch")
+        i.v1 = cond
+        i.name = a
+        i.n2 = b
+        self.emit(i)
+
+    make binop(self, dest: int, op: string, a: V, b: V):
+        i = mk_ins("BinOp")
+        i.dest = dest
+        i.name = op
+        i.v1 = a
+        i.v2 = b
+        self.emit(i)
+
+    make store(self, name: string, v: V):
+        i = mk_ins("Store")
+        i.name = name
+        i.v1 = v
+        self.emit(i)
+
+    make lower_conditional_loop(self, cond: int, b: int, invert: bool, hint: string):
+        cond_label = self.fresh_label(hint + ".cond")
+        body_label = self.fresh_label(hint + ".body")
+        end_label = self.fresh_label(hint + ".end")
+        self.jump(cond_label)
+        self.label(cond_label)
+        cv = self.lower_expr(cond)
+        bv = cv.v
+        if invert:
+            neg = self.fresh_temp()
+            ni = mk_ins("Not")
+            ni.dest = neg
+            ni.v1 = cv.v
+            self.emit(ni)
+            bv = v_temp(neg)
+        self.branch(bv, body_label, end_label)
+        self.label(body_label)
+        self.push_loop(cond_label, end_label)
+        self.lower_block(b)
+        self.pop_loop()
+        if not self.is_terminated():
+            self.jump(cond_label)
+        self.label(end_label)
+
+    make lower_infinit(self, b: int):
+        body_label = self.fresh_label("infinit.body")
+        end_label = self.fresh_label("infinit.end")
+        self.jump(body_label)
+        self.label(body_label)
+        self.push_loop(body_label, end_label)
+        self.lower_block(b)
+        self.pop_loop()
+        if not self.is_terminated():
+            self.jump(body_label)
+        self.label(end_label)
+
+    make lower_for_range(self, var: string, start: int, end: int, b: int):
+        sv = self.lower_expr(start)
+        self.alloca(var, "i64")
+        self.store(var, sv.v)
+        ev = self.lower_expr(end)
+        end_name = self.fresh_name("for.end")
+        self.alloca(end_name, "i64")
+        self.store(end_name, ev.v)
+        cond_label = self.fresh_label("for.cond")
+        body_label = self.fresh_label("for.body")
+        step_label = self.fresh_label("for.step")
+        end_label = self.fresh_label("for.end")
+        self.jump(cond_label)
+        self.label(cond_label)
+        var_reg = self.fresh_temp()
+        self.binop(var_reg, "LtI", v_local(var), v_local(end_name))
+        self.branch(v_temp(var_reg), body_label, end_label)
+        self.label(body_label)
+        self.push_loop(step_label, end_label)
+        self.lower_block(b)
+        self.pop_loop()
+        if not self.is_terminated():
+            self.jump(step_label)
+        self.label(step_label)
+        incr = self.fresh_temp()
+        self.binop(incr, "AddI", v_local(var), v_int(1))
+        self.store(var, v_temp(incr))
+        self.jump(cond_label)
+        self.label(end_label)
+
+    make lower_for_each(self, var: string, iterable: int, b: int):
+        list_name = self.require_named_base(iterable)
+        elem_ty = self.layout_of(list_name).elem
+        idx_name = self.fresh_name("for.idx")
+        self.alloca(idx_name, "i64")
+        self.store(idx_name, v_int(0))
+        len_name = self.fresh_name("for.len")
+        len_reg = self.fresh_temp()
+        ll = mk_ins("ListLen")
+        ll.dest = len_reg
+        ll.name = list_name
+        self.emit(ll)
+        self.alloca(len_name, "i64")
+        self.store(len_name, v_temp(len_reg))
+        cond_label = self.fresh_label("foreach.cond")
+        body_label = self.fresh_label("foreach.body")
+        step_label = self.fresh_label("foreach.step")
+        end_label = self.fresh_label("foreach.end")
+        self.jump(cond_label)
+        self.label(cond_label)
+        cmp = self.fresh_temp()
+        self.binop(cmp, "LtI", v_local(idx_name), v_local(len_name))
+        self.branch(v_temp(cmp), body_label, end_label)
+        self.label(body_label)
+        elem_reg = self.fresh_temp()
+        lg = mk_ins("ListIndexGet")
+        lg.dest = elem_reg
+        lg.name = list_name
+        lg.v1 = v_local(idx_name)
+        lg.ty = elem_ty
+        self.emit(lg)
+        if not self.local_declared(var):
+            self.alloca(var, elem_ty)
+        self.store(var, v_temp(elem_reg))
+        if irt_is_struct(elem_ty):
+            self.note_layout(var, layout_struct(elem_ty))
+        self.push_loop(step_label, end_label)
+        self.lower_block(b)
+        self.pop_loop()
+        if not self.is_terminated():
+            self.jump(step_label)
+        self.label(step_label)
+        incr = self.fresh_temp()
+        self.binop(incr, "AddI", v_local(idx_name), v_int(1))
+        self.store(idx_name, v_temp(incr))
+        self.jump(cond_label)
+        self.label(end_label)
+
+    // ---- expressions -------------------------------------------------------------------------
+    make lower_expr(self, e: int) -> R:
+        return self.lower_expr_expecting(e, "")
+
+    make lower_expr_expecting(self, e: int, expected: string) -> R:
+        if self.ast.nodes[e].kind == "Null":
+            return rr(v_null(expected), expected)
+        return self.lower_expr_inner(e)
+
+    make lower_expr_inner(self, e: int) -> R:
+        n = self.ast.nodes[e]
+        k = n.kind
+        kids = n.kids
+        if k == "EmptyList" or k == "ListLit" or k == "TupleLit" or k == "DictLit":
+            tmp = self.fresh_name("agg")
+            self.lower_aggregate_into(e, tmp)
+            return rr(v_local(tmp), self.infer_local_type(tmp))
+        if k == "Int":
+            return rr(v_int(to_int(n.text)), "i64")
+        if k == "Float":
+            return rr(v_float(n.text), "f64")
+        if k == "Bool":
+            return rr(v_bool(n.text == "true"), "bool")
+        if k == "Str":
+            return rr(v_str(n.text), "str")
+        if k == "Ident":
+            return rr(v_local(n.text), self.infer_local_type(n.text))
+        if k == "Unary":
+            return self.lower_unary(n.text, kids[0])
+        if k == "Binary":
+            return self.lower_binary(n.text, kids[0], kids[1])
+        if k == "Call":
+            return self.lower_call(n.text, kids)
+        if k == "Await":
+            return self.lower_expr(kids[0])
+        if k == "Alloc":
+            pointee = ir_type(self.ast.nodes[kids[0]].text)
+            dest = self.fresh_temp()
+            ai = mk_ins("Alloc")
+            ai.dest = dest
+            ai.ty = pointee
+            self.emit(ai)
+            return rr(v_temp(dest), irt_ptr_of(pointee))
+        if k == "AllocN":
+            pointee2 = ir_type(self.ast.nodes[kids[0]].text)
+            cv = self.lower_expr(kids[1])
+            dest2 = self.fresh_temp()
+            an = mk_ins("AllocN")
+            an.dest = dest2
+            an.ty = pointee2
+            an.v1 = cv.v
+            self.emit(an)
+            return rr(v_temp(dest2), irt_ptr_of(pointee2))
+        if k == "Field":
+            if self.ast.nodes[kids[0]].kind == "Ident":
+                bname = self.ast.nodes[kids[0]].text
+                if self.t.en_idx.has(bname):
+                    vars = self.t.en_vars[self.t.en_idx.get(bname) - 1].items
+                    idx = list_pos(vars, n.text)
+                    if idx < 0:
+                        idx = 0
+                    return rr(v_int(idx), "i64")
+            return self.lower_field_get(kids[0], n.text)
+        // Index
+        return self.lower_index_get(kids[0], kids[1])
+
+    make lower_field_get(self, base: int, field: string) -> R:
+        base_name = self.require_named_base(base)
+        lay = self.layout_of(base_name)
+        fg = mk_ins("FieldGet")
+        self.resolve_field_position(lay, field, fg)
+        fty = self.field_type_of(fg)
+        dest = self.fresh_temp()
+        fg.dest = dest
+        fg.name = base_name
+        fg.ty = fty
+        self.emit(fg)
+        return rr(v_temp(dest), fty)
+
+    make lower_index_get(self, base: int, index: int) -> R:
+        base_name = self.require_named_base(base)
+        lay = self.layout_of(base_name)
+        if lay.kind == "List":
+            iv = self.lower_expr(index)
+            dest = self.fresh_temp()
+            lg = mk_ins("ListIndexGet")
+            lg.dest = dest
+            lg.name = base_name
+            lg.v1 = iv.v
+            lg.ty = lay.elem
+            self.emit(lg)
+            return rr(v_temp(dest), lay.elem)
+        key = index_key(self.ast, index)
+        fg = mk_ins("FieldGet")
+        self.resolve_field_position(lay, key, fg)
+        fty = "i64"
+        if not fg.fb.is_struct and fg.pos < len(fg.fb.tys):
+            fty = fg.fb.tys[fg.pos]
+        dest2 = self.fresh_temp()
+        fg.dest = dest2
+        fg.name = base_name
+        fg.ty = fty
+        self.emit(fg)
+        return rr(v_temp(dest2), fty)
+
+    make lower_unary(self, op: string, e: int) -> R:
+        if op == "AddrOf":
+            name = self.ast.nodes[e].text
+            pointee = self.infer_local_type(name)
+            dest = self.fresh_temp()
+            ai = mk_ins("AddrOf")
+            ai.dest = dest
+            ai.name = name
+            self.emit(ai)
+            return rr(v_temp(dest), irt_ptr_of(pointee))
+        rv = self.lower_expr(e)
+        dest2 = self.fresh_temp()
+        if op == "Neg":
+            ni = mk_ins("Neg")
+            ni.dest = dest2
+            ni.v1 = rv.v
+            ni.ty = rv.ty
+            self.emit(ni)
+            return rr(v_temp(dest2), rv.ty)
+        if op == "Not":
+            no = mk_ins("Not")
+            no.dest = dest2
+            no.v1 = rv.v
+            self.emit(no)
+            return rr(v_temp(dest2), "bool")
+        if op == "BitNot":
+            self.binop(dest2, "XorI", rv.v, v_int(-1))
+            return rr(v_temp(dest2), "i64")
+        // Deref
+        pointee2 = irt_ptr_inner(rv.ty)
+        pl = mk_ins("PtrLoad")
+        pl.dest = dest2
+        pl.v1 = rv.v
+        pl.ty = pointee2
+        self.emit(pl)
+        return rr(v_temp(dest2), pointee2)
+
+    make lower_binary(self, op: string, lhs: int, rhs: int) -> R:
+        if op == "And" or op == "Or":
+            return self.lower_short_circuit(op, lhs, rhs)
+        is_eq = op == "Eq" or op == "NotEq"
+        lv = V()
+        rv = V()
+        lty = ""
+        rty = ""
+        if is_eq and self.ast.nodes[lhs].kind == "Null":
+            r1 = self.lower_expr(rhs)
+            l1 = self.lower_expr_expecting(lhs, r1.ty)
+            lv = l1.v
+            lty = l1.ty
+            rv = r1.v
+            rty = r1.ty
+        orif is_eq:
+            l2 = self.lower_expr(lhs)
+            r2 = self.lower_expr_expecting(rhs, l2.ty)
+            lv = l2.v
+            lty = l2.ty
+            rv = r2.v
+            rty = r2.ty
+        else:
+            l3 = self.lower_expr(lhs)
+            r3 = self.lower_expr(rhs)
+            lv = l3.v
+            lty = l3.ty
+            rv = r3.v
+            rty = r3.ty
+        if op == "Add" or op == "Sub":
+            ptr_left = irt_is_ptr(lty) and rty == "i64"
+            ptr_right = op == "Add" and lty == "i64" and irt_is_ptr(rty)
+            if ptr_left or ptr_right:
+                pv = rv
+                pty = rty
+                ov = lv
+                neg = false
+                if ptr_left:
+                    pv = lv
+                    pty = lty
+                    ov = rv
+                    neg = op == "Sub"
+                dest = self.fresh_temp()
+                po = mk_ins("PtrOffset")
+                po.dest = dest
+                po.v1 = pv
+                po.v2 = ov
+                po.ty = irt_ptr_inner(pty)
+                po.flag = neg
+                self.emit(po)
+                return rr(v_temp(dest), pty)
+        if is_eq and irt_is_ptr(lty):
+            dest2 = self.fresh_temp()
+            pe = mk_ins("PtrEq")
+            pe.dest = dest2
+            pe.v1 = lv
+            pe.v2 = rv
+            pe.ty = irt_ptr_inner(lty)
+            pe.flag = op == "NotEq"
+            self.emit(pe)
+            return rr(v_temp(dest2), "bool")
+        is_float = lty == "f64"
+        is_str = lty == "str"
+        ir_op = ""
+        res = "bool"
+        if op == "Add":
+            if is_str:
+                ir_op = "ConcatStr"
+                res = "str"
+            else:
+                ir_op = pick(is_float, "AddF", "AddI")
+                res = lty
+        orif op == "Sub":
+            ir_op = pick(is_float, "SubF", "SubI")
+            res = lty
+        orif op == "Mul":
+            ir_op = pick(is_float, "MulF", "MulI")
+            res = lty
+        orif op == "Div":
+            ir_op = pick(is_float, "DivF", "DivI")
+            res = lty
+        orif op == "Mod":
+            ir_op = "RemI"
+            res = lty
+        orif op == "Eq":
+            ir_op = cmp_op("Eq", is_str, is_float)
+        orif op == "NotEq":
+            ir_op = cmp_op("Ne", is_str, is_float)
+        orif op == "Lt":
+            ir_op = cmp_op("Lt", is_str, is_float)
+        orif op == "Gt":
+            ir_op = cmp_op("Gt", is_str, is_float)
+        orif op == "LtEq":
+            ir_op = cmp_op("Le", is_str, is_float)
+        orif op == "GtEq":
+            ir_op = cmp_op("Ge", is_str, is_float)
+        else:
+            res = "i64"
+            if op == "BitAnd":
+                ir_op = "AndI"
+            orif op == "BitOr":
+                ir_op = "OrI"
+            orif op == "BitXor":
+                ir_op = "XorI"
+            orif op == "Shl":
+                ir_op = "ShlI"
+            else:
+                ir_op = "ShrI"
+        dest3 = self.fresh_temp()
+        self.binop(dest3, ir_op, lv, rv)
+        return rr(v_temp(dest3), res)
+
+    make lower_short_circuit(self, op: string, lhs: int, rhs: int) -> R:
+        result_name = self.fresh_name("sc")
+        self.alloca(result_name, "bool")
+        lv = self.lower_expr(lhs)
+        rhs_label = self.fresh_label("sc.rhs")
+        short_label = self.fresh_label("sc.short")
+        end_label = self.fresh_label("sc.end")
+        if op == "And":
+            self.branch(lv.v, rhs_label, short_label)
+        else:
+            self.branch(lv.v, short_label, rhs_label)
+        self.label(rhs_label)
+        rv = self.lower_expr(rhs)
+        self.store(result_name, rv.v)
+        self.jump(end_label)
+        self.label(short_label)
+        self.store(result_name, v_bool(op == "Or"))
+        self.jump(end_label)
+        self.label(end_label)
+        return rr(v_local(result_name), "bool")
+
+    make list_elem_of(self, base_name: string) -> string:
+        lay = self.layout_of(base_name)
+        if lay.kind == "List":
+            return lay.elem
+        return "i64"
+
+    make lower_call(self, name: string, args: [int]) -> R:
+        if name == "print":
+            rv = self.lower_expr(args[0])
+            pi = mk_ins("Print")
+            pi.v1 = rv.v
+            pi.ty = rv.ty
+            self.emit(pi)
+            return rr(v_int(0), "void")
+        if name == "exit":
+            cv = self.lower_expr(args[0])
+            xi = mk_ins("Exit")
+            xi.v1 = cv.v
+            self.emit(xi)
+            return rr(v_int(0), "void")
+        if name == "pop" or name == "clear" or name == "remove" or name == "insert":
+            base_name = self.require_named_base(args[0])
+            elem_ty = self.list_elem_of(base_name)
+            if name == "clear":
+                ci = mk_ins("ListClear")
+                ci.name = base_name
+                ci.ty = elem_ty
+                self.emit(ci)
+                return rr(v_int(0), "void")
+            if name == "insert":
+                iv = self.lower_expr(args[1])
+                vv = self.lower_expr(args[2])
+                ii = mk_ins("ListInsert")
+                ii.name = base_name
+                ii.v1 = iv.v
+                ii.v2 = vv.v
+                ii.ty = elem_ty
+                self.emit(ii)
+                return rr(v_int(0), "void")
+            ri = mk_ins("ListRemove")
+            if name == "remove":
+                idx = self.lower_expr(args[1])
+                ri.flag = true
+                ri.v1 = idx.v
+            dest = self.fresh_temp()
+            ri.dest = dest
+            ri.name = base_name
+            ri.ty = elem_ty
+            self.emit(ri)
+            return rr(v_temp(dest), elem_ty)
+        if name == "append":
+            base_name2 = self.require_named_base(args[0])
+            elem_ty2 = self.list_elem_of(base_name2)
+            av = self.lower_expr(args[1])
+            la = mk_ins("ListAppend")
+            la.name = base_name2
+            la.v1 = av.v
+            la.ty = elem_ty2
+            self.emit(la)
+            return rr(v_int(0), "void")
+        if name == "len":
+            if self.ast.nodes[args[0]].kind != "Ident" and self.is_aggregate_valued(args[0]):
+                base = self.require_named_base(args[0])
+                if self.layout_of(base).kind == "List":
+                    dest1 = self.fresh_temp()
+                    ll = mk_ins("ListLen")
+                    ll.dest = dest1
+                    ll.name = base
+                    self.emit(ll)
+                    return rr(v_temp(dest1), "i64")
+            lv = self.lower_expr(args[0])
+            dest2 = self.fresh_temp()
+            if lv.v.k == "L" and irt_is_list(lv.ty):
+                ll2 = mk_ins("ListLen")
+                ll2.dest = dest2
+                ll2.name = lv.v.s
+                self.emit(ll2)
+            else:
+                sl = mk_ins("StrLen")
+                sl.dest = dest2
+                sl.v1 = lv.v
+                self.emit(sl)
+            return rr(v_temp(dest2), "i64")
+        if name == "str":
+            sv = self.lower_expr(args[0])
+            if sv.ty == "str":
+                return rr(sv.v, "str")
+            dest3 = self.fresh_temp()
+            ts = mk_ins("ToStr")
+            ts.dest = dest3
+            ts.v1 = sv.v
+            ts.ty = sv.ty
+            self.emit(ts)
+            return rr(v_temp(dest3), "str")
+        if name == "char_at":
+            s1 = self.lower_expr(args[0])
+            i1 = self.lower_expr(args[1])
+            dest4 = self.fresh_temp()
+            ca = mk_ins("CharAt")
+            ca.dest = dest4
+            ca.v1 = s1.v
+            ca.v2 = i1.v
+            self.emit(ca)
+            return rr(v_temp(dest4), "i64")
+        if name == "substr":
+            s2 = self.lower_expr(args[0])
+            st = self.lower_expr(args[1])
+            en = self.lower_expr(args[2])
+            dest5 = self.fresh_temp()
+            su = mk_ins("Substr")
+            su.dest = dest5
+            su.v1 = s2.v
+            su.v2 = st.v
+            su.v3 = en.v
+            self.emit(su)
+            return rr(v_temp(dest5), "str")
+        if name == "read_file":
+            p1 = self.lower_expr(args[0])
+            dest6 = self.fresh_temp()
+            rf = mk_ins("ReadFile")
+            rf.dest = dest6
+            rf.v1 = p1.v
+            self.emit(rf)
+            return rr(v_temp(dest6), "str")
+        if name == "write_file":
+            p2 = self.lower_expr(args[0])
+            c2 = self.lower_expr(args[1])
+            dest7 = self.fresh_temp()
+            wf = mk_ins("WriteFile")
+            wf.dest = dest7
+            wf.v1 = p2.v
+            wf.v2 = c2.v
+            self.emit(wf)
+            return rr(v_temp(dest7), "bool")
+        if name == "arg_count":
+            dest8 = self.fresh_temp()
+            ac = mk_ins("ArgCount")
+            ac.dest = dest8
+            self.emit(ac)
+            return rr(v_temp(dest8), "i64")
+        if name == "arg":
+            ix = self.lower_expr(args[0])
+            dest9 = self.fresh_temp()
+            ag = mk_ins("Arg")
+            ag.dest = dest9
+            ag.v1 = ix.v
+            self.emit(ag)
+            return rr(v_temp(dest9), "str")
+        if name == "free":
+            pv = self.lower_expr(args[0])
+            fr = mk_ins("Free")
+            fr.v1 = pv.v
+            fr.ty = irt_ptr_inner(pv.ty)
+            self.emit(fr)
+            return rr(v_int(0), "void")
+        if len(args) == 0 and self.t.st_idx.has(name) and not self.t.sig_idx.has(name):
+            tmp = self.fresh_name("agg")
+            self.lower_struct_zero(name, tmp)
+            return rr(v_local(tmp), self.infer_local_type(tmp))
+        if self.t.rl_idx.has(name):
+            tmp2 = self.fresh_name("agg")
+            self.lower_agg_call(tmp2, name, args)
+            return rr(v_local(tmp2), self.infer_local_type(tmp2))
+        ca2 = CallArgs()
+        self.lower_call_args(name, args, ca2)
+        ret_ty = "void"
+        if self.t.sig_idx.has(name):
+            ret_ty = self.t.sig_ret[self.t.sig_idx.get(name) - 1]
+        call = mk_ins("Call")
+        call.name = name
+        call.vals = ca2.vals
+        call.argtys = ca2.tys
+        call.ty = ret_ty
+        if ret_ty == "void":
+            self.emit(call)
+            return rr(v_int(0), "void")
+        dest10 = self.fresh_temp()
+        call.dest = dest10
+        self.emit(call)
+        return rr(v_temp(dest10), ret_ty)
+
+class CallArgs:
+    vals: [V]
+    tys: [string]
+
+make pick(c: bool, a: string, b: string) -> string:
+    if c:
+        return a
+    return b
+
+make cmp_op(base: string, is_str: bool, is_float: bool) -> string:
+    if is_str:
+        return base + "Str"
+    if is_float:
+        return base + "F"
+    return base + "I"
+
+// ---- program ----------------------------------------------------------------------------------
+
+make lower_function(ast: Ast, f: int, t: IrTab) -> IrFn:
+    fk = ast.nodes[f].kids
+    fname = ast.nodes[f].text
+    lw = Lower()
+    lw.ast = ast
+    lw.t = t
+    ret_ty = "void"
+    if t.sig_idx.has(fname):
+        ret_ty = t.sig_ret[t.sig_idx.get(fname) - 1]
+    fn = IrFn()
+    fn.name = fname
+    if is_agg_ty(ret_ty):
+        lw.sret = ret_ty
+        fn.has_sret = true
+        fn.sret = ret_ty
+    lw.cur_ret = ret_ty
+    pl = ast.nodes[fk[0]].kids
+    for p in pl:
+        pname = ast.nodes[p].text
+        ptext = ast.nodes[ast.nodes[p].kids[0]].text
+        pty = ir_type(ptext)
+        if is_agg_ty(pty):
+            lay = layout_from_type(ptext)
+            if block_rebinds_in(ast, fk[3], pname):
+                lw.alloca(pname, pty)
+                dest = lw.fresh_temp()
+                pld = mk_ins("PtrLoad")
+                pld.dest = dest
+                pld.v1 = v_param(pname + ".in")
+                pld.ty = pty
+                lw.emit(pld)
+                lw.store(pname, v_temp(dest))
+                append(fn.pnames, pname + ".in")
+                append(fn.ptys, irt_ptr_of(pty))
+            else:
+                bp = mk_ins("BindParam")
+                bp.name = pname
+                bp.ty = pty
+                lw.emit(bp)
+                append(fn.pnames, pname)
+                append(fn.ptys, irt_ptr_of(pty))
+            lw.note_layout(pname, lay)
+        else:
+            lw.alloca(pname, pty)
+            lw.store(pname, v_param(pname + ".arg"))
+            append(fn.pnames, pname + ".arg")
+            append(fn.ptys, pty)
+    lw.lower_block(fk[3])
+    nb = len(lw.body)
+    last = ""
+    if nb > 0:
+        last = lw.body[nb - 1].op
+    if not (last == "Return" or last == "RetAgg" or last == "Unreachable"):
+        if ret_ty == "void":
+            lw.emit(mk_ins("Return"))
+        else:
+            lw.emit(mk_ins("Unreachable"))
+    fn.ret = ret_ty
+    if fn.has_sret:
+        fn.ret = "void"
+    fn.body = lw.body
+    return fn
+
+make lower_program(ast: Ast, root: int) -> IrProg:
+    t = IrTab()
+    t.sig_idx = StrMap_int()
+    t.st_idx = StrMap_int()
+    t.en_idx = StrMap_int()
+    t.rl_idx = StrMap_int()
+    t.pt_idx = StrMap_int()
+    structs_l = ast.nodes[root].kids[1]
+    enums_l = ast.nodes[root].kids[2]
+    fns_l = ast.nodes[root].kids[3]
+    sn = ast.nodes[structs_l].kids
+    en = ast.nodes[enums_l].kids
+    fnn = ast.nodes[fns_l].kids
+    prog = IrProg()
+    for s in sn:
+        names = StrL()
+        tys = StrL()
+        fl = ast.nodes[ast.nodes[s].kids[1]].kids
+        for fd in fl:
+            append(names.items, ast.nodes[fd].text)
+            append(tys.items, ir_type(ast.nodes[ast.nodes[fd].kids[0]].text))
+        append(t.st_fnames, names)
+        append(t.st_ftys, tys)
+        t.st_idx.set(ast.nodes[s].text, len(t.st_fnames))
+        append(prog.st_names, ast.nodes[s].text)
+        append(prog.st_fnames, names)
+        append(prog.st_ftys, tys)
+    for e in en:
+        vs = StrL()
+        vl = ast.nodes[ast.nodes[e].kids[0]].kids
+        for v in vl:
+            append(vs.items, ast.nodes[v].text)
+        append(t.en_vars, vs)
+        t.en_idx.set(ast.nodes[e].text, len(t.en_vars))
+    // signatures: declared return types first, then first-return-type inference
+    for f in fnn:
+        rt = "void"
+        if ast.nodes[f].kids[1] >= 0:
+            rt = ir_type(ast.nodes[ast.nodes[f].kids[1]].text)
+        nm = ast.nodes[f].text
+        if t.sig_idx.has(nm):
+            t.sig_ret[t.sig_idx.get(nm) - 1] = rt
+        else:
+            append(t.sig_ret, rt)
+            t.sig_idx.set(nm, len(t.sig_ret))
+    for f in fnn:
+        fk = ast.nodes[f].kids
+        if fk[1] >= 0 or is_extern_fn2(ast, f):
+            continue
+        if fk[3] < 0:
+            continue
+        r = find_first_return_type(ast, fk[3], t)
+        if len(r) > 0:
+            t.sig_ret[t.sig_idx.get(ast.nodes[f].text) - 1] = r
+    for f in fnn:
+        fk = ast.nodes[f].kids
+        nm = ast.nodes[f].text
+        if fk[1] >= 0:
+            rtext = ast.nodes[fk[1]].text
+            if ty_is_list(rtext) or ty_is_tuple(rtext) or ty_is_dict(rtext) or ty_is_named(rtext):
+                lay = layout_from_type(rtext)
+                if t.rl_idx.has(nm):
+                    t.rl_lays[t.rl_idx.get(nm) - 1] = lay
+                else:
+                    append(t.rl_lays, lay)
+                    t.rl_idx.set(nm, len(t.rl_lays))
+        pts = StrL()
+        for p in ast.nodes[fk[0]].kids:
+            append(pts.items, ir_type(ast.nodes[ast.nodes[p].kids[0]].text))
+        if t.pt_idx.has(nm):
+            t.pt_tys[t.pt_idx.get(nm) - 1] = pts
+        else:
+            append(t.pt_tys, pts)
+            t.pt_idx.set(nm, len(t.pt_tys))
+    for f in fnn:
+        if is_extern_fn2(ast, f):
+            continue
+        append(prog.fns, lower_function(ast, f, t))
+    for f in fnn:
+        if not is_extern_fn2(ast, f):
+            continue
+        append(prog.ex_names, ast.nodes[f].text)
+        append(prog.ex_ptys, t.pt_tys[t.pt_idx.get(ast.nodes[f].text) - 1])
+        append(prog.ex_rets, t.sig_ret[t.sig_idx.get(ast.nodes[f].text) - 1])
+    return prog

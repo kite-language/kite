@@ -1,0 +1,148 @@
+// std.semver -- semantic versions ("1.2.3", "1.2.3-beta.1") and requirements.
+
+type Version:
+    major: int
+    minor: int
+    patch: int
+    pre: string
+    ok: bool
+
+make semver_parse(text: string) -> Version:
+    v = Version()
+    t = trim(text)
+    if starts_with(t, "v"):
+        t = substr(t, 1, len(t))
+    plus = find(t, "+")
+    if plus >= 0:
+        t = substr(t, 0, plus)
+    dash = find(t, "-")
+    if dash >= 0:
+        v.pre = substr(t, dash + 1, len(t))
+        t = substr(t, 0, dash)
+    parts = split(t, ".")
+    if len(parts) < 1 or len(parts) > 3:
+        return v
+    nums: [int] = [0, 0, 0]
+    i = 0
+    while i < len(parts):
+        p = parts[i]
+        if len(p) == 0:
+            return v
+        j = 0
+        while j < len(p):
+            if not is_digit(char_at(p, j)):
+                return v
+            j += 1
+        nums[i] = to_int(p)
+        i += 1
+    v.major = nums[0]
+    v.minor = nums[1]
+    v.patch = nums[2]
+    v.ok = true
+    return v
+
+make semver_to_string(v: Version) -> string:
+    s = str(v.major) + "." + str(v.minor) + "." + str(v.patch)
+    if len(v.pre) > 0:
+        s = s + "-" + v.pre
+    return s
+
+// Compares two pre-release strings by dot-separated identifiers (numeric < alphanumeric).
+make semver_cmp_pre(a: string, b: string) -> int:
+    if a == b:
+        return 0
+    if len(a) == 0:
+        return 1
+    if len(b) == 0:
+        return -1
+    pa = split(a, ".")
+    pb = split(b, ".")
+    i = 0
+    while i < len(pa) and i < len(pb):
+        x = pa[i]
+        y = pb[i]
+        xn = semver_all_digits(x)
+        yn = semver_all_digits(y)
+        if xn and yn:
+            if to_int(x) < to_int(y):
+                return -1
+            if to_int(x) > to_int(y):
+                return 1
+        orif xn:
+            return -1
+        orif yn:
+            return 1
+        else:
+            if x < y:
+                return -1
+            if x > y:
+                return 1
+        i += 1
+    if len(pa) < len(pb):
+        return -1
+    if len(pa) > len(pb):
+        return 1
+    return 0
+
+make semver_all_digits(s: string) -> bool:
+    if len(s) == 0:
+        return false
+    i = 0
+    while i < len(s):
+        if not is_digit(char_at(s, i)):
+            return false
+        i += 1
+    return true
+
+// -1, 0 or 1.
+make semver_compare(a: string, b: string) -> int:
+    x = semver_parse(a)
+    y = semver_parse(b)
+    if x.major != y.major:
+        if x.major < y.major:
+            return -1
+        return 1
+    if x.minor != y.minor:
+        if x.minor < y.minor:
+            return -1
+        return 1
+    if x.patch != y.patch:
+        if x.patch < y.patch:
+            return -1
+        return 1
+    return semver_cmp_pre(x.pre, y.pre)
+
+// Requirements: "*", "1.2.3" (exact), "^1.2", "~1.2.3", ">=1.0", ">1", "<=2", "<2", "=1.2.3".
+make semver_satisfies(version: string, req: string) -> bool:
+    r = trim(req)
+    if r == "*" or r == "":
+        return true
+    v = semver_parse(version)
+    if not v.ok:
+        return false
+    if starts_with(r, ">="):
+        return semver_compare(version, trim(substr(r, 2, len(r)))) >= 0
+    if starts_with(r, "<="):
+        return semver_compare(version, trim(substr(r, 2, len(r)))) <= 0
+    if starts_with(r, ">"):
+        return semver_compare(version, trim(substr(r, 1, len(r)))) > 0
+    if starts_with(r, "<"):
+        return semver_compare(version, trim(substr(r, 1, len(r)))) < 0
+    if starts_with(r, "="):
+        return semver_compare(version, trim(substr(r, 1, len(r)))) == 0
+    if starts_with(r, "^"):
+        low = semver_parse(substr(r, 1, len(r)))
+        if semver_compare(version, substr(r, 1, len(r))) < 0:
+            return false
+        if low.major > 0:
+            return v.major == low.major
+        if low.minor > 0:
+            return v.major == 0 and v.minor == low.minor
+        return v.major == 0 and v.minor == 0 and v.patch == low.patch
+    if starts_with(r, "~"):
+        low2 = semver_parse(substr(r, 1, len(r)))
+        if semver_compare(version, substr(r, 1, len(r))) < 0:
+            return false
+        return v.major == low2.major and v.minor == low2.minor
+    // a bare "1.2" means "^1.2" like Cargo
+    return semver_satisfies(version, "^" + r)

@@ -1,0 +1,8 @@
+# build outputs
+target/
+/dist/
+/stage2/
+/.kite-cache
+*.ll
+*.o
+

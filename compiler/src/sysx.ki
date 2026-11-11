@@ -1,0 +1,156 @@
+// Process / file-system helpers built on a few libc functions (`extern make`).
+
+extern make access(path: string, mode: int) -> int
+extern make isatty(fd: int) -> int
+extern make getpid() -> int
+
+// Runs a shell command; returns its exit code (-1 when it could not be run).
+make sh(cmd: string) -> int:
+    r = system(cmd)
+    if r < 0:
+        return -1
+    return (r / 256) % 256
+
+make shell_quote(s: string) -> string:
+    return "'" + replace_all(s, "'", "'\\''") + "'"
+
+make file_exists(path: string) -> bool:
+    return access(path, 0) == 0
+
+// Output of a command (stdout only), via a temporary file.
+make capture(cmd: string) -> string:
+    tmp = "/tmp/.kite-cap-" + str(getpid())
+    system(cmd + " > " + shell_quote(tmp) + " 2>/dev/null")
+    out = read_file(tmp)
+    system("rm -f " + shell_quote(tmp))
+    return out
+
+make cwd() -> string:
+    return trim(capture("pwd"))
+
+make is_dir(path: string) -> bool:
+    return sh("test -d " + shell_quote(path)) == 0
+
+make is_file(path: string) -> bool:
+    return sh("test -f " + shell_quote(path)) == 0
+
+make mkdir_all(path: string) -> bool:
+    return sh("mkdir -p " + shell_quote(path)) == 0
+
+make remove_dir_all(path: string) -> bool:
+    return sh("rm -rf " + shell_quote(path)) == 0
+
+// ---- paths -------------------------------------------------------------------------------------
+
+make path_join(a: string, b: string) -> string:
+    if len(a) == 0:
+        return b
+    if starts_with(b, "/"):
+        return b
+    if ends_with(a, "/"):
+        return a + b
+    return a + "/" + b
+
+// Collapses `.`, `..` and duplicate separators.
+make path_norm(p: string) -> string:
+    absolute = starts_with(p, "/")
+    parts: [string] = []
+    for seg in split(p, "/"):
+        if seg == "" or seg == ".":
+            continue
+        if seg == "..":
+            if len(parts) > 0 and parts[len(parts) - 1] != "..":
+                pop(parts)
+            orif not absolute:
+                append(parts, seg)
+        else:
+            append(parts, seg)
+    out = join(parts, "/")
+    if absolute:
+        return "/" + out
+    if len(out) == 0:
+        return "."
+    return out
+
+make path_parent(p: string) -> string:
+    i = len(p) - 1
+    while i > 0 and char_at(p, i) == 47:
+        i -= 1
+    while i >= 0 and char_at(p, i) != 47:
+        i -= 1
+    if i < 0:
+        return ""
+    if i == 0:
+        return "/"
+    return substr(p, 0, i)
+
+make path_file_name(p: string) -> string:
+    q = p
+    while len(q) > 1 and ends_with(q, "/"):
+        q = substr(q, 0, len(q) - 1)
+    i = len(q) - 1
+    while i >= 0 and char_at(q, i) != 47:
+        i -= 1
+    return substr(q, i + 1, len(q))
+
+// `path` relative to `root` when it lies below it, else `path` itself.
+make path_display(path: string, root: string) -> string:
+    r = root
+    if not ends_with(r, "/"):
+        r = r + "/"
+    if starts_with(path, r):
+        return substr(path, len(r), len(path))
+    return path
+
+make path_has_extension(p: string) -> bool:
+    n = path_file_name(p)
+    i = find(n, ".")
+    return i > 0
+
+make path_with_extension(p: string, ext: string) -> string:
+    n = path_file_name(p)
+    dir = substr(p, 0, len(p) - len(n))
+    i = len(n) - 1
+    while i > 0 and char_at(n, i) != 46:
+        i -= 1
+    stem = n
+    if i > 0:
+        stem = substr(n, 0, i)
+    return dir + stem + "." + ext
+
+// ---- terminal output -------------------------------------------------------------------------
+
+make use_color() -> bool:
+    return isatty(1) != 0
+
+make green_bold(s: string) -> string:
+    if use_color():
+        return chr(27) + "[1;32m" + s + chr(27) + "[0m"
+    return s
+
+make yellow_bold(s: string) -> string:
+    if use_color():
+        return chr(27) + "[1;33m" + s + chr(27) + "[0m"
+    return s
+
+make red_bold_err(s: string) -> string:
+    if isatty(2) != 0:
+        return chr(27) + "[1;31m" + s + chr(27) + "[0m"
+    return s
+
+// `{:>12}` of a label (padding is computed on the plain text, colour is added around it)
+make status_label(label: string, color: string) -> string:
+    pad = 12 - len(label)
+    spaces = ""
+    if pad > 0:
+        spaces = repeat(" ", pad)
+    if color == "yellow":
+        return spaces + yellow_bold(label)
+    return spaces + green_bold(label)
+
+make status(label: string, rest: string):
+    print(status_label(label, "green") + " " + rest)
+
+make die(msg: string):
+    eprint(red_bold_err("error:") + " " + msg + "\n")
+    exit(1)

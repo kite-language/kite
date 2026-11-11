@@ -1,0 +1,169 @@
+// std.json -- reading values out of JSON text without building a tree.
+//
+//   json_get(text, "user.name")        -> unescaped string, or the raw number/true/false/null text
+//   json_get_raw(text, "items")        -> raw JSON of the value (object/array/...), "" if absent
+//   json_array(raw)                    -> raw JSON of each element of an array
+//   json_quote("a\"b")                 -> "\"a\\\"b\""
+
+make json_skip_ws(t: string, i: int) -> int:
+    j = i
+    while j < len(t) and is_space(char_at(t, j)):
+        j += 1
+    return j
+
+// Index just after the string literal that starts at `i` (t[i] == '"').
+make json_string_end(t: string, i: int) -> int:
+    j = i + 1
+    while j < len(t):
+        c = char_at(t, j)
+        if c == 92:
+            j += 2
+        orif c == 34:
+            return j + 1
+        else:
+            j += 1
+    return len(t)
+
+// Index just after the value that starts at `i`.
+make json_value_end(t: string, i: int) -> int:
+    c = char_at(t, i)
+    if c == 34:
+        return json_string_end(t, i)
+    if c == 123 or c == 91:
+        depth = 0
+        j = i
+        while j < len(t):
+            d = char_at(t, j)
+            if d == 34:
+                j = json_string_end(t, j)
+                continue
+            if d == 123 or d == 91:
+                depth += 1
+            orif d == 125 or d == 93:
+                depth -= 1
+                if depth == 0:
+                    return j + 1
+            j += 1
+        return len(t)
+    j2 = i
+    while j2 < len(t):
+        e = char_at(t, j2)
+        if e == 44 or e == 125 or e == 93 or is_space(e):
+            return j2
+        j2 += 1
+    return len(t)
+
+make json_unescape(s: string) -> string:
+    out = ""
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c == 92 and i + 1 < len(s):
+            d = char_at(s, i + 1)
+            if d == 110:
+                out = out + "\n"
+            orif d == 116:
+                out = out + "\t"
+            orif d == 114:
+                out = out + "\r"
+            else:
+                out = out + substr(s, i + 1, i + 2)
+            i += 2
+        else:
+            out = out + substr(s, i, i + 1)
+            i += 1
+    return out
+
+// Raw JSON of member `key` of the object `t` ("" if `t` is not an object or has no such key).
+make json_member_raw(t: string, key: string) -> string:
+    i = json_skip_ws(t, 0)
+    if i >= len(t) or char_at(t, i) != 123:
+        return ""
+    i = i + 1
+    while i < len(t):
+        i = json_skip_ws(t, i)
+        if i >= len(t) or char_at(t, i) != 34:
+            return ""
+        kend = json_string_end(t, i)
+        k = json_unescape(substr(t, i + 1, kend - 1))
+        i = json_skip_ws(t, kend)
+        if i >= len(t) or char_at(t, i) != 58:
+            return ""
+        i = json_skip_ws(t, i + 1)
+        vend = json_value_end(t, i)
+        if k == key:
+            return substr(t, i, vend)
+        i = json_skip_ws(t, vend)
+        if i < len(t) and char_at(t, i) == 44:
+            i += 1
+    return ""
+
+// Raw JSON at a dotted path ("a.b.c"; array elements as numbers, "items.0.name").
+make json_get_raw(t: string, path: string) -> string:
+    cur = t
+    for part in split(path, "."):
+        if len(cur) == 0:
+            return ""
+        if json_is_index(part) and starts_with(trim(cur), "["):
+            items = json_array(cur)
+            n = to_int(part)
+            if n >= len(items):
+                return ""
+            cur = items[n]
+        else:
+            cur = json_member_raw(cur, part)
+    return cur
+
+make json_is_index(s: string) -> bool:
+    if len(s) == 0:
+        return false
+    i = 0
+    while i < len(s):
+        if not is_digit(char_at(s, i)):
+            return false
+        i += 1
+    return true
+
+make json_get(t: string, path: string) -> string:
+    raw = json_get_raw(t, path)
+    if len(raw) >= 2 and char_at(raw, 0) == 34:
+        return json_unescape(substr(raw, 1, len(raw) - 1))
+    return raw
+
+// Raw JSON of every element of the array `t`.
+make json_array(t: string) -> [string]:
+    out: [string] = []
+    i = json_skip_ws(t, 0)
+    if i >= len(t) or char_at(t, i) != 91:
+        return out
+    i += 1
+    while i < len(t):
+        i = json_skip_ws(t, i)
+        if i >= len(t) or char_at(t, i) == 93:
+            return out
+        vend = json_value_end(t, i)
+        append(out, substr(t, i, vend))
+        i = json_skip_ws(t, vend)
+        if i < len(t) and char_at(t, i) == 44:
+            i += 1
+    return out
+
+make json_quote(s: string) -> string:
+    out = "\""
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c == 34:
+            out = out + "\\\""
+        orif c == 92:
+            out = out + "\\\\"
+        orif c == 10:
+            out = out + "\\n"
+        orif c == 9:
+            out = out + "\\t"
+        orif c == 13:
+            out = out + "\\r"
+        else:
+            out = out + substr(s, i, i + 1)
+        i += 1
+    return out + "\""

@@ -1,0 +1,58 @@
+// std.args -- command-line parsing over arg()/arg_count().
+//
+//   a = args_new()
+//   if args_has_flag(a, "--verbose"): ...
+//   out = args_value(a, "--out", "a.out")      // `--out x` or `--out=x`
+//   files = args_positional(a)                 // arguments that are not flags or flag values
+
+class Args:
+    items: [string]
+
+make args_new() -> Args:
+    a = Args()
+    i = 0
+    while i < arg_count():
+        append(a.items, arg(i))
+        i += 1
+    return a
+
+make args_from(items: [string]) -> Args:
+    a = Args()
+    a.items = items
+    return a
+
+make args_count(a: Args) -> int:
+    return len(a.items)
+
+make args_has_flag(a: Args, name: string) -> bool:
+    for s in a.items:
+        if s == name:
+            return true
+    return false
+
+// Value of `--name value` or `--name=value`, or `dflt`.
+make args_value(a: Args, name: string, dflt: string) -> string:
+    i = 0
+    while i < len(a.items):
+        s = a.items[i]
+        if s == name and i + 1 < len(a.items):
+            return a.items[i + 1]
+        if starts_with(s, name + "="):
+            return substr(s, len(name) + 1, len(s))
+        i += 1
+    return dflt
+
+// Arguments that do not start with `-`, skipping the values of `value_flags` (flags taking a value).
+make args_positional(a: Args, value_flags: [string]) -> [string]:
+    out: [string] = []
+    i = 0
+    while i < len(a.items):
+        s = a.items[i]
+        if starts_with(s, "-"):
+            for f in value_flags:
+                if s == f:
+                    i += 1
+        else:
+            append(out, s)
+        i += 1
+    return out

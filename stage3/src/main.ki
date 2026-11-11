@@ -1,0 +1,177 @@
+// kitec -- the Kite compiler written in Kite.
+use rt
+use diag
+use lexer
+use ast
+use parser
+use types
+use desugar
+use prelude
+use sema
+use irdef
+use ir
+use codegen
+use cli
+
+make read_source(path: string) -> string:
+    return read_file(path)
+
+make cmd_tokens(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    emit_diags(diags, path, src)
+    for t in toks:
+        text = t.text
+        if t.kind == "IntLiteral":
+            text = norm_int(text)
+        orif t.kind == "FloatLiteral":
+            text = norm_float(text)
+        print(f"{t.kind} {dump_quote(text)} {t.ival} @{t.span.line}:{t.span.col}:{t.span.start}-{t.span.end}")
+
+make cmd_ast(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    print(dump_node(ast, root, 0))
+
+// Phases of the Rust compiler that have been ported to Kite. `build.sh` reads
+// this to decide how far the bootstrap can go; "build" appears once the whole
+// pipeline (lex -> parse -> desugar -> sema -> ir -> codegen -> driver) exists.
+make capabilities() -> [string]:
+    return ["lexer", "parser", "diagnostics", "desugar", "prelude", "sema", "ir", "codegen", "resolve", "driver", "build"]
+
+make cmd_desugar(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    print(dump_node(ast, root, 0))
+
+make cmd_inject(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        inject_prelude(ast, root)
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    print(dump_node(ast, root, 0))
+
+make cmd_sema(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        inject_prelude(ast, root)
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    ok = sema_program(ast, root, diags, true, org_none(), org_none(), org_none())
+    if not ok:
+        for d in diags.items:
+            sp = d.span
+            print("DIAG " + d.code + " @" + str(sp.line) + ":" + str(sp.col) + ":" + str(sp.start) + "-" + str(sp.end) + " " + d.title + " | " + d.label + " | " + d.help)
+        return
+    // the typed program has no imports
+    no_imports: [int] = []
+    ni = ast.nodes[root].kids[0]
+    ast.nodes[ni].kids = no_imports
+    print(dump_node(ast, root, 0))
+
+make cmd_ir(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        inject_prelude(ast, root)
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    ok = sema_program(ast, root, diags, true, org_none(), org_none(), org_none())
+    if not ok:
+        emit_diags(diags, path, src)
+        exit(1)
+    prog = lower_program(ast, root)
+    print("functions: " + str(len(prog.fns)))
+
+make cmd_ll(path: string):
+    src = read_source(path)
+    diags = Diags()
+    toks = lex(src, diags)
+    ast = Ast()
+    root = -1
+    if not diags.had_errors():
+        root = parse_tokens(toks, ast, diags)
+    if not diags.had_errors():
+        inject_prelude(ast, root)
+        desugar_program(ast, root, diags)
+    if diags.had_errors():
+        emit_diags(diags, path, src)
+        exit(1)
+    ok = sema_program(ast, root, diags, true, org_none(), org_none(), org_none())
+    if not ok:
+        emit_diags(diags, path, src)
+        exit(1)
+    prog = lower_program(ast, root)
+    text = emit_module(prog, "", false)
+    write_file("/dev/stdout", text)
+
+make is_dev_cmd(c: string) -> bool:
+    return c == "tokens" or c == "ast" or c == "desugar" or c == "inject" or c == "sema" or c == "ir" or c == "ll"
+
+make main():
+    if arg_count() == 1 and arg(0) == "--capabilities":
+        for c in capabilities():
+            print(c)
+        exit(0)
+    if arg_count() >= 2 and is_dev_cmd(arg(0)):
+        cmd = arg(0)
+        path = arg(1)
+        if cmd == "tokens":
+            cmd_tokens(path)
+        orif cmd == "ast":
+            cmd_ast(path)
+        orif cmd == "desugar":
+            cmd_desugar(path)
+        orif cmd == "inject":
+            cmd_inject(path)
+        orif cmd == "sema":
+            cmd_sema(path)
+        orif cmd == "ir":
+            cmd_ir(path)
+        else:
+            cmd_ll(path)
+        exit(0)
+    cli_main()

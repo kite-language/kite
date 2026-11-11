@@ -1,0 +1,215 @@
+// Prelude injection (port of src/prelude.rs): library code written in Kite (`core.ki`, and the
+// `StrMap_<T>` template `map.tpl`) is merged into a program on demand -- only what the program
+// references is compiled in.
+//
+// The Rust compiler decides inclusion with `format!("{:?}", program).contains("\"name\"")`, i.e.
+// "does `name` occur as a whole string value anywhere in the AST?". Here that text is a set of
+// every string value of the AST (names, string literals, identifier parts of type texts); numbers,
+// operators and flags are not strings and are left out.
+
+use diag
+use ast
+use lexer
+use parser
+use prelude_data
+
+// Every string value seen so far. `order` keeps (when `track` is on) the strings that mention
+// `StrMap_`, in order of appearance, for the instance scan.
+class Strs:
+    set: StrMap_int
+    order: [string]
+    track: bool
+
+// Prelude items waiting to be pulled in (ids in the main arena, not attached to the program).
+class Pool:
+    fns: [int]
+    structs: [int]
+
+make add_str(ss: Strs, s: string):
+    if ss.track and find(s, "StrMap_") >= 0:
+        append(ss.order, s)
+    ss.set.set(s, 1)
+
+// The identifiers of a type text (`[Foo]`, `ptr<Foo>`, `(int, Foo)`): the named types it mentions.
+make type_idents(text: string, ss: Strs):
+    i = 0
+    while i < len(text):
+        c = char_at(text, i)
+        if is_alpha(c):
+            j = i
+            while j < len(text) and is_alnum(char_at(text, j)):
+                j += 1
+            word = substr(text, i, j)
+            if word != "int" and word != "float" and word != "bool" and word != "string":
+                add_str(ss, word)
+            i = j
+        else:
+            i += 1
+
+// Collects the string values below node `id`, in the order of the Rust `Debug` dump.
+make collect(ast: Ast, id: int, ss: Strs) -> int:
+    if id < 0:
+        return 0
+    n = ast.nodes[id]
+    k = n.kind
+    kids = n.kids
+    if k == "Type":
+        type_idents(n.text, ss)
+        return 0
+    has_text = not (k == "Int" or k == "Float" or k == "Bool" or k == "Unary" or k == "Binary" or k == "Flags" or k == "Null")
+    if k == "Struct" and len(kids) == 2:
+        // Rust order: name, fields, base
+        add_str(ss, n.text)
+        collect(ast, kids[1], ss)
+        collect(ast, kids[0], ss)
+        return 0
+    // the text comes after the first child in these (receiver / base / try block come first)
+    after = k == "LField" or k == "MethodCall" or k == "Try" or k == "Field"
+    if k == "Field" and len(kids) > 0 and kids[0] >= 0 and ast.nodes[kids[0]].kind == "Type":
+        after = false
+    i = 0
+    if after and len(kids) > 0:
+        collect(ast, kids[0], ss)
+        if has_text:
+            add_str(ss, n.text)
+        i = 1
+    orif has_text:
+        add_str(ss, n.text)
+    while i < len(kids):
+        collect(ast, kids[i], ss)
+        i += 1
+    return 0
+
+// Deep copy of a subtree of `src` into `dst` (spans preserved); returns the new id.
+make import_tree(dst: Ast, src: Ast, id: int) -> int:
+    if id < 0:
+        return -1
+    n = src.nodes[id]
+    kids: [int] = []
+    for k in n.kids:
+        append(kids, import_tree(dst, src, k))
+    return dst.addl(n.kind, n.text, n.span, kids)
+
+// Parses `src` and imports its functions (and, if asked, its structs) into `ast`'s arena,
+// recording them in `pool`. A source that does not parse is silently skipped, as in Rust.
+make load_source(src: string, ast: Ast, pool: Pool, want_structs: bool) -> int:
+    diags = Diags()
+    toks = lex(src, diags)
+    if diags.had_errors():
+        return 0
+    tmp = Ast()
+    r = parse_tokens(toks, tmp, diags)
+    if diags.had_errors() or r < 0:
+        return 0
+    fl = tmp.nodes[r].kids[3]
+    iter_1 = tmp.nodes[fl].kids
+    for f in iter_1:
+        append(pool.fns, import_tree(ast, tmp, f))
+    if want_structs:
+        sl = tmp.nodes[r].kids[1]
+        iter_2 = tmp.nodes[sl].kids
+        for s in iter_2:
+            append(pool.structs, import_tree(ast, tmp, s))
+    return 0
+
+// Every `StrMap_<T>` mentioned in `strs`, as `StrMap_T`, in order of first appearance.
+make map_instances(strs: [string]) -> [string]:
+    found: [string] = []
+    for text in strs:
+        pos = 0
+        while true:
+            i = find_from(text, "StrMap_", pos)
+            if i < 0:
+                break
+            j = i + 7
+            while j < len(text) and is_alnum(char_at(text, j)):
+                j += 1
+            ty = substr(text, i + 7, j)
+            // strip a trailing `__method` part (class method names)
+            u = find(ty, "__")
+            if u >= 0:
+                ty = substr(ty, 0, u)
+            if len(ty) > 0:
+                name = "StrMap_" + ty
+                if str_index(found, name) < 0:
+                    append(found, name)
+            pos = j
+    return found
+
+make map_source(inst: string) -> string:
+    ty = substr(inst, 7, len(inst))
+    zero = ty + "()"
+    if ty == "int":
+        zero = "0"
+    orif ty == "string":
+        zero = "\"\""
+    orif ty == "float":
+        zero = "0.0"
+    orif ty == "bool":
+        zero = "false"
+    src = replace_all(prelude_map_tpl(), "@N@", inst)
+    src = replace_all(src, "@V@", ty)
+    return replace_all(src, "@Z@", zero)
+
+// Index of `name` in `xs`, or -1.
+make str_index(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+// Adds the prelude items the program rooted at `root` references (directly or through other
+// prelude items), in place. User definitions with the same name always win.
+make inject_prelude(ast: Ast, root: int):
+    ss = Strs()
+    ss.set = StrMap_int()
+    ss.track = true
+    collect(ast, root, ss)
+    ss.track = false
+
+    pool = Pool()
+    load_source(prelude_core(), ast, pool, false)
+    for inst in map_instances(ss.order):
+        load_source(map_source(inst), ast, pool, true)
+
+    sl = ast.nodes[root].kids[1]
+    fl = ast.nodes[root].kids[3]
+    user_fns = StrMap_int()
+    iter_3 = ast.nodes[fl].kids
+    for f in iter_3:
+        user_fns.set(ast.nodes[f].text, 1)
+    user_structs = StrMap_int()
+    iter_4 = ast.nodes[sl].kids
+    for s in iter_4:
+        user_structs.set(ast.nodes[s].text, 1)
+    taken_fn = StrMap_int()
+    taken_struct = StrMap_int()
+
+    changed = true
+    while changed:
+        changed = false
+        for f in pool.fns:
+            name = ast.nodes[f].text
+            if taken_fn.has(name) or user_fns.has(name):
+                continue
+            needle = name
+            u = find(name, "__")
+            if u >= 0:
+                // class method: pulled in together with its class
+                needle = substr(name, 0, u)
+            if ss.set.has(needle):
+                append(ast.nodes[fl].kids, f)
+                collect(ast, f, ss)
+                taken_fn.set(name, 1)
+                changed = true
+        for s in pool.structs:
+            name = ast.nodes[s].text
+            if taken_struct.has(name) or user_structs.has(name):
+                continue
+            if ss.set.has(name):
+                append(ast.nodes[sl].kids, s)
+                collect(ast, s, ss)
+                taken_struct.set(name, 1)
+                changed = true

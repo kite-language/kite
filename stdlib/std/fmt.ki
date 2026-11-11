@@ -1,0 +1,83 @@
+// std.fmt -- padding and number formatting.
+
+make fmt_pad_left(s: string, width: int) -> string:
+    if len(s) >= width:
+        return s
+    return repeat(" ", width - len(s)) + s
+
+make fmt_pad_right(s: string, width: int) -> string:
+    if len(s) >= width:
+        return s
+    return s + repeat(" ", width - len(s))
+
+make fmt_zero_pad(n: int, width: int) -> string:
+    s = str(n)
+    neg = false
+    if n < 0:
+        neg = true
+        s = substr(s, 1, len(s))
+    while len(s) < width:
+        s = "0" + s
+    if neg:
+        return "-" + s
+    return s
+
+make fmt_radix(n: int, base: int, upper: bool) -> string:
+    if n == 0:
+        return "0"
+    digits = "0123456789abcdef"
+    if upper:
+        digits = "0123456789ABCDEF"
+    v = n
+    neg = false
+    if v < 0:
+        neg = true
+        v = 0 - v
+    out = ""
+    while v > 0:
+        d = v % base
+        out = substr(digits, d, d + 1) + out
+        v = v / base
+    if neg:
+        return "-" + out
+    return out
+
+make fmt_hex(n: int) -> string:
+    return fmt_radix(n, 16, false)
+
+make fmt_bin(n: int) -> string:
+    return fmt_radix(n, 2, false)
+
+// 1234567 -> "1,234,567"
+make fmt_thousands(n: int) -> string:
+    s = str(n)
+    neg = false
+    if n < 0:
+        neg = true
+        s = substr(s, 1, len(s))
+    out = ""
+    i = len(s)
+    while i > 3:
+        out = "," + substr(s, i - 3, i) + out
+        i -= 3
+    out = substr(s, 0, i) + out
+    if neg:
+        return "-" + out
+    return out
+
+// A value stored in thousandths, printed with 3 decimals: 1500 -> "1.500".
+make fmt_milli(v: int) -> string:
+    neg = v < 0
+    a = v
+    if neg:
+        a = 0 - v
+    frac = fmt_zero_pad(a % 1000, 3)
+    out = str(a / 1000) + "." + frac
+    if neg:
+        return "-" + out
+    return out
+
+make fmt_bool(b: bool) -> string:
+    if b:
+        return "true"
+    return "false"

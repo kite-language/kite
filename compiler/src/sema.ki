@@ -1,0 +1,1046 @@
+// Semantic analysis (port of src/sema.rs): name resolution, type inference and checking over the
+// desugared AST. Types are textual (see types.ki); "" stands for `None` wherever Rust has an
+// Option<TypeName>. On success the AST is the typed program (inferred return types are written
+// back into the functions).
+
+use diag
+use ast
+use types
+
+type SigT:
+    params: [string]
+    ret: string
+    has_ret: bool
+
+type StructT:
+    names: [string]
+    types: [string]
+
+type EnumT:
+    names: [string]
+
+make op_symbol(op: string) -> string:
+    if op == "Add":
+        return "+"
+    orif op == "Sub":
+        return "-"
+    orif op == "Mul":
+        return "*"
+    orif op == "Div":
+        return "/"
+    orif op == "Mod":
+        return "%"
+    orif op == "Eq":
+        return "=="
+    orif op == "NotEq":
+        return "!="
+    orif op == "Lt":
+        return "<"
+    orif op == "Gt":
+        return ">"
+    orif op == "LtEq":
+        return "<="
+    orif op == "GtEq":
+        return ">="
+    orif op == "And":
+        return "and"
+    orif op == "Or":
+        return "or"
+    orif op == "BitAnd":
+        return "&"
+    orif op == "BitOr":
+        return "|"
+    orif op == "BitXor":
+        return "^"
+    orif op == "Shl":
+        return "<<"
+    return ">>"
+
+make is_scalar(t: string) -> bool:
+    return ty_is_scalar_name(t) or ty_is_enum(t) or ty_is_ptr(t)
+
+make is_first_class_value(t: string) -> bool:
+    return is_scalar(t) or t == "()"
+
+make is_returnable(t: string) -> bool:
+    return is_first_class_value(t) or ty_is_list(t) or ty_is_tuple(t) or ty_is_dict(t) or ty_is_named(t)
+
+make is_struct_ty(t: string) -> bool:
+    return ty_is_named(t)
+
+class Sema:
+    ast: Ast
+    diags: Diags
+    pre: Diags
+    prog: int
+    // tables
+    sigs: [SigT]
+    sig_idx: StrMap_int
+    structs: [StructT]
+    struct_idx: StrMap_int
+    enums: [EnumT]
+    enum_idx: StrMap_int
+    org_idx: StrMap_int
+    org_files: [string]
+    org_srcs: [string]
+    // scopes: parallel lists plus the start index of every open scope
+    var_names: [string]
+    var_types: [string]
+    marks: [int]
+    cur_fn: string
+    cur_ret: string
+    cur_has_ret: bool
+    ret_blocked: bool
+    loop_depth: int
+
+    make err(self, code: string, msg: string, span: Span):
+        self.diags.add(code, msg, span)
+
+    make perr(self, code: string, msg: string, span: Span):
+        self.pre.add(code, msg, span)
+
+    make tag_from(self, d: Diags, before: int, name: string):
+        if not self.org_idx.has(name):
+            return
+        oi = self.org_idx.get(name)
+        i = before
+        while i < len(d.items):
+            if not d.items[i].has_file:
+                d.items[i].file = self.org_files[oi]
+                d.items[i].source = self.org_srcs[oi]
+                d.items[i].has_file = true
+            i += 1
+
+    // ---- scopes ---------------------------------------------------------------------------
+    make push_scope(self):
+        append(self.marks, len(self.var_names))
+
+    make pop_scope(self):
+        m = pop(self.marks)
+        while len(self.var_names) > m:
+            pop(self.var_names)
+            pop(self.var_types)
+
+    make declare(self, name: string, t: string):
+        append(self.var_names, name)
+        append(self.var_types, t)
+
+    make lookup(self, name: string) -> string:
+        i = len(self.var_names) - 1
+        while i >= 0:
+            if self.var_names[i] == name:
+                return self.var_types[i]
+            i -= 1
+        return ""
+
+    // ---- table helpers ---------------------------------------------------------------------
+    make struct_of(self, name: string) -> int:
+        if self.struct_idx.has(name):
+            return self.struct_idx.get(name) - 1
+        return -1
+
+    make has_struct(self, name: string) -> bool:
+        return self.struct_idx.has(name)
+
+    make field_ty(self, si: int, field: string) -> string:
+        i = 0
+        while i < len(self.structs[si].names):
+            if self.structs[si].names[i] == field:
+                return self.structs[si].types[i]
+            i += 1
+        return ""
+
+    make is_subtype(self, sub: string, sup: string) -> bool:
+        if not ty_is_named(sub) or not ty_is_named(sup):
+            return false
+        a = self.struct_of(sub)
+        b = self.struct_of(sup)
+        if a < 0 or b < 0:
+            return false
+        nb = len(self.structs[b].names)
+        if nb == 0 or len(self.structs[a].names) < nb:
+            return false
+        i = 0
+        while i < nb:
+            if self.structs[a].names[i] != self.structs[b].names[i] or self.structs[a].types[i] != self.structs[b].types[i]:
+                return false
+            i += 1
+        return true
+
+    // ---- functions -------------------------------------------------------------------------
+    make lock_return_type(self, t: string):
+        if not self.cur_has_ret:
+            self.cur_ret = t
+            self.cur_has_ret = true
+            si = self.sig_idx.get(self.cur_fn) - 1
+            self.sigs[si].ret = t
+            self.sigs[si].has_ret = true
+
+    make check_function(self, f: int):
+        fk = self.ast.nodes[f].kids
+        fname = self.ast.nodes[f].text
+        if contains_str(self.ast.nodes[fk[2]].text, "extern"):
+            return
+        self.push_scope()
+        self.cur_fn = fname
+        si = self.sig_idx.get(fname) - 1
+        self.cur_has_ret = self.sigs[si].has_ret
+        self.cur_ret = self.sigs[si].ret
+        self.ret_blocked = false
+        pl = self.ast.nodes[fk[0]].kids
+        for p in pl:
+            self.declare(self.ast.nodes[p].text, self.ast.nodes[self.ast.nodes[p].kids[0]].text)
+        falls = self.check_block(fk[3])
+        if not self.cur_has_ret:
+            if self.ret_blocked:
+                self.err("E0060", "cannot infer the return type of `" + fname + "` -- no `return` statement resolves without depending on its own return type; add an explicit `-> Type`", self.ast.nodes[f].span)
+            self.lock_return_type("()")
+        rt = self.cur_ret
+        if falls and rt != "()":
+            self.err("E0030", "function `" + fname + "` is declared to return `" + ty_disp(rt) + "` but does not return a value on all paths", self.ast.nodes[f].span)
+        self.pop_scope()
+
+    make check_block(self, b: int) -> bool:
+        self.push_scope()
+        falls = true
+        sl = self.ast.nodes[b].kids
+        for s in sl:
+            falls = self.check_stmt(s)
+        self.pop_scope()
+        return falls
+
+    make expect_bool(self, t: string, span: Span):
+        if t != "bool":
+            self.err("E0024", "expected `bool` condition, found `" + ty_disp(t) + "`", span)
+
+    make is_deref(self, e: int) -> bool:
+        return self.ast.nodes[e].kind == "Unary" and self.ast.nodes[e].text == "Deref"
+
+    make check_stmt(self, s: int) -> bool:
+        n = self.ast.nodes[s]
+        k = n.kind
+        kids = n.kids
+        span = n.span
+        if k == "Unpack":
+            self.err("E0101", "internal: unpacking was not desugared", span)
+            return false
+        if k == "Match":
+            self.err("E0107", "internal: `match` was not desugared", span)
+            return false
+        if k == "Assign":
+            ann = ""
+            if kids[1] >= 0:
+                ann = self.ast.nodes[kids[1]].text
+            self.check_assign(kids[0], ann, kids[2], span)
+            return true
+        if k == "ExprStmt":
+            self.check_expr(kids[0])
+            return true
+        if k == "Return":
+            self.check_return(kids[0], span)
+            return false
+        if k == "Break":
+            if self.loop_depth == 0:
+                self.err("E0040", "`break` outside of a loop", span)
+            return false
+        if k == "Continue":
+            if self.loop_depth == 0:
+                self.err("E0041", "`continue` outside of a loop", span)
+            return false
+        if k == "If":
+            cty = self.check_expr(kids[0])
+            self.expect_bool(cty, self.ast.nodes[kids[0]].span)
+            any_falls = self.check_block(kids[1])
+            ol = self.ast.nodes[kids[2]].kids
+            for o in ol:
+                ok = self.ast.nodes[o].kids
+                oty = self.check_expr(ok[0])
+                self.expect_bool(oty, self.ast.nodes[ok[0]].span)
+                if self.check_block(ok[1]):
+                    any_falls = true
+            if kids[3] >= 0:
+                if self.check_block(kids[3]):
+                    any_falls = true
+            else:
+                any_falls = true
+            return any_falls
+        if k == "Until" or k == "While":
+            cty2 = self.check_expr(kids[0])
+            self.expect_bool(cty2, self.ast.nodes[kids[0]].span)
+            self.loop_depth += 1
+            self.check_block(kids[1])
+            self.loop_depth -= 1
+            return true
+        if k == "Infinit":
+            self.loop_depth += 1
+            self.check_block(kids[0])
+            self.loop_depth -= 1
+            return true
+        if k == "ForRange":
+            sty = self.check_expr(kids[0])
+            ety = self.check_expr(kids[1])
+            if sty != "int":
+                self.err("E0042", "`for` range start must be `int`, found `" + ty_disp(sty) + "`", self.ast.nodes[kids[0]].span)
+            if ety != "int":
+                self.err("E0042", "`for` range end must be `int`, found `" + ty_disp(ety) + "`", self.ast.nodes[kids[1]].span)
+            self.push_scope()
+            self.declare(n.text, "int")
+            self.loop_depth += 1
+            self.check_block(kids[2])
+            self.loop_depth -= 1
+            self.pop_scope()
+            return true
+        if k == "ForEach":
+            ity = self.check_expr(kids[0])
+            ety2 = "int"
+            if ty_is_list(ity):
+                ety2 = ty_list_elem(ity)
+            else:
+                self.err("E0043", "`for ... in` requires a list, found `" + ty_disp(ity) + "`", self.ast.nodes[kids[0]].span)
+            self.push_scope()
+            self.declare(n.text, ety2)
+            self.loop_depth += 1
+            self.check_block(kids[1])
+            self.loop_depth -= 1
+            self.pop_scope()
+            return true
+        if k == "Try":
+            tfalls = self.check_block(kids[0])
+            if kids[1] >= 0:
+                self.push_scope()
+                if len(n.text) > 0:
+                    self.declare(n.text, "string")
+                self.check_block(kids[1])
+                self.pop_scope()
+            if kids[2] >= 0:
+                self.check_block(kids[2])
+            return tfalls
+        // Thread
+        self.check_block(kids[0])
+        return true
+
+    make check_assign(self, target: int, ann: string, value: int, span: Span):
+        tn = self.ast.nodes[target]
+        tk = tn.kind
+        tkids = tn.kids
+        if tk == "LIdent":
+            name = tn.text
+            expected = ann
+            if len(ann) == 0:
+                expected = self.lookup(name)
+            vty = self.check_expr_expecting(value, expected)
+            if len(ann) > 0 and ann != vty:
+                self.err("E0020", "type mismatch in `" + name + "`: declared `" + ty_disp(ann) + "`, found `" + ty_disp(vty) + "`", span)
+            existing = self.lookup(name)
+            if len(existing) > 0:
+                if existing != vty:
+                    self.err("E0023", "type mismatch: `" + name + "` is `" + ty_disp(existing) + "`, found `" + ty_disp(vty) + "`", span)
+            else:
+                final_ty = vty
+                if len(ann) > 0:
+                    final_ty = ann
+                self.declare(name, final_ty)
+            return
+        if tk == "LField":
+            field = tn.text
+            fspan = tn.span
+            bty = self.check_expr(tkids[0])
+            exp_field = ""
+            if self.ast.nodes[value].kind == "Null":
+                exp_field = self.resolve_field_quiet(bty, field)
+            vty2 = self.check_expr_expecting(value, exp_field)
+            if self.is_deref(tkids[0]):
+                self.err("E0099", "assigning a field through a dereferenced pointer isn't supported yet -- write `s = *p` first, then assign `s.field = ...` (this copies the struct rather than mutating through `p`, see docs/pointers.md)", fspan)
+                return
+            fty = self.resolve_field(bty, field, fspan)
+            if len(fty) > 0 and fty != vty2:
+                self.err("E0044", "type mismatch: field `" + field + "` is `" + ty_disp(fty) + "`, found `" + ty_disp(vty2) + "`", fspan)
+            return
+        if tk == "LIndex":
+            ispan = tn.span
+            vty3 = self.check_expr(value)
+            bty3 = self.check_expr(tkids[0])
+            if self.is_deref(tkids[0]):
+                self.err("E0099", "assigning an element through a dereferenced pointer isn't supported yet -- write `s = *p` first, then assign `s[i] = ...`", ispan)
+                return
+            elem = self.check_index(bty3, tkids[1], ispan)
+            if len(elem) > 0 and elem != vty3:
+                self.err("E0045", "type mismatch: element is `" + ty_disp(elem) + "`, found `" + ty_disp(vty3) + "`", ispan)
+            return
+        // LDeref
+        dspan = tn.span
+        pty = self.check_expr(tkids[0])
+        pointee = ""
+        if ty_is_ptr(pty):
+            pointee = ty_ptr_inner(pty)
+        else:
+            self.err("E0089", "cannot dereference `" + ty_disp(pty) + "`: not a pointer", dspan)
+        vty4 = self.check_expr_expecting(value, pointee)
+        if len(pointee) > 0 and pointee != vty4:
+            self.err("E0090", "type mismatch: writing `" + ty_disp(vty4) + "` through a `ptr<" + ty_disp(pointee) + ">`", dspan)
+
+    make resolve_field_quiet(self, bty: string, field: string) -> string:
+        t = bty
+        if ty_is_ptr(t):
+            t = ty_ptr_inner(t)
+        if not ty_is_named(t):
+            return ""
+        si = self.struct_of(t)
+        if si < 0:
+            return ""
+        return self.field_ty(si, field)
+
+    make check_expr_expecting(self, e: int, expected: string) -> string:
+        if self.ast.nodes[e].kind == "Null":
+            span = self.ast.nodes[e].span
+            if len(expected) > 0:
+                if ty_is_ptr(expected):
+                    return expected
+                self.err("E0091", "`null` is not a valid `" + ty_disp(expected) + "`", span)
+                return "int"
+            self.err("E0091", "cannot infer the pointer type of `null` here -- annotate it, e.g. `p: ptr<int> = null`", span)
+            return "int"
+        return self.check_expr(e)
+
+    make check_return(self, value: int, span: Span):
+        expected_ret = ""
+        if self.cur_has_ret:
+            expected_ret = self.cur_ret
+        actual = "()"
+        if value >= 0:
+            actual = self.check_expr_expecting(value, expected_ret)
+        if self.cur_has_ret:
+            if actual != self.cur_ret:
+                self.err("E0031", "mismatched return type: expected `" + ty_disp(self.cur_ret) + "`, found `" + ty_disp(actual) + "`", span)
+        else:
+            if self.is_unresolved_marker(value):
+                self.ret_blocked = true
+            orif not is_returnable(actual):
+                self.err("E0039", "function `" + self.cur_fn + "` may not return `" + ty_disp(actual) + "` -- functions may only return `int`/`float`/`bool`/`string`/nothing in Kite v0.1", span)
+                self.lock_return_type("()")
+            else:
+                self.lock_return_type(actual)
+
+    make is_unresolved_marker(self, value: int) -> bool:
+        if value < 0:
+            return false
+        return self.ast.nodes[value].kind == "Call" and self.ast.nodes[value].text == self.cur_fn and not self.cur_has_ret
+
+    // ---- expressions -----------------------------------------------------------------------
+    make check_expr(self, e: int) -> string:
+        n = self.ast.nodes[e]
+        k = n.kind
+        kids = n.kids
+        span = n.span
+        if k == "MethodCall":
+            self.err("E0103", "cannot resolve method `" + n.text + "`: the receiver's class is unknown here", span)
+            return "()"
+        if k == "EmptyList":
+            return ty_list_of(self.ast.nodes[kids[0]].text)
+        if k == "Named":
+            self.err("E0102", "named arguments are only allowed in calls to Kite functions", span)
+            return self.check_expr(kids[0])
+        if k == "Int":
+            return "int"
+        if k == "Float":
+            return "float"
+        if k == "Bool":
+            return "bool"
+        if k == "Str":
+            return "string"
+        if k == "Ident":
+            t = self.lookup(n.text)
+            if len(t) > 0:
+                return t
+            self.err("E0021", "cannot find variable `" + n.text + "` in this scope", span)
+            return "int"
+        if k == "ListLit":
+            return self.check_list_literal(kids, span)
+        if k == "TupleLit":
+            tys: [string] = []
+            for it in kids:
+                append(tys, self.check_expr(it))
+            i = 0
+            while i < len(kids):
+                if not is_scalar(tys[i]):
+                    self.err("E0047c", "tuple elements must be `int`, `float`, `bool`, or `string` in Kite v0.1, found `" + ty_disp(tys[i]) + "` (nested collections are planned for v0.2)", self.ast.nodes[kids[i]].span)
+                i += 1
+            return "(" + join(tys, ", ") + ")"
+        if k == "DictLit":
+            return self.check_dict_literal(kids, span)
+        if k == "Index":
+            bty = self.check_expr(kids[0])
+            r = self.check_index(bty, kids[1], span)
+            if len(r) == 0:
+                return "int"
+            return r
+        if k == "Field":
+            field = n.text
+            base = kids[0]
+            if self.ast.nodes[base].kind == "Ident":
+                bname = self.ast.nodes[base].text
+                if self.enum_idx.has(bname):
+                    ei = self.enum_idx.get(bname) - 1
+                    if index_of_str(self.enums[ei].names, field) < 0:
+                        self.err("E0072", "enum `" + bname + "` has no variant `" + field + "`", span)
+                    return "@" + bname
+            bty2 = self.check_expr(base)
+            if self.is_deref(base):
+                self.err("E0099", "reading a field through a dereferenced pointer isn't supported yet -- write `s = *p` first, then use `s.field` (this copies the struct rather than reading through `p`, see docs/pointers.md)", span)
+                return "int"
+            r2 = self.resolve_field(bty2, field, span)
+            if len(r2) == 0:
+                return "int"
+            return r2
+        if k == "Unary":
+            return self.check_unary(n.text, kids[0], span)
+        if k == "Binary":
+            return self.check_binary(n.text, kids[0], kids[1], span)
+        if k == "Call":
+            return self.check_call(n.text, kids, span)
+        if k == "Await":
+            return self.check_expr(kids[0])
+        if k == "Null":
+            self.err("E0091", "cannot infer the pointer type of `null` here -- annotate it, e.g. `p: ptr<int> = null`", span)
+            return "int"
+        if k == "Alloc":
+            return self.check_alloc(self.ast.nodes[kids[0]].text, span)
+        // AllocN
+        cty = self.check_expr(kids[1])
+        if cty != "int":
+            self.err("E0093", "`alloc_n` expects an `int` count, found `" + ty_disp(cty) + "`", self.ast.nodes[kids[1]].span)
+        return self.check_alloc(self.ast.nodes[kids[0]].text, span)
+
+    make check_alloc(self, t: string, span: Span) -> string:
+        if ty_is_ptr(t):
+            self.err("E0092", "`alloc`/`alloc_n` of a `ptr<...>` isn't supported yet -- pointers to pointers aren't implemented", span)
+        orif ty_is_list(t) or ty_is_tuple(t) or ty_is_dict(t):
+            self.err("E0092", "`alloc`/`alloc_n` of `" + ty_disp(t) + "` isn't supported yet -- only scalar types and structs can be allocated", span)
+        orif ty_is_named(t) and not self.has_struct(t):
+            self.err("E0058", "unknown type `" + t + "`", span)
+        return ty_ptr_of(t)
+
+    make check_list_literal(self, items: [int], span: Span) -> string:
+        if len(items) == 0:
+            self.err("E0046", "empty list literals need a type; write at least one element (e.g. `[0]` then remove it with future list ops)", span)
+            return "[int]"
+        first = self.check_expr(items[0])
+        if not is_scalar(first) and not ty_is_named(first):
+            self.err("E0047b", "list elements must be `int`, `float`, `bool`, or `string` in Kite v0.1, found `" + ty_disp(first) + "` (nested collections are planned for v0.2)", self.ast.nodes[items[0]].span)
+        i = 1
+        while i < len(items):
+            t = self.check_expr(items[i])
+            if t != first:
+                self.err("E0047", "list elements must share one type: found `" + ty_disp(first) + "` and `" + ty_disp(t) + "`", self.ast.nodes[items[i]].span)
+            i += 1
+        return ty_list_of(first)
+
+    make check_dict_literal(self, entries: [int], span: Span) -> string:
+        parts: [string] = []
+        seen: [string] = []
+        for en in entries:
+            key = self.ast.nodes[en].text
+            if index_of_str(seen, key) >= 0:
+                self.err("E0048", "duplicate dictionary key \"" + key + "\"", span)
+            append(seen, key)
+            val = self.ast.nodes[en].kids[0]
+            t = self.check_expr(val)
+            if not is_scalar(t):
+                self.err("E0047d", "dictionary values must be `int`, `float`, `bool`, or `string` in Kite v0.1, found `" + ty_disp(t) + "` (nested collections are planned for v0.2)", self.ast.nodes[val].span)
+            append(parts, dump_quote(key) + ": " + t)
+        return "{" + join(parts, ", ") + "}"
+
+    // Element type of `base_ty[index]`, or "" when an error was reported.
+    make check_index(self, base_ty: string, index: int, span: Span) -> string:
+        ity = self.check_expr(index)
+        if ity != "int":
+            if ty_is_dict(base_ty) and ity == "string":
+                ity = ity
+            else:
+                self.err("E0049", "index must be `int`, found `" + ty_disp(ity) + "`", self.ast.nodes[index].span)
+        ik = self.ast.nodes[index].kind
+        if ty_is_list(base_ty):
+            return ty_list_elem(base_ty)
+        if ty_is_tuple(base_ty):
+            elems = ty_tuple_elems(base_ty)
+            if ik == "Int":
+                v = to_int(self.ast.nodes[index].text)
+                if v < 0 or v >= len(elems):
+                    self.err("E0051", "index " + norm_int(self.ast.nodes[index].text) + " is out of range for a tuple of size " + str(len(elems)) + " (tuples are 0-indexed)", self.ast.nodes[index].span)
+                    return ""
+                return elems[v]
+            self.err("E0052", "tuple index must be an integer literal (tuple elements can have different types)", self.ast.nodes[index].span)
+            return ""
+        if ty_is_dict(base_ty):
+            if ik == "Str":
+                df = ty_dict_fields(base_ty)
+                q = dump_quote(self.ast.nodes[index].text)
+                i = 0
+                while i < len(df.keys):
+                    if df.keys[i] == q:
+                        return df.vals[i]
+                    i += 1
+                self.err("E0053", "dictionary has no key \"" + self.ast.nodes[index].text + "\"", self.ast.nodes[index].span)
+                return ""
+            self.err("E0054", "dictionary index must be a string literal key", self.ast.nodes[index].span)
+            return ""
+        self.err("E0055", "cannot index into a value of type `" + ty_disp(base_ty) + "`", span)
+        return ""
+
+    make resolve_field(self, base_ty: string, field: string, span: Span) -> string:
+        if ty_is_ptr(base_ty) and ty_is_named(ty_ptr_inner(base_ty)):
+            return self.resolve_field(ty_ptr_inner(base_ty), field, span)
+        if ty_is_named(base_ty):
+            si = self.struct_of(base_ty)
+            if si < 0:
+                self.err("E0057", "unknown struct type `" + base_ty + "`", span)
+                return ""
+            ft = self.field_ty(si, field)
+            if len(ft) == 0:
+                self.err("E0056", "struct `" + base_ty + "` has no field `" + field + "`", span)
+            return ft
+        self.err("E0058", "cannot access field `" + field + "` on a value of type `" + ty_disp(base_ty) + "`", span)
+        return ""
+
+    make check_unary(self, op: string, e: int, span: Span) -> string:
+        if op == "AddrOf":
+            if self.ast.nodes[e].kind != "Ident":
+                self.err("E0094", "`&` can only take the address of a local variable, e.g. `&x`", span)
+                return "ptr<int>"
+            name = self.ast.nodes[e].text
+            t = self.lookup(name)
+            if len(t) == 0:
+                self.err("E0021", "cannot find variable `" + name + "` in this scope", self.ast.nodes[e].span)
+                t = "int"
+            if not is_scalar(t):
+                self.err("E0095", "cannot take the address of a `" + ty_disp(t) + "` yet -- only `int`/`float`/`bool`/`string` locals are addressable in v0.1.3", span)
+            return ty_ptr_of(t)
+        ty = self.check_expr(e)
+        if op == "Neg":
+            if ty != "int" and ty != "float":
+                self.err("E0025", "cannot negate a value of type `" + ty_disp(ty) + "`", span)
+            return ty
+        if op == "Not":
+            if ty != "bool":
+                self.err("E0026", "cannot apply `not` to a value of type `" + ty_disp(ty) + "`", span)
+            return "bool"
+        if op == "BitNot":
+            if ty != "int":
+                self.err("E0101", "cannot apply `~` to a value of type `" + ty_disp(ty) + "` -- `int` only", span)
+            return "int"
+        // Deref
+        if ty_is_ptr(ty):
+            return ty_ptr_inner(ty)
+        self.err("E0089", "cannot dereference `" + ty_disp(ty) + "`: not a pointer", span)
+        return "int"
+
+    make check_binary(self, op: string, lhs: int, rhs: int, span: Span) -> string:
+        if op == "Eq" or op == "NotEq":
+            lty = ""
+            rty = ""
+            if self.ast.nodes[lhs].kind == "Null":
+                rty = self.check_expr(rhs)
+                lty = self.check_expr_expecting(lhs, rty)
+            else:
+                lty = self.check_expr(lhs)
+                rty = self.check_expr_expecting(rhs, lty)
+            if lty != rty:
+                self.err("E0028", "cannot compare `" + ty_disp(lty) + "` and `" + ty_disp(rty) + "` with `" + op_symbol(op) + "`", span)
+            return "bool"
+        lt = self.check_expr(lhs)
+        rt = self.check_expr(rhs)
+        if op == "Add" or op == "Sub":
+            if op == "Add" and lt == "string" and rt == "string":
+                return "string"
+            if ty_is_ptr(lt) and rt == "int":
+                return lt
+            if lt == "int" and ty_is_ptr(rt) and op == "Add":
+                return rt
+            if lt != rt or (lt != "int" and lt != "float"):
+                self.err("E0027", "cannot apply arithmetic operator to `" + ty_disp(lt) + "` and `" + ty_disp(rt) + "`", span)
+                return "int"
+            return lt
+        if op == "Mul" or op == "Div" or op == "Mod":
+            if lt != rt or (lt != "int" and lt != "float"):
+                self.err("E0027", "cannot apply arithmetic operator to `" + ty_disp(lt) + "` and `" + ty_disp(rt) + "`", span)
+                return "int"
+            if op == "Mod" and lt == "float":
+                self.err("E0027", "the `%` operator requires `int` operands", span)
+                return "float"
+            return lt
+        if op == "Lt" or op == "Gt" or op == "LtEq" or op == "GtEq":
+            if lt != rt or (lt != "int" and lt != "float" and lt != "string"):
+                self.err("E0028", "cannot compare `" + ty_disp(lt) + "` and `" + ty_disp(rt) + "` with `" + op_symbol(op) + "`", span)
+            return "bool"
+        if op == "And" or op == "Or":
+            if lt != "bool" or rt != "bool":
+                self.err("E0029", "operator `" + op_symbol(op) + "` requires `bool` operands, found `" + ty_disp(lt) + "` and `" + ty_disp(rt) + "`", span)
+            return "bool"
+        // BitAnd BitOr BitXor Shl Shr
+        if lt != "int" or rt != "int":
+            self.err("E0101", "cannot apply `" + op_symbol(op) + "` to `" + ty_disp(lt) + "` and `" + ty_disp(rt) + "` -- `int` only", span)
+        return "int"
+
+    make check_all(self, args: [int]):
+        for a in args:
+            self.check_expr(a)
+
+    // Checks argument `i` of a builtin against an expected simple type; reports `code` otherwise.
+    make arg_is(self, args: [int], i: int, want: string, code: string, msg_pre: string, msg_post: string):
+        if len(args) > i:
+            t = self.check_expr(args[i])
+            if t != want:
+                self.err(code, msg_pre + ty_disp(t) + msg_post, self.ast.nodes[args[i]].span)
+
+    make check_call(self, name: string, args: [int], span: Span) -> string:
+        na = len(args)
+        if name == "print":
+            if na != 1:
+                self.err("E0032", "`print` takes exactly 1 argument, found " + str(na), span)
+            self.check_all(args)
+            return "()"
+        if name == "pop" or name == "clear" or name == "remove" or name == "insert":
+            want = 3
+            if name == "pop" or name == "clear":
+                want = 1
+            orif name == "remove":
+                want = 2
+            if na != want:
+                self.err("E0110", "`" + name + "` takes exactly " + str(want) + " argument(s), found " + str(na), span)
+                self.check_all(args)
+                return "()"
+            lty = self.check_expr(args[0])
+            if not ty_is_list(lty):
+                self.err("E0064", "`" + name + "` expects a list as its first argument, found `" + ty_disp(lty) + "`", self.ast.nodes[args[0]].span)
+                return "()"
+            elem = ty_list_elem(lty)
+            if want >= 2:
+                it = self.check_expr(args[1])
+                if it != "int":
+                    self.err("E0111", "list index must be `int`, found `" + ty_disp(it) + "`", self.ast.nodes[args[1]].span)
+            if name == "insert":
+                vt = self.check_expr(args[2])
+                if vt != elem:
+                    self.err("E0063", "cannot insert a `" + ty_disp(vt) + "` into a list of `" + ty_disp(elem) + "`", self.ast.nodes[args[2]].span)
+            if name == "pop" or name == "remove":
+                return elem
+            return "()"
+        if name == "exit":
+            if na != 1:
+                self.err("E0112", "`exit` takes exactly 1 argument (the exit code)", span)
+            for a in args:
+                t = self.check_expr(a)
+                if t != "int":
+                    self.err("E0113", "`exit` expects an `int`, found `" + ty_disp(t) + "`", self.ast.nodes[a].span)
+            return "()"
+        if name == "append":
+            if na != 2:
+                self.err("E0062", "`append` takes exactly 2 arguments (list, value), found " + str(na), span)
+                self.check_all(args)
+                return "()"
+            lty2 = self.check_expr(args[0])
+            vty = self.check_expr(args[1])
+            if ty_is_list(lty2):
+                if ty_list_elem(lty2) != vty:
+                    self.err("E0063", "cannot append a `" + ty_disp(vty) + "` to a list of `" + ty_disp(ty_list_elem(lty2)) + "`", self.ast.nodes[args[1]].span)
+            else:
+                self.err("E0064", "`append` expects a list as its first argument, found `" + ty_disp(lty2) + "`", self.ast.nodes[args[0]].span)
+            return "()"
+        if name == "len":
+            if na != 1:
+                self.err("E0065", "`len` takes exactly 1 argument, found " + str(na), span)
+            if na > 0:
+                t2 = self.check_expr(args[0])
+                if not ty_is_list(t2) and t2 != "string":
+                    self.err("E0066", "`len` expects a list or string, found `" + ty_disp(t2) + "`", self.ast.nodes[args[0]].span)
+            return "int"
+        if name == "str":
+            if na != 1:
+                self.err("E0090", "`str` takes exactly 1 argument, found " + str(na), span)
+            if na > 0:
+                t3 = self.check_expr(args[0])
+                if not ty_is_scalar_name(t3):
+                    self.err("E0091", "`str` expects an `int`, `float`, `bool` or `string`, found `" + ty_disp(t3) + "`", self.ast.nodes[args[0]].span)
+            return "string"
+        if name == "char_at":
+            if na != 2:
+                self.err("E0075", "`char_at` takes exactly 2 arguments (string, index), found " + str(na), span)
+            self.arg_is(args, 0, "string", "E0076", "`char_at` expects a string, found `", "`")
+            self.arg_is(args, 1, "int", "E0077", "`char_at` expects an `int` index, found `", "`")
+            return "int"
+        if name == "substr":
+            if na != 3:
+                self.err("E0078", "`substr` takes exactly 3 arguments (string, start, end), found " + str(na), span)
+            self.arg_is(args, 0, "string", "E0079", "`substr` expects a string, found `", "`")
+            i = 1
+            while i < na:
+                self.arg_is(args, i, "int", "E0080", "`substr` expects `int` bounds, found `", "`")
+                i += 1
+            return "string"
+        if name == "read_file":
+            if na != 1:
+                self.err("E0081", "`read_file` takes exactly 1 argument (path), found " + str(na), span)
+            self.arg_is(args, 0, "string", "E0082", "`read_file` expects a string path, found `", "`")
+            return "string"
+        if name == "write_file":
+            if na != 2:
+                self.err("E0083", "`write_file` takes exactly 2 arguments (path, content), found " + str(na), span)
+            self.arg_is(args, 0, "string", "E0084", "`write_file` expects a string path, found `", "`")
+            self.arg_is(args, 1, "string", "E0085", "`write_file` expects string content, found `", "`")
+            return "bool"
+        if name == "arg_count":
+            if na != 0:
+                self.err("E0086", "`arg_count` takes no arguments, found " + str(na), span)
+            return "int"
+        if name == "arg":
+            if na != 1:
+                self.err("E0087", "`arg` takes exactly 1 argument (a 1-based index), found " + str(na), span)
+            self.arg_is(args, 0, "int", "E0088", "`arg` expects an `int` index, found `", "`")
+            return "string"
+        if name == "free":
+            if na != 1:
+                self.err("E0096", "`free` takes exactly 1 argument (a pointer), found " + str(na), span)
+            if na > 0:
+                t4 = self.check_expr(args[0])
+                if not ty_is_ptr(t4):
+                    self.err("E0097", "`free` expects a `ptr<T>`, found `" + ty_disp(t4) + "`", self.ast.nodes[args[0]].span)
+            return "()"
+        if self.has_struct(name):
+            if na != 0:
+                self.err("E0059", "struct constructor `" + name + "()` takes no arguments", span)
+            return name
+        if not self.sig_idx.has(name):
+            self.err("E0033", "cannot find function `" + name + "` in this scope", span)
+            self.check_all(args)
+            return "int"
+        si = self.sig_idx.get(name) - 1
+        nparams = len(self.sigs[si].params)
+        if na != nparams:
+            self.err("E0034", "function `" + name + "` expects " + str(nparams) + " argument(s), found " + str(na), span)
+        j = 0
+        while j < na:
+            expected = ""
+            if j < nparams:
+                expected = self.sigs[si].params[j]
+            aty = self.check_expr_expecting(args[j], expected)
+            if len(expected) > 0:
+                if expected != aty and not self.is_subtype(aty, expected) and not (ends_with(self.cur_fn, "__vcall") and self.is_subtype(expected, aty)):
+                    self.err("E0035", "argument " + str(j + 1) + " to `" + name + "` has type `" + ty_disp(aty) + "`, expected `" + ty_disp(expected) + "`", self.ast.nodes[args[j]].span)
+            j += 1
+        if self.sigs[si].has_ret:
+            return self.sigs[si].ret
+        if name != self.cur_fn:
+            self.err("E0060", "cannot infer the return type of `" + name + "` here because it is still being inferred; add an explicit `-> Type` to `" + name + "` (or to `" + self.cur_fn + "`) to break the cycle", span)
+        return "()"
+
+make index_of_str(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+// ---- driver (port of analyze_impl) ---------------------------------------------------------
+
+make is_extern_fn(ast: Ast, f: int) -> bool:
+    return contains_str(ast.nodes[ast.nodes[f].kids[2]].text, "extern")
+
+// `A` -> `@A` for a type node naming a known enum (only the type itself, not nested ones).
+make fix_ty_node(ast: Ast, tn: int, enum_idx: StrMap_int) -> int:
+    if tn < 0:
+        return 0
+    t = ast.nodes[tn].text
+    if ty_is_named(t) and enum_idx.has(t):
+        ast.nodes[tn].text = "@" + t
+    return 0
+
+make fix_block_types(ast: Ast, b: int, enum_idx: StrMap_int) -> int:
+    if b < 0:
+        return 0
+    sl = ast.nodes[b].kids
+    for s in sl:
+        k = ast.nodes[s].kind
+        kids = ast.nodes[s].kids
+        if k == "Assign":
+            fix_ty_node(ast, kids[1], enum_idx)
+        orif k == "If":
+            fix_block_types(ast, kids[1], enum_idx)
+            ol = ast.nodes[kids[2]].kids
+            for o in ol:
+                fix_block_types(ast, ast.nodes[o].kids[1], enum_idx)
+            fix_block_types(ast, kids[3], enum_idx)
+        orif k == "Until" or k == "While":
+            fix_block_types(ast, kids[1], enum_idx)
+        orif k == "Infinit" or k == "Thread":
+            fix_block_types(ast, kids[0], enum_idx)
+        orif k == "ForRange":
+            fix_block_types(ast, kids[2], enum_idx)
+        orif k == "ForEach":
+            fix_block_types(ast, kids[1], enum_idx)
+        orif k == "Try":
+            fix_block_types(ast, kids[0], enum_idx)
+            fix_block_types(ast, kids[1], enum_idx)
+            fix_block_types(ast, kids[2], enum_idx)
+    return 0
+
+// Analyzes the desugared program in place. Diagnostics (analysis first, then the declaration
+// pre-pass, as in Rust) go to `diags`. `org_*` map item names to their defining file for
+// multi-file projects (may be empty). Returns true when the program is well typed.
+make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_names: [string], org_files: [string], org_srcs: [string]) -> bool:
+    s = Sema()
+    s.ast = ast
+    s.diags = Diags()
+    s.pre = Diags()
+    s.prog = root
+    s.sig_idx = StrMap_int()
+    s.struct_idx = StrMap_int()
+    s.enum_idx = StrMap_int()
+    s.org_idx = StrMap_int()
+    s.org_files = org_files
+    s.org_srcs = org_srcs
+    oi = 0
+    while oi < len(org_names):
+        s.org_idx.set(org_names[oi], oi + 1)
+        oi += 1
+
+    structs_l = ast.nodes[root].kids[1]
+    enums_l = ast.nodes[root].kids[2]
+    fns_l = ast.nodes[root].kids[3]
+    enum_nodes = ast.nodes[enums_l].kids
+    struct_nodes = ast.nodes[structs_l].kids
+    fn_nodes = ast.nodes[fns_l].kids
+
+    // enums
+    for e in enum_nodes:
+        before = len(s.pre.items)
+        ename = ast.nodes[e].text
+        seen: [string] = []
+        vnames: [string] = []
+        vl = ast.nodes[ast.nodes[e].kids[0]].kids
+        for v in vl:
+            vn = ast.nodes[v].text
+            if index_of_str(seen, vn) >= 0:
+                s.perr("E0073", "enum `" + ename + "` has a duplicate variant `" + vn + "`", ast.nodes[v].span)
+            append(seen, vn)
+            append(vnames, vn)
+        if s.enum_idx.has(ename):
+            s.perr("E0069", "enum `" + ename + "` is defined multiple times", ast.nodes[e].span)
+            ei = s.enum_idx.get(ename) - 1
+            s.enums[ei].names = vnames
+        else:
+            et = EnumT()
+            et.names = vnames
+            append(s.enums, et)
+            s.enum_idx.set(ename, len(s.enums))
+        s.tag_from(s.pre, before, ename)
+    sset = StrMap_int()
+    for st in struct_nodes:
+        sset.set(ast.nodes[st].text, 1)
+    for e in enum_nodes:
+        if sset.has(ast.nodes[e].text):
+            s.perr("E0074", "`" + ast.nodes[e].text + "` is defined as both a struct and an enum", ast.nodes[e].span)
+
+    // resolve enum-typed names (only when there are enums)
+    if len(enum_nodes) > 0:
+        for st in struct_nodes:
+            fl = ast.nodes[ast.nodes[st].kids[1]].kids
+            for fd in fl:
+                fix_ty_node(ast, ast.nodes[fd].kids[0], s.enum_idx)
+        for f in fn_nodes:
+            fk = ast.nodes[f].kids
+            pl = ast.nodes[fk[0]].kids
+            for p in pl:
+                fix_ty_node(ast, ast.nodes[p].kids[0], s.enum_idx)
+            fix_ty_node(ast, fk[1], s.enum_idx)
+            fix_block_types(ast, fk[3], s.enum_idx)
+
+    // structs
+    for st in struct_nodes:
+        before2 = len(s.pre.items)
+        sname = ast.nodes[st].text
+        fl2 = ast.nodes[ast.nodes[st].kids[1]].kids
+        sd = StructT()
+        for fd in fl2:
+            fty = ast.nodes[ast.nodes[fd].kids[0]].text
+            ok = is_scalar(fty)
+            if not ok:
+                if ty_is_list(fty):
+                    le = ty_list_elem(fty)
+                    ok = is_scalar(le) or ty_is_named(le)
+                orif ty_is_named(fty):
+                    ok = true
+            if not ok:
+                s.pre.add("E0067", "field `" + ast.nodes[fd].text + "` of struct `" + sname + "` has type `" + ty_disp(fty) + "`, but struct fields must be `int`/`float`/`bool`/`string` in Kite v0.1", ast.nodes[fd].span, "", "nested structs/collections are planned for v0.2")
+            append(sd.names, ast.nodes[fd].text)
+            append(sd.types, fty)
+        if s.struct_idx.has(sname):
+            si = s.struct_idx.get(sname) - 1
+            s.structs[si] = sd
+            s.perr("E0061", "struct `" + sname + "` is defined multiple times", ast.nodes[st].span)
+        else:
+            append(s.structs, sd)
+            s.struct_idx.set(sname, len(s.structs))
+        s.tag_from(s.pre, before2, sname)
+
+    // functions
+    for f in fn_nodes:
+        before3 = len(s.pre.items)
+        fk = ast.nodes[f].kids
+        fname = ast.nodes[f].text
+        is_ext = is_extern_fn(ast, f)
+        pl2 = ast.nodes[fk[0]].kids
+        sig = SigT()
+        for p in pl2:
+            pty = ast.nodes[ast.nodes[p].kids[0]].text
+            if is_ext and not is_scalar(pty):
+                s.pre.add("E0038", "extern parameter `" + ast.nodes[p].text + "` has type `" + ty_disp(pty) + "`, but `extern` functions may only take `int`/`float`/`bool`/`string`/`ptr<T>` parameters", ast.nodes[p].span, "", "pass a `ptr<T>` to C instead of a list/tuple/struct")
+            append(sig.params, pty)
+        if fk[1] >= 0:
+            rt = ast.nodes[fk[1]].text
+            if is_ext and not is_first_class_value(rt):
+                s.perr("E0039", "extern function `" + fname + "` may not return `" + ty_disp(rt) + "`", ast.nodes[f].span)
+            sig.ret = rt
+            sig.has_ret = true
+        if is_ext and fk[1] < 0:
+            sig.ret = "()"
+            sig.has_ret = true
+        if s.sig_idx.has(fname):
+            gi = s.sig_idx.get(fname) - 1
+            s.sigs[gi] = sig
+            s.perr("E0036", "function `" + fname + "` is defined multiple times", ast.nodes[f].span)
+        else:
+            append(s.sigs, sig)
+            s.sig_idx.set(fname, len(s.sigs))
+        s.tag_from(s.pre, before3, fname)
+
+    if require_main and not s.sig_idx.has("main"):
+        s.pre.add("E0037", "no `main` function found", span_dummy(), "", "every Kite program needs a `make main():` entry point")
+
+    for f in fn_nodes:
+        before4 = len(s.diags.items)
+        s.check_function(f)
+        s.tag_from(s.diags, before4, ast.nodes[f].text)
+    for d in s.pre.items:
+        append(s.diags.items, d)
+
+    if len(s.diags.items) > 0:
+        for d in s.diags.items:
+            append(diags.items, d)
+        return false
+
+    // the typed program: infer-and-store non-void return types
+    for f in fn_nodes:
+        fk = ast.nodes[f].kids
+        if fk[1] < 0 and not is_extern_fn(ast, f):
+            gi2 = s.sig_idx.get(ast.nodes[f].text) - 1
+            if s.sigs[gi2].has_ret and s.sigs[gi2].ret != "()":
+                tid = s.ast.add0("Type", s.sigs[gi2].ret, ast.nodes[f].span)
+                s.ast.nodes[f].kids[1] = tid
+    // `Sema.ast` is a copy of the arena header: hand the grown node list back
+    ast.nodes = s.ast.nodes
+    return true
+
+make org_none() -> [string]:
+    out: [string] = []
+    return out
