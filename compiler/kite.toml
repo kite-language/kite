@@ -1,7 +1,11 @@
 [package]
 name = "kitec"
-version = "0.3.1"
+version = "0.4.1"
 edition = "2026"
+description = "The Kite compiler and package manager, written in Kite"
+authors = ["The Kite developers"]
+license = "MIT"
+repository = "https://github.com/kite-language/kite"
 
 [build]
 opt_level = 2

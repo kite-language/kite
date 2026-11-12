@@ -40,7 +40,8 @@ type VariantRef:
 make block_returns_value(ast: Ast, b: int) -> bool:
     if b < 0:
         return false
-    for s in ast.nodes[b].kids:
+    iter_1 = ast.nodes[b].kids
+    for s in iter_1:
         k = ast.nodes[s].kind
         if k == "Return":
             if ast.nodes[s].kids[0] >= 0:
@@ -49,7 +50,8 @@ make block_returns_value(ast: Ast, b: int) -> bool:
             kids = ast.nodes[s].kids
             if block_returns_value(ast, kids[1]):
                 return true
-            for o in ast.nodes[kids[2]].kids:
+            iter_2 = ast.nodes[kids[2]].kids
+            for o in iter_2:
                 if block_returns_value(ast, ast.nodes[o].kids[1]):
                     return true
             if block_returns_value(ast, kids[3]):
@@ -104,6 +106,9 @@ make split_member(name: string) -> string:
         return ""
     return substr(name, i + 2, len(name))
 
+// NOTE: `for x in ast.nodes[i].kids:` reads the list through the arena slot; when the arena is
+// reallocated inside the loop body the slot moves and the loop reads freed memory. Hence every
+// such loop first copies the list header into a local (`iter_N = ...`).
 class Desugarer:
     ast: Ast
     diags: Diags
@@ -202,7 +207,8 @@ class Desugarer:
         data: [int] = []
         for e in old:
             has_data = false
-            for v in self.ast.nodes[self.ast.nodes[e].kids[0]].kids:
+            iter_3 = self.ast.nodes[self.ast.nodes[e].kids[0]].kids
+            for v in iter_3:
                 if len(self.ast.nodes[v].kids) > 0:
                     has_data = true
             if has_data:
@@ -218,7 +224,8 @@ class Desugarer:
             append(fields, self.ast.add1("Field", "tag", span, self.mk_type("int", span)))
             for v in variants:
                 vname = self.ast.nodes[v].text
-                for vf in self.ast.nodes[v].kids:
+                iter_4 = self.ast.nodes[v].kids
+                for vf in iter_4:
                     fty = self.ast.nodes[self.ast.nodes[vf].kids[0]].text
                     append(fields, self.ast.add1("Field", vname + "__" + self.ast.nodes[vf].text, span, self.mk_type(fty, span)))
             fl = self.mk_list(fields, span)
@@ -234,14 +241,16 @@ class Desugarer:
                 append(self.variant_refs, vr)
                 self.variant_idx.set(vname, len(self.variant_refs))
                 params: [int] = []
-                for vf in self.ast.nodes[v].kids:
+                iter_5 = self.ast.nodes[v].kids
+                for vf in iter_5:
                     pty = self.ast.nodes[self.ast.nodes[vf].kids[0]].text
                     append(params, self.mk_param(self.ast.nodes[vf].text, self.mk_type(pty, span), -1, false, span))
                 stmts: [int] = []
                 a0: [int] = []
                 append(stmts, self.mk_assign(self.mk_lident("__r"), -1, self.mk_call(name, a0, span), span))
                 append(stmts, self.mk_assign(self.mk_lfield(self.mk_ident("__r", span), "tag", span), -1, self.mk_int(i, span), span))
-                for vf in self.ast.nodes[v].kids:
+                iter_6 = self.ast.nodes[v].kids
+                for vf in iter_6:
                     fname = self.ast.nodes[vf].text
                     append(stmts, self.mk_assign(self.mk_lfield(self.mk_ident("__r", span), vname + "__" + fname, span), -1, self.mk_ident(fname, span), span))
                 append(stmts, self.ast.add1("Return", "", span, self.mk_ident("__r", span)))
@@ -292,14 +301,16 @@ class Desugarer:
                     append(stmts, self.mk_assign(self.mk_lident(bname), -1, value, span))
                 bi += 1
             body = akids[nbinds]
-            for s in self.ast.nodes[body].kids:
+            iter_7 = self.ast.nodes[body].kids
+            for s in iter_7:
                 append(stmts, s)
             self.ast.nodes[body].kids = stmts
             append(conds, cond)
             append(bodies, body)
         if len(conds) == 0:
             if else_body >= 0:
-                for s in self.ast.nodes[else_body].kids:
+                iter_8 = self.ast.nodes[else_body].kids
+                for s in iter_8:
                     append(out, s)
             return out
         orifs: [int] = []
@@ -348,7 +359,8 @@ class Desugarer:
         return false
 
     make find_function(self, name: string) -> int:
-        for f in self.ast.nodes[self.functions()].kids:
+        iter_9 = self.ast.nodes[self.functions()].kids
+        for f in iter_9:
             if self.ast.nodes[f].text == name:
                 return f
         return -1
@@ -429,7 +441,8 @@ class Desugarer:
         structs = self.ast.nodes[self.structs()].kids
         for st in structs:
             self.bases.set(self.ast.nodes[st].text, self.base_name(st))
-        for f in self.ast.nodes[self.functions()].kids:
+        iter_10 = self.ast.nodes[self.functions()].kids
+        for f in iter_10:
             fname = self.ast.nodes[f].text
             c = split_cls(fname)
             if len(c) > 0 and self.bases.has(c):
@@ -472,7 +485,8 @@ class Desugarer:
         orig_lists: [IntList] = []
         for st in structs:
             lst = IntList()
-            for f in self.ast.nodes[self.ast.nodes[st].kids[1]].kids:
+            iter_11 = self.ast.nodes[self.ast.nodes[st].kids[1]].kids
+            for f in iter_11:
                 append(lst.items, f)
             append(orig_lists, lst)
             orig_idx.set(self.ast.nodes[st].text, len(orig_lists))
@@ -504,7 +518,8 @@ class Desugarer:
                         append(fields, clone_node(self.ast, f))
                 ci -= 1
             fl = self.ast.nodes[st].kids[1]
-            for f in self.ast.nodes[fl].kids:
+            iter_12 = self.ast.nodes[fl].kids
+            for f in iter_12:
                 fname = self.ast.nodes[f].text
                 if index_of(names, fname) < 0:
                     append(names, fname)
@@ -513,7 +528,8 @@ class Desugarer:
 
         for st in structs:
             info = FieldInfo()
-            for f in self.ast.nodes[self.ast.nodes[st].kids[1]].kids:
+            iter_13 = self.ast.nodes[self.ast.nodes[st].kids[1]].kids
+            for f in iter_13:
                 append(info.names, self.ast.nodes[f].text)
                 append(info.types, self.ast.nodes[self.ast.nodes[f].kids[0]].text)
             append(self.field_infos, info)
@@ -635,7 +651,8 @@ class Desugarer:
                 expanded = self.expand_match(st)
                 tb = self.mk_block(expanded, self.ast.nodes[st].span)
                 self.walk_block(tb)
-                for s in self.ast.nodes[tb].kids:
+                iter_14 = self.ast.nodes[tb].kids
+                for s in iter_14:
                     append(out, s)
                 continue
             self.walk_stmt(st)
@@ -706,7 +723,8 @@ class Desugarer:
         orif k == "If":
             self.walk_expr(kids[0])
             self.walk_block(kids[1])
-            for o in self.ast.nodes[kids[2]].kids:
+            iter_15 = self.ast.nodes[kids[2]].kids
+            for o in iter_15:
                 self.walk_expr(self.ast.nodes[o].kids[0])
                 self.walk_block(self.ast.nodes[o].kids[1])
             self.walk_opt_block(kids[3])
@@ -917,7 +935,8 @@ class Desugarer:
     make record_sig(self, f: int):
         name = self.ast.nodes[f].text
         info = SigInfo()
-        for p in self.ast.nodes[self.ast.nodes[f].kids[0]].kids:
+        iter_16 = self.ast.nodes[self.ast.nodes[f].kids[0]].kids
+        for p in iter_16:
             pk = self.ast.nodes[p].kids
             append(info.names, self.ast.nodes[p].text)
             append(info.types, self.ast.nodes[pk[0]].text)
@@ -933,11 +952,13 @@ class Desugarer:
         self.prepare_enums()
         extra = self.prepare_classes()
         fns = self.functions()
-        for f in self.ast.nodes[fns].kids:
+        iter_17 = self.ast.nodes[fns].kids
+        for f in iter_17:
             self.record_sig(f)
         for f in extra:
             self.record_sig(f)
-        for f in self.ast.nodes[fns].kids:
+        iter_18 = self.ast.nodes[fns].kids
+        for f in iter_18:
             self.env = StrMap_string()
             self.tenv = StrMap_string()
             fk = self.ast.nodes[f].kids
@@ -961,11 +982,14 @@ class Desugarer:
         for f in extra:
             append(self.ast.nodes[fns].kids, f)
         // functions with no `return <value>` return nothing: say so explicitly
-        for f in self.ast.nodes[fns].kids:
+        iter_19 = self.ast.nodes[fns].kids
+        for f in iter_19:
             fk = self.ast.nodes[f].kids
             if fk[1] < 0 and fk[3] >= 0 and not contains_str(self.ast.nodes[fk[2]].text, "extern"):
                 if not block_returns_value(self.ast, fk[3]):
-                    self.ast.nodes[f].kids[1] = self.mk_type("()", self.ast.nodes[f].span)
+                    // build the node first: the arena may be reallocated by `mk_type`
+                    void_ty = self.mk_type("()", self.ast.nodes[f].span)
+                    self.ast.nodes[f].kids[1] = void_ty
 
 // Desugar the program rooted at `root` in place. Errors go to `diags`.
 make desugar_program(ast: Ast, root: int, diags: Diags):

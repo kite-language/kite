@@ -1,0 +1,214 @@
+// Multi-file projects: loads the entry file and everything it imports, and merges the items into
+// one program (port of resolve.rs). Files are parsed independently, then their items are copied
+// into one shared arena (`import_tree`).
+
+use diag
+use ast
+use lexer
+use parser
+use prelude
+use sysx
+
+make retag_diags(d: Diags, file: string, source: string):
+    i = 0
+    while i < len(d.items):
+        if not d.items[i].has_file:
+            d.items[i].file = file
+            d.items[i].source = source
+            d.items[i].has_file = true
+        i += 1
+
+use pieces
+
+class Loader:
+    ast: Ast
+    src_root: string
+    visited: StrMap_int
+    org_idx: StrMap_int
+    org_names: [string]
+    org_files: [string]
+    org_srcs: [string]
+    imports: [int]
+    structs: [int]
+    enums: [int]
+    fns: [int]
+    files_loaded: [string]
+    diags: Diags
+    registry: string
+    piece_names: [string]
+    piece_roots: [string]
+    std_cache: StrMap_string
+    found_root: string
+
+    make add_origin(self, name: string, file: string, src: string):
+        append(self.org_names, name)
+        append(self.org_files, file)
+        append(self.org_srcs, src)
+        self.org_idx.set(name, len(self.org_names))
+
+    make error(self, code: string, msg: string, span: Span, file: string, src: string, help: string):
+        self.diags.add(code, msg, span, "", help)
+        n = len(self.diags.items) - 1
+        self.diags.items[n].file = file
+        self.diags.items[n].source = src
+        self.diags.items[n].has_file = true
+
+    // Source file of module `mod_path` as seen from a file whose module root is `cur_root`:
+    // the project/piece itself first, then `std.<piece>` (a registry piece), then a dependency.
+    // Sets `found_root` to the `src/` directory the file belongs to. "" when not found.
+    make find_module(self, mod_path: string, cur_root: string) -> string:
+        rel = replace_all(mod_path, ".", "/")
+        local = path_join(cur_root, rel + ".ki")
+        if is_file(local):
+            self.found_root = cur_root
+            return local
+        segs = split(mod_path, ".")
+        head = segs[0]
+        proot = ""
+        rest_from = 1
+        if head == "std" and len(segs) >= 2:
+            head = segs[1]
+            rest_from = 2
+            if self.std_cache.has(head):
+                proot = self.std_cache.get(head)
+            else:
+                vers = registry_versions(self.registry, head)
+                best = sv_best(vers, "*")
+                if len(best) > 0:
+                    proot = registry_piece_root(self.registry, head, best)
+                self.std_cache.set(head, proot)
+        else:
+            k = index_of_name(self.piece_names, head)
+            if k >= 0:
+                proot = self.piece_roots[k]
+        if len(proot) == 0:
+            return ""
+        parts: [string] = []
+        j = rest_from
+        while j < len(segs):
+            append(parts, segs[j])
+            j += 1
+        file = "lib"
+        if len(parts) > 0:
+            file = join(parts, "/")
+        src = path_join(proot, "src")
+        cand = path_join(src, file + ".ki")
+        if is_file(cand):
+            self.found_root = src
+            return cand
+        return ""
+
+    make load_file(self, path: string, cur_root: string) -> bool:
+        canonical = path_norm(path)
+        if self.visited.has(canonical):
+            return true
+        self.visited.set(canonical, 1)
+        display = path_display(path, self.src_root)
+        if not file_exists(path):
+            self.error("E0070", "could not read `" + display + "`: No such file or directory (os error 2)", span_dummy(), display, "", "")
+            return false
+        source = read_file(path)
+        ld = Diags()
+        toks = lex(source, ld)
+        retag_diags(ld, display, source)
+        had_lex = ld.had_errors()
+        for d in ld.items:
+            append(self.diags.items, d)
+        if had_lex:
+            return false
+        pd = Diags()
+        fa = Ast()
+        root = parse_tokens(toks, fa, pd)
+        retag_diags(pd, display, source)
+        had_parse = pd.had_errors()
+        for d2 in pd.items:
+            append(self.diags.items, d2)
+        if root < 0 or had_parse:
+            return false
+        append(self.files_loaded, path)
+
+        all_ok = true
+        imp_list = fa.nodes[fa.nodes[root].kids[0]].kids
+        for imp in imp_list:
+            mod_path = fa.nodes[imp].text
+            ispan = fa.nodes[imp].span
+            resolved = self.find_module(mod_path, cur_root)
+            if len(resolved) == 0:
+                looked = path_join(cur_root, replace_all(mod_path, ".", "/") + ".ki")
+                self.error("E0071", "cannot find module `" + mod_path + "` (looked for `" + path_display(looked, self.src_root) + "`)", ispan, display, source, "module paths are resolved from `src/`, with `.` as a directory separator (e.g. `use shapes.circle` -> `src/shapes/circle.ki`); pieces are imported by name (`use mypiece`, `use mypiece.sub`) once listed in [dependencies], and the default pieces as `use std.<piece>`")
+                all_ok = false
+                continue
+            module_root = self.found_root
+            if not self.load_file(resolved, module_root):
+                all_ok = false
+
+        fl = fa.nodes[fa.nodes[root].kids[3]].kids
+        for f in fl:
+            name = fa.nodes[f].text
+            if self.org_idx.has(name):
+                self.error("E0036", "function `" + name + "` is defined multiple times across the project", fa.nodes[f].span, display, source, "")
+                all_ok = false
+                continue
+            self.add_origin(name, display, source)
+            append(self.fns, import_tree(self.ast, fa, f))
+        sl = fa.nodes[fa.nodes[root].kids[1]].kids
+        for s in sl:
+            sname = fa.nodes[s].text
+            if self.org_idx.has(sname):
+                self.error("E0061", "struct `" + sname + "` is defined multiple times across the project", fa.nodes[s].span, display, source, "")
+                all_ok = false
+                continue
+            self.add_origin(sname, display, source)
+            append(self.structs, import_tree(self.ast, fa, s))
+        el = fa.nodes[fa.nodes[root].kids[2]].kids
+        for e in el:
+            ename = fa.nodes[e].text
+            if self.org_idx.has(ename):
+                self.error("E0069", "enum `" + ename + "` is defined multiple times across the project", fa.nodes[e].span, display, source, "")
+                all_ok = false
+                continue
+            self.add_origin(ename, display, source)
+            append(self.enums, import_tree(self.ast, fa, e))
+        return all_ok
+
+// The merged program.
+class Merged:
+    ast: Ast
+    root: int
+    ok: bool
+    org_names: [string]
+    org_files: [string]
+    org_srcs: [string]
+    files_loaded: [string]
+
+make load_and_merge(entry_path: string, src_root: string, registry: string, piece_names: [string], piece_roots: [string]) -> Merged:
+    lo = Loader()
+    lo.ast = Ast()
+    lo.src_root = src_root
+    lo.visited = StrMap_int()
+    lo.org_idx = StrMap_int()
+    lo.diags = Diags()
+    lo.registry = registry
+    lo.piece_names = piece_names
+    lo.piece_roots = piece_roots
+    lo.std_cache = StrMap_string()
+    ok = lo.load_file(entry_path, src_root)
+    out = Merged()
+    if not ok or lo.diags.had_errors():
+        emit_diags(lo.diags, entry_path, read_file(entry_path))
+        out.ok = false
+        return out
+    imp_l = lo.ast.addl("List", "", span_dummy(), lo.imports)
+    st_l = lo.ast.addl("List", "", span_dummy(), lo.structs)
+    en_l = lo.ast.addl("List", "", span_dummy(), lo.enums)
+    fn_l = lo.ast.addl("List", "", span_dummy(), lo.fns)
+    kids: [int] = [imp_l, st_l, en_l, fn_l]
+    root = lo.ast.addl("Program", "", span_dummy(), kids)
+    out.ast = lo.ast
+    out.root = root
+    out.ok = true
+    out.org_names = lo.org_names
+    out.org_files = lo.org_files
+    out.org_srcs = lo.org_srcs
+    out.files_loaded = lo.files_loaded
+    return out

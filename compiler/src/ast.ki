@@ -138,6 +138,8 @@ make dump_node(ast: Ast, id: int, depth: int) -> string:
         text = norm_int(text)
     orif n.kind == "Float":
         text = norm_float(text)
+    if n.kind == "Type":
+        text = replace_all(text, "@", "")
     shown = "@" + str(sp.line) + ":" + str(sp.col) + ":" + str(sp.start) + "-" + str(sp.end)
     k0 = n.kind
     if k0 == "List" or k0 == "Flags" or k0 == "Name" or k0 == "Program" or k0 == "Entry" or k0 == "Type" or k0 == "VField":

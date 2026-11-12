@@ -1,0 +1,1154 @@
+// LLVM IR emission (port of src/codegen.rs). The output text is identical to the Rust backend's
+// (string constants are emitted in order of first use; Rust's HashMap order is arbitrary).
+
+use irdef
+use types
+
+class Out:
+    lines: [string]
+
+    make w(self, s: string):
+        append(self.lines, s)
+
+// llvm type of an IR type text
+make llvm_type(t: string) -> string:
+    if t == "i64":
+        return "i64"
+    if t == "f64":
+        return "double"
+    if t == "bool":
+        return "i1"
+    if t == "str":
+        return "i8*"
+    if t == "void":
+        return "void"
+    if irt_is_list(t):
+        return "{ i64, i64, " + llvm_type(irt_list_elem(t)) + "* }"
+    if irt_is_tuple(t):
+        parts: [string] = []
+        for e in irt_tuple_elems(t):
+            append(parts, llvm_type(e))
+        return "{ " + join(parts, ", ") + " }"
+    if irt_is_ptr(t):
+        return llvm_type(irt_ptr_inner(t)) + "*"
+    return "%" + t
+
+make field_base_llvm_type(fb: FBase) -> string:
+    if fb.is_struct:
+        return "%" + fb.name
+    parts: [string] = []
+    for e in fb.tys:
+        append(parts, llvm_type(e))
+    return "{ " + join(parts, ", ") + " }"
+
+make sanitize_label(l: string) -> string:
+    return replace_all(l, ".", "_")
+
+make hex2(n: int) -> string:
+    digits = "0123456789ABCDEF"
+    return substr(digits, n / 16, n / 16 + 1) + substr(digits, n % 16, n % 16 + 1)
+
+// bytes -> LLVM c"..." body, with the terminating \00
+make escape_llvm_string(s: string) -> string:
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        b = char_at(s, i)
+        if b == 34:
+            append(parts, "\\22")
+        orif b == 92:
+            append(parts, "\\5C")
+        orif b >= 32 and b <= 126:
+            append(parts, substr(s, i, i + 1))
+        else:
+            append(parts, "\\" + hex2(b))
+        i += 1
+    append(parts, "\\00")
+    return join(parts, "")
+
+make llvm_string_byte_len(s: string) -> int:
+    i = 0
+    count = 0
+    n = len(s)
+    while i < n:
+        if char_at(s, i) == 92 and i + 2 < n:
+            i += 3
+        else:
+            i += 1
+        count += 1
+    return count
+
+make global_string(name: string, body: string) -> string:
+    return name + " = private unnamed_addr constant [" + str(llvm_string_byte_len(body)) + " x i8] c\"" + body + "\""
+
+// f64 literal -> text as printed by Rust (`{v:.1}` for integral values, `{v}` otherwise)
+make format_llvm_float(text: string) -> string:
+    neg = false
+    t = text
+    if starts_with(t, "-"):
+        neg = true
+        t = substr(t, 1, len(t))
+    dot = find(t, ".")
+    ip = t
+    fp = ""
+    if dot >= 0:
+        ip = substr(t, 0, dot)
+        fp = substr(t, dot + 1, len(t))
+    // strip leading zeros of the integer part
+    k = 0
+    while k < len(ip) - 1 and char_at(ip, k) == 48:
+        k += 1
+    ip = substr(ip, k, len(ip))
+    if len(ip) == 0:
+        ip = "0"
+    // strip trailing zeros of the fraction
+    e = len(fp)
+    while e > 0 and char_at(fp, e - 1) == 48:
+        e -= 1
+    fp = substr(fp, 0, e)
+    if len(fp) == 0:
+        fp = "0"
+    out = ip + "." + fp
+    if neg:
+        out = "-" + out
+    return out
+
+make binop_operand_type(op: string) -> string:
+    if ends_with(op, "Str"):
+        return "str"
+    if ends_with(op, "F"):
+        return "f64"
+    return "i64"
+
+make binop_mnemonic(op: string) -> string:
+    if op == "AddI":
+        return "add"
+    orif op == "SubI":
+        return "sub"
+    orif op == "MulI":
+        return "mul"
+    orif op == "DivI":
+        return "sdiv"
+    orif op == "RemI":
+        return "srem"
+    orif op == "EqI":
+        return "icmp eq"
+    orif op == "NeI":
+        return "icmp ne"
+    orif op == "LtI":
+        return "icmp slt"
+    orif op == "GtI":
+        return "icmp sgt"
+    orif op == "LeI":
+        return "icmp sle"
+    orif op == "GeI":
+        return "icmp sge"
+    orif op == "AddF":
+        return "fadd"
+    orif op == "SubF":
+        return "fsub"
+    orif op == "MulF":
+        return "fmul"
+    orif op == "DivF":
+        return "fdiv"
+    orif op == "EqF":
+        return "fcmp oeq"
+    orif op == "NeF":
+        return "fcmp one"
+    orif op == "LtF":
+        return "fcmp olt"
+    orif op == "GtF":
+        return "fcmp ogt"
+    orif op == "LeF":
+        return "fcmp ole"
+    orif op == "GeF":
+        return "fcmp oge"
+    orif op == "AndI":
+        return "and"
+    orif op == "OrI":
+        return "or"
+    orif op == "XorI":
+        return "xor"
+    orif op == "ShlI":
+        return "shl"
+    return "ashr"
+
+class Cg:
+    ctr: int
+    out: Out
+    allocas: Out
+    alloca_set: StrMap_int
+    locals: StrMap_string
+    str_idx: StrMap_int
+    str_texts: [string]
+    st_idx: StrMap_int
+    st_ftys: [StrL]
+    is_main: bool
+    spawn_names: [string]
+    spawn_set: StrMap_int
+    tid_count: int
+    used_realloc: bool
+    used_threads: bool
+
+    make reg(self) -> string:
+        v = self.ctr
+        self.ctr += 1
+        return "%.r" + str(v)
+
+    make pn(self) -> string:
+        v = self.ctr
+        self.ctr += 1
+        return "%.p" + str(v)
+
+    make blabel(self, hint: string) -> string:
+        v = self.ctr
+        self.ctr += 1
+        return hint + "." + str(v)
+
+    make w(self, s: string):
+        self.out.w(s)
+
+    make intern(self, text: string):
+        if not self.str_idx.has(text):
+            append(self.str_texts, text)
+            self.str_idx.set(text, len(self.str_texts))
+
+    make local_ty(self, name: string, dflt: string) -> string:
+        if self.locals.has(name):
+            return self.locals.get(name)
+        return dflt
+
+    // ---- values ------------------------------------------------------------------------------
+    make value(self, v: V, expected: string) -> string:
+        k = v.k
+        if k == "I":
+            if v.i == 0:
+                if irt_is_list(expected) or irt_is_tuple(expected) or irt_is_struct(expected):
+                    return "zeroinitializer"
+                if irt_is_ptr(expected) or expected == "str":
+                    return "null"
+            return str(v.i)
+        if k == "F":
+            return format_llvm_float(v.s)
+        if k == "B":
+            if v.i == 1:
+                return "true"
+            return "false"
+        if k == "N":
+            return "null"
+        if k == "S":
+            id = 0
+            if self.str_idx.has(v.s):
+                id = self.str_idx.get(v.s) - 1
+            name = "@.str." + str(id)
+            n = len(v.s) + 1
+            tmp = self.pn()
+            self.w("  " + tmp + " = getelementptr inbounds [" + str(n) + " x i8], [" + str(n) + " x i8]* " + name + ", i64 0, i64 0")
+            return tmp
+        if k == "P":
+            return "%" + v.s
+        if k == "L":
+            ty = self.local_ty(v.s, expected)
+            lty = llvm_type(ty)
+            tmp2 = self.reg()
+            self.w("  " + tmp2 + " = load " + lty + ", " + lty + "* %" + v.s)
+            return tmp2
+        // temp
+        return "%.t" + str(v.i)
+
+    make sizeof(self, lty: string) -> string:
+        sp = self.pn()
+        sz = self.reg()
+        self.w("  " + sp + " = getelementptr " + lty + ", " + lty + "* null, i32 1")
+        self.w("  " + sz + " = ptrtoint " + lty + "* " + sp + " to i64")
+        return sz
+
+    make header(self, ety: string) -> string:
+        return "{ i64, i64, " + ety + "* }"
+
+    make bounds_ptr(self, base: string, index: V, elem_ty: string) -> string:
+        ety = llvm_type(elem_ty)
+        ht = self.header(ety)
+        idx = self.value(index, "i64")
+        lp = self.pn()
+        self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + base + ", i32 0, i32 0")
+        len_reg = self.reg()
+        self.w("  " + len_reg + " = load i64, i64* " + lp)
+        too_small = self.reg()
+        self.w("  " + too_small + " = icmp slt i64 " + idx + ", 0")
+        too_big = self.reg()
+        self.w("  " + too_big + " = icmp sge i64 " + idx + ", " + len_reg)
+        oor = self.reg()
+        self.w("  " + oor + " = or i1 " + too_small + ", " + too_big)
+        ok_label = self.blabel("idx.ok")
+        fail_label = self.blabel("idx.fail")
+        self.w("  br i1 " + oor + ", label %" + fail_label + ", label %" + ok_label)
+        self.w(fail_label + ":")
+        err_len = len("kite: index %lld out of range for a list of length %lld (lists are 0-indexed)\n") + 1
+        fp = self.pn()
+        self.w("  " + fp + " = getelementptr inbounds [" + str(err_len) + " x i8], [" + str(err_len) + " x i8]* @.err.bounds, i64 0, i64 0")
+        self.w("  call i32 (i8*, ...) @printf(i8* " + fp + ", i64 " + idx + ", i64 " + len_reg + ")")
+        self.w("  call void @exit(i32 1)")
+        self.w("  unreachable")
+        self.w(ok_label + ":")
+        data_ptr = self.pn()
+        dfp = self.pn()
+        self.w("  " + dfp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + base + ", i32 0, i32 2")
+        self.w("  " + data_ptr + " = load " + ety + "*, " + ety + "** " + dfp)
+        elem_ptr = self.pn()
+        self.w("  " + elem_ptr + " = getelementptr inbounds " + ety + ", " + ety + "* " + data_ptr + ", i64 " + idx)
+        return elem_ptr
+
+    make list_init(self, name: string, elem_ty: string, vals: [V]):
+        ety = llvm_type(elem_ty)
+        n = len(vals)
+        ht = self.header(ety)
+        raw = self.pn()
+        one = self.sizeof(ety)
+        total = self.reg()
+        cnt = n
+        if cnt < 1:
+            cnt = 1
+        self.w("  " + total + " = mul i64 " + one + ", " + str(cnt))
+        self.w("  " + raw + " = call i8* @malloc(i64 " + total + ")")
+        data = self.pn()
+        self.w("  " + data + " = bitcast i8* " + raw + " to " + ety + "*")
+        i = 0
+        while i < n:
+            vs = self.value(vals[i], elem_ty)
+            ep = self.pn()
+            self.w("  " + ep + " = getelementptr inbounds " + ety + ", " + ety + "* " + data + ", i64 " + str(i))
+            self.w("  store " + ety + " " + vs + ", " + ety + "* " + ep)
+            i += 1
+        lp = self.pn()
+        self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + name + ", i32 0, i32 0")
+        self.w("  store i64 " + str(n) + ", i64* " + lp)
+        cp = self.pn()
+        self.w("  " + cp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + name + ", i32 0, i32 1")
+        self.w("  store i64 " + str(n) + ", i64* " + cp)
+        dfp = self.pn()
+        self.w("  " + dfp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + name + ", i32 0, i32 2")
+        self.w("  store " + ety + "* " + data + ", " + ety + "** " + dfp)
+
+    make list_append(self, base: string, value: V, elem_ty: string):
+        ety = llvm_type(elem_ty)
+        ht = self.header(ety)
+        esz = self.sizeof(ety)
+        lp = self.pn()
+        self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + base + ", i32 0, i32 0")
+        cp = self.pn()
+        self.w("  " + cp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + base + ", i32 0, i32 1")
+        dfp = self.pn()
+        self.w("  " + dfp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + base + ", i32 0, i32 2")
+        len_reg = self.reg()
+        self.w("  " + len_reg + " = load i64, i64* " + lp)
+        cap_reg = self.reg()
+        self.w("  " + cap_reg + " = load i64, i64* " + cp)
+        needs = self.reg()
+        self.w("  " + needs + " = icmp sge i64 " + len_reg + ", " + cap_reg)
+        grow = self.blabel("append.grow")
+        after = self.blabel("append.after")
+        self.w("  br i1 " + needs + ", label %" + grow + ", label %" + after)
+        self.w(grow + ":")
+        old_data = self.reg()
+        self.w("  " + old_data + " = load " + ety + "*, " + ety + "** " + dfp)
+        one_if_zero = self.reg()
+        self.w("  " + one_if_zero + " = icmp eq i64 " + cap_reg + ", 0")
+        doubled = self.reg()
+        self.w("  " + doubled + " = mul i64 " + cap_reg + ", 2")
+        new_cap = self.reg()
+        self.w("  " + new_cap + " = select i1 " + one_if_zero + ", i64 1, i64 " + doubled)
+        new_bytes = self.reg()
+        self.w("  " + new_bytes + " = mul i64 " + new_cap + ", " + esz)
+        new_raw = self.pn()
+        self.w("  " + new_raw + " = call i8* @malloc(i64 " + new_bytes + ")")
+        new_data = self.pn()
+        self.w("  " + new_data + " = bitcast i8* " + new_raw + " to " + ety + "*")
+        old_bytes = self.reg()
+        self.w("  " + old_bytes + " = mul i64 " + len_reg + ", " + esz)
+        old_i8 = self.pn()
+        self.w("  " + old_i8 + " = bitcast " + ety + "* " + old_data + " to i8*")
+        self.w("  call i8* @memcpy(i8* " + new_raw + ", i8* " + old_i8 + ", i64 " + old_bytes + ")")
+        self.w("  call void @free(i8* " + old_i8 + ")")
+        self.w("  store " + ety + "* " + new_data + ", " + ety + "** " + dfp)
+        self.w("  store i64 " + new_cap + ", i64* " + cp)
+        self.w("  br label %" + after)
+        self.w(after + ":")
+        data_reg = self.reg()
+        self.w("  " + data_reg + " = load " + ety + "*, " + ety + "** " + dfp)
+        vs = self.value(value, elem_ty)
+        wp = self.pn()
+        self.w("  " + wp + " = getelementptr inbounds " + ety + ", " + ety + "* " + data_reg + ", i64 " + len_reg)
+        self.w("  store " + ety + " " + vs + ", " + ety + "* " + wp)
+        new_len = self.reg()
+        self.w("  " + new_len + " = add i64 " + len_reg + ", 1")
+        self.w("  store i64 " + new_len + ", i64* " + lp)
+
+    make print_value(self, v: V, ty: string):
+        if ty == "i64":
+            s = self.value(v, "i64")
+            fp = self.pn()
+            self.w("  " + fp + " = getelementptr inbounds [6 x i8], [6 x i8]* @.fmt.int, i64 0, i64 0")
+            self.w("  call i32 (i8*, ...) @printf(i8* " + fp + ", i64 " + s + ")")
+        orif ty == "f64":
+            s2 = self.value(v, "f64")
+            fp2 = self.pn()
+            self.w("  " + fp2 + " = getelementptr inbounds [4 x i8], [4 x i8]* @.fmt.float, i64 0, i64 0")
+            self.w("  call i32 (i8*, ...) @printf(i8* " + fp2 + ", double " + s2 + ")")
+        orif ty == "bool":
+            s3 = self.value(v, "bool")
+            sel = self.pn()
+            self.w("  " + sel + " = select i1 " + s3 + ", i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.true, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.false, i64 0, i64 0)")
+            fp3 = self.pn()
+            self.w("  " + fp3 + " = getelementptr inbounds [4 x i8], [4 x i8]* @.fmt.str, i64 0, i64 0")
+            self.w("  call i32 (i8*, ...) @printf(i8* " + fp3 + ", i8* " + sel + ")")
+        orif ty == "str":
+            s4 = self.value(v, "str")
+            fp4 = self.pn()
+            self.w("  " + fp4 + " = getelementptr inbounds [4 x i8], [4 x i8]* @.fmt.str, i64 0, i64 0")
+            self.w("  call i32 (i8*, ...) @printf(i8* " + fp4 + ", i8* " + s4 + ")")
+
+    make binop(self, dest: int, op: string, lhs: V, rhs: V):
+        d = "%.t" + str(dest)
+        if op == "EqStr" or op == "NeStr" or op == "LtStr" or op == "GtStr" or op == "LeStr" or op == "GeStr":
+            l = self.value(lhs, "str")
+            r = self.value(rhs, "str")
+            cmp = self.reg()
+            self.w("  " + cmp + " = call i32 @strcmp(i8* " + l + ", i8* " + r + ")")
+            mn = "sge"
+            if op == "EqStr":
+                mn = "eq"
+            orif op == "NeStr":
+                mn = "ne"
+            orif op == "LtStr":
+                mn = "slt"
+            orif op == "GtStr":
+                mn = "sgt"
+            orif op == "LeStr":
+                mn = "sle"
+            self.w("  " + d + " = icmp " + mn + " i32 " + cmp + ", 0")
+            return
+        if op == "ConcatStr":
+            l2 = self.value(lhs, "str")
+            r2 = self.value(rhs, "str")
+            ll = self.reg()
+            rl = self.reg()
+            total = self.reg()
+            tp1 = self.reg()
+            tail = self.pn()
+            end = self.pn()
+            self.w("  " + ll + " = call i64 @strlen(i8* " + l2 + ")")
+            self.w("  " + rl + " = call i64 @strlen(i8* " + r2 + ")")
+            self.w("  " + total + " = add i64 " + ll + ", " + rl)
+            self.w("  " + tp1 + " = add i64 " + total + ", 1")
+            self.w("  " + d + " = call i8* @malloc(i64 " + tp1 + ")")
+            self.w("  call i8* @memcpy(i8* " + d + ", i8* " + l2 + ", i64 " + ll + ")")
+            self.w("  " + tail + " = getelementptr inbounds i8, i8* " + d + ", i64 " + ll)
+            self.w("  call i8* @memcpy(i8* " + tail + ", i8* " + r2 + ", i64 " + rl + ")")
+            self.w("  " + end + " = getelementptr inbounds i8, i8* " + d + ", i64 " + total)
+            self.w("  store i8 0, i8* " + end)
+            return
+        ty = binop_operand_type(op)
+        l3 = self.value(lhs, ty)
+        r3 = self.value(rhs, ty)
+        self.w("  " + d + " = " + binop_mnemonic(op) + " " + llvm_type(ty) + " " + l3 + ", " + r3)
+
+    // ---- instructions ------------------------------------------------------------------------
+    make instr(self, i: Ins):
+        op = i.op
+        d = "%.t" + str(i.dest)
+        if op == "Alloca":
+            self.locals.set(i.name, i.ty)
+            decl = "  %" + i.name + " = alloca " + llvm_type(i.ty)
+            if not self.alloca_set.has(decl):
+                self.alloca_set.set(decl, 1)
+                self.allocas.w(decl)
+        orif op == "PtrCast":
+            v = self.value(i.v1, irt_ptr_of(i.ty))
+            self.w("  " + d + " = bitcast " + llvm_type(i.ty) + "* " + v + " to " + llvm_type(i.ty2) + "*")
+        orif op == "BindParam":
+            self.locals.set(i.name, i.ty)
+        orif op == "RetAgg":
+            lty = llvm_type(i.ty)
+            rv = self.reg()
+            self.w("  " + rv + " = load " + lty + ", " + lty + "* %" + i.name)
+            self.w("  store " + lty + " " + rv + ", " + lty + "* %__ret")
+            self.w("  ret void")
+        orif op == "CallAgg":
+            arg_strs: [string] = []
+            append(arg_strs, llvm_type(i.ty) + "* %" + i.name)
+            k = 0
+            while k < len(i.vals):
+                s = self.value(i.vals[k], i.argtys[k])
+                append(arg_strs, llvm_type(i.argtys[k]) + " " + s)
+                k += 1
+            self.w("  call void @" + i.n2 + "(" + join(arg_strs, ", ") + ")")
+        orif op == "Store":
+            ty = self.local_ty(i.name, "i64")
+            lty2 = llvm_type(ty)
+            vs = self.value(i.v1, ty)
+            self.w("  store " + lty2 + " " + vs + ", " + lty2 + "* %" + i.name)
+        orif op == "Load":
+            lty3 = llvm_type(i.ty)
+            self.w("  " + d + " = load " + lty3 + ", " + lty3 + "* %" + i.name)
+        orif op == "InitAggregate":
+            ty2 = self.local_ty(i.name, "void")
+            lty4 = llvm_type(ty2)
+            elem_tys: [string] = []
+            if irt_is_tuple(ty2):
+                elem_tys = irt_tuple_elems(ty2)
+            orif irt_is_struct(ty2):
+                if self.st_idx.has(ty2):
+                    elem_tys = self.st_ftys[self.st_idx.get(ty2) - 1].items
+            k2 = 0
+            while k2 < len(i.vals):
+                fty = "i64"
+                if k2 < len(elem_tys):
+                    fty = elem_tys[k2]
+                vs2 = self.value(i.vals[k2], fty)
+                flty = llvm_type(fty)
+                p = self.pn()
+                self.w("  " + p + " = getelementptr inbounds " + lty4 + ", " + lty4 + "* %" + i.name + ", i32 0, i32 " + str(k2))
+                self.w("  store " + flty + " " + vs2 + ", " + flty + "* " + p)
+                k2 += 1
+        orif op == "ListInit":
+            self.list_init(i.name, i.ty, i.vals)
+        orif op == "ListAppend":
+            self.list_append(i.name, i.v1, i.ty)
+        orif op == "Exit":
+            ev = self.value(i.v1, "i64")
+            c32 = self.reg()
+            self.w("  " + c32 + " = trunc i64 " + ev + " to i32")
+            self.w("  call void @exit(i32 " + c32 + ")")
+        orif op == "ListClear":
+            ety = llvm_type(i.ty)
+            ht = self.header(ety)
+            lp = self.pn()
+            self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + i.name + ", i32 0, i32 0")
+            self.w("  store i64 0, i64* " + lp)
+        orif op == "ListRemove":
+            self.list_remove(i)
+        orif op == "ListInsert":
+            self.list_insert(i)
+        orif op == "ListLen":
+            elem = "i64"
+            lt = self.local_ty(i.name, "")
+            if irt_is_list(lt):
+                elem = irt_list_elem(lt)
+            ety2 = llvm_type(elem)
+            ht2 = self.header(ety2)
+            lpp = self.pn()
+            self.w("  " + lpp + " = getelementptr inbounds " + ht2 + ", " + ht2 + "* %" + i.name + ", i32 0, i32 0")
+            self.w("  " + d + " = load i64, i64* " + lpp)
+        orif op == "StrLen":
+            sv = self.value(i.v1, "str")
+            self.w("  " + d + " = call i64 @strlen(i8* " + sv + ")")
+        orif op == "ToStr":
+            self.emit_tostr(i)
+        orif op == "CharAt":
+            cv = self.value(i.v1, "str")
+            ci = self.value(i.v2, "i64")
+            cp = self.pn()
+            self.w("  " + cp + " = getelementptr inbounds i8, i8* " + cv + ", i64 " + ci)
+            byte = self.reg()
+            self.w("  " + byte + " = load i8, i8* " + cp)
+            self.w("  " + d + " = zext i8 " + byte + " to i64")
+        orif op == "Substr":
+            self.emit_substr(i)
+        orif op == "ReadFile":
+            self.emit_read_file(i)
+        orif op == "WriteFile":
+            self.emit_write_file(i)
+        orif op == "ArgCount":
+            raw = self.reg()
+            self.w("  " + raw + " = load i32, i32* @.kite.argc")
+            widened = self.reg()
+            self.w("  " + widened + " = sext i32 " + raw + " to i64")
+            self.w("  " + d + " = sub i64 " + widened + ", 1")
+        orif op == "Arg":
+            self.emit_arg(i)
+        orif op == "Alloc":
+            alty = llvm_type(i.ty)
+            size = self.sizeof(alty)
+            araw = self.pn()
+            self.w("  " + araw + " = call i8* @malloc(i64 " + size + ")")
+            self.w("  call void @llvm.memset.p0i8.i64(i8* " + araw + ", i8 0, i64 " + size + ", i1 false)")
+            self.w("  " + d + " = bitcast i8* " + araw + " to " + alty + "*")
+        orif op == "AllocN":
+            nty = llvm_type(i.ty)
+            esize = self.sizeof(nty)
+            cnt = self.value(i.v1, "i64")
+            tsz = self.reg()
+            self.w("  " + tsz + " = mul i64 " + esize + ", " + cnt)
+            nraw = self.pn()
+            self.w("  " + nraw + " = call i8* @malloc(i64 " + tsz + ")")
+            self.w("  call void @llvm.memset.p0i8.i64(i8* " + nraw + ", i8 0, i64 " + tsz + ", i1 false)")
+            self.w("  " + d + " = bitcast i8* " + nraw + " to " + nty + "*")
+        orif op == "Free":
+            fty2 = llvm_type(i.ty)
+            pv = self.value(i.v1, irt_ptr_of(i.ty))
+            as8 = self.pn()
+            self.w("  " + as8 + " = bitcast " + fty2 + "* " + pv + " to i8*")
+            self.w("  call void @free(i8* " + as8 + ")")
+        orif op == "PtrLoad":
+            plty = llvm_type(i.ty)
+            pp = self.value(i.v1, irt_ptr_of(i.ty))
+            self.w("  " + d + " = load " + plty + ", " + plty + "* " + pp)
+        orif op == "PtrStore":
+            psty = llvm_type(i.ty)
+            pp2 = self.value(i.v1, irt_ptr_of(i.ty))
+            pvv = self.value(i.v2, i.ty)
+            self.w("  store " + psty + " " + pvv + ", " + psty + "* " + pp2)
+        orif op == "AddrOf":
+            lty5 = llvm_type(self.local_ty(i.name, "i64"))
+            self.w("  " + d + " = bitcast " + lty5 + "* %" + i.name + " to " + lty5 + "*")
+        orif op == "PtrOffset":
+            oty = llvm_type(i.ty)
+            op1 = self.value(i.v1, irt_ptr_of(i.ty))
+            off = self.value(i.v2, "i64")
+            if i.flag:
+                negd = self.reg()
+                self.w("  " + negd + " = sub i64 0, " + off)
+                off = negd
+            self.w("  " + d + " = getelementptr " + oty + ", " + oty + "* " + op1 + ", i64 " + off)
+        orif op == "PtrEq":
+            pty = irt_ptr_of(i.ty)
+            plt = llvm_type(pty)
+            le = self.value(i.v1, pty)
+            re = self.value(i.v2, pty)
+            mn = "eq"
+            if i.flag:
+                mn = "ne"
+            self.w("  " + d + " = icmp " + mn + " " + plt + " " + le + ", " + re)
+        orif op == "BinOp":
+            self.binop(i.dest, i.name, i.v1, i.v2)
+        orif op == "Neg":
+            nv = self.value(i.v1, i.ty)
+            if i.ty == "f64":
+                self.w("  " + d + " = fneg double " + nv)
+            else:
+                self.w("  " + d + " = sub i64 0, " + nv)
+        orif op == "Not":
+            xv = self.value(i.v1, "bool")
+            self.w("  " + d + " = xor i1 " + xv + ", true")
+        orif op == "Call":
+            cargs: [string] = []
+            k3 = 0
+            while k3 < len(i.vals):
+                s3 = self.value(i.vals[k3], i.argtys[k3])
+                append(cargs, llvm_type(i.argtys[k3]) + " " + s3)
+                k3 += 1
+            rty = llvm_type(i.ty)
+            if i.dest >= 0:
+                self.w("  " + d + " = call " + rty + " @" + i.name + "(" + join(cargs, ", ") + ")")
+            else:
+                self.w("  call " + rty + " @" + i.name + "(" + join(cargs, ", ") + ")")
+        orif op == "Print":
+            self.print_value(i.v1, i.ty)
+        orif op == "ListIndexGet":
+            dp = self.bounds_ptr(i.name, i.v1, i.ty)
+            gety = llvm_type(i.ty)
+            self.w("  " + d + " = load " + gety + ", " + gety + "* " + dp)
+        orif op == "ListIndexSet":
+            dp2 = self.bounds_ptr(i.name, i.v1, i.ty)
+            sety = llvm_type(i.ty)
+            sv2 = self.value(i.v2, i.ty)
+            self.w("  store " + sety + " " + sv2 + ", " + sety + "* " + dp2)
+        orif op == "FieldGet":
+            alty2 = field_base_llvm_type(i.fb)
+            fp = self.pn()
+            self.w("  " + fp + " = getelementptr inbounds " + alty2 + ", " + alty2 + "* %" + i.name + ", i32 0, i32 " + str(i.pos))
+            fl = llvm_type(i.ty)
+            self.w("  " + d + " = load " + fl + ", " + fl + "* " + fp)
+        orif op == "PtrAlias":
+            self.locals.set(i.name, i.ty)
+            sty = llvm_type(i.ty)
+            self.w("  %" + i.name + " = load " + sty + "*, " + sty + "** %" + i.n2)
+        orif op == "FieldAlias":
+            self.locals.set(i.name, i.ty)
+            alty3 = field_base_llvm_type(i.fb)
+            self.w("  %" + i.name + " = getelementptr inbounds " + alty3 + ", " + alty3 + "* %" + i.n2 + ", i32 0, i32 " + str(i.pos))
+        orif op == "ListElemAlias":
+            self.locals.set(i.name, i.ty)
+            lp2 = self.bounds_ptr(i.n2, i.v1, i.ty)
+            lety = llvm_type(i.ty)
+            self.w("  %" + i.name + " = bitcast " + lety + "* " + lp2 + " to " + lety + "*")
+        orif op == "FieldSet":
+            alty4 = field_base_llvm_type(i.fb)
+            fv = self.value(i.v1, i.ty)
+            fp2 = self.pn()
+            self.w("  " + fp2 + " = getelementptr inbounds " + alty4 + ", " + alty4 + "* %" + i.name + ", i32 0, i32 " + str(i.pos))
+            fl2 = llvm_type(i.ty)
+            self.w("  store " + fl2 + " " + fv + ", " + fl2 + "* " + fp2)
+        orif op == "PtrToInt":
+            qty = llvm_type(i.ty)
+            qp = self.value(i.v1, irt_ptr_of(i.ty))
+            self.w("  " + d + " = ptrtoint " + qty + "* " + qp + " to i64")
+        orif op == "IntToPtr":
+            qa = self.value(i.v1, "i64")
+            self.w("  " + d + " = inttoptr i64 " + qa + " to i64*")
+        orif op == "Realloc":
+            self.used_realloc = true
+            rty = llvm_type(i.ty)
+            rp = self.value(i.v1, irt_ptr_of(i.ty))
+            rn = self.value(i.v2, "i64")
+            resz = self.sizeof(rty)
+            rtotal = self.reg()
+            self.w("  " + rtotal + " = mul i64 " + resz + ", " + rn)
+            rraw = self.pn()
+            self.w("  " + rraw + " = bitcast " + rty + "* " + rp + " to i8*")
+            rnew = self.pn()
+            self.w("  " + rnew + " = call i8* @realloc(i8* " + rraw + ", i64 " + rtotal + ")")
+            self.w("  " + d + " = bitcast i8* " + rnew + " to " + rty + "*")
+        orif op == "CopyN":
+            cty = llvm_type(i.ty)
+            cd = self.value(i.v1, irt_ptr_of(i.ty))
+            cs = self.value(i.v2, irt_ptr_of(i.ty))
+            cn = self.value(i.v3, "i64")
+            csz = self.sizeof(cty)
+            cbytes = self.reg()
+            self.w("  " + cbytes + " = mul i64 " + csz + ", " + cn)
+            cd8 = self.pn()
+            cs8 = self.pn()
+            self.w("  " + cd8 + " = bitcast " + cty + "* " + cd + " to i8*")
+            self.w("  " + cs8 + " = bitcast " + cty + "* " + cs + " to i8*")
+            self.w("  call i8* @memmove(i8* " + cd8 + ", i8* " + cs8 + ", i64 " + cbytes + ")")
+        orif op == "ZeroN":
+            zty = llvm_type(i.ty)
+            zp = self.value(i.v1, irt_ptr_of(i.ty))
+            zn = self.value(i.v2, "i64")
+            zsz = self.sizeof(zty)
+            zbytes = self.reg()
+            self.w("  " + zbytes + " = mul i64 " + zsz + ", " + zn)
+            zp8 = self.pn()
+            self.w("  " + zp8 + " = bitcast " + zty + "* " + zp + " to i8*")
+            self.w("  call void @llvm.memset.p0i8.i64(i8* " + zp8 + ", i8 0, i64 " + zbytes + ", i1 false)")
+        orif op == "Spawn":
+            self.used_threads = true
+            if not self.spawn_set.has(i.name):
+                append(self.spawn_names, i.name)
+                self.spawn_set.set(i.name, 1)
+            slot = "%.tid" + str(self.tid_count)
+            self.tid_count += 1
+            sdecl = "  " + slot + " = alloca i64"
+            self.allocas.w(sdecl)
+            sa = self.value(i.v1, "i64")
+            sptr = self.pn()
+            self.w("  " + sptr + " = inttoptr i64 " + sa + " to i8*")
+            self.w("  call i32 @pthread_create(i64* " + slot + ", i8* null, i8* (i8*)* @.thr." + i.name + ", i8* " + sptr + ")")
+            self.w("  " + d + " = load i64, i64* " + slot)
+        orif op == "ThreadJoin":
+            self.used_threads = true
+            jh = self.value(i.v1, "i64")
+            self.w("  call i32 @pthread_join(i64 " + jh + ", i8** null)")
+        orif op == "Label":
+            self.w(sanitize_label(i.name) + ":")
+        orif op == "Jump":
+            self.w("  br label %" + sanitize_label(i.name))
+        orif op == "Branch":
+            cv2 = self.value(i.v1, "bool")
+            self.w("  br i1 " + cv2 + ", label %" + sanitize_label(i.name) + ", label %" + sanitize_label(i.n2))
+        orif op == "Return":
+            if self.is_main:
+                if i.flag:
+                    rv2 = self.value(i.v1, "i64")
+                    self.w("  ret i32 " + rv2)
+                else:
+                    self.w("  ret i32 0")
+            else:
+                if i.flag:
+                    rv3 = self.value(i.v1, i.ty)
+                    self.w("  ret " + llvm_type(i.ty) + " " + rv3)
+                else:
+                    self.w("  ret void")
+        orif op == "Unreachable":
+            self.w("  unreachable")
+
+    make list_remove(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        ety = llvm_type(i.ty)
+        ht = self.header(ety)
+        lp = self.pn()
+        len_reg = self.reg()
+        self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + i.name + ", i32 0, i32 0")
+        self.w("  " + len_reg + " = load i64, i64* " + lp)
+        idx_val = i.v1
+        if not i.flag:
+            last = self.reg()
+            self.w("  " + last + " = sub i64 " + len_reg + ", 1")
+            idx_val = v_param(substr(last, 1, len(last)))
+        ep = self.bounds_ptr(i.name, idx_val, i.ty)
+        idx_str = self.value(idx_val, "i64")
+        self.w("  " + d + " = load " + ety + ", " + ety + "* " + ep)
+        one = self.sizeof(ety)
+        nxt = self.pn()
+        rest = self.reg()
+        rest_n = self.reg()
+        bytes = self.reg()
+        dst8 = self.pn()
+        src8 = self.pn()
+        self.w("  " + nxt + " = getelementptr inbounds " + ety + ", " + ety + "* " + ep + ", i64 1")
+        self.w("  " + rest + " = sub i64 " + len_reg + ", " + idx_str)
+        self.w("  " + rest_n + " = sub i64 " + rest + ", 1")
+        self.w("  " + bytes + " = mul i64 " + rest_n + ", " + one)
+        self.w("  " + dst8 + " = bitcast " + ety + "* " + ep + " to i8*")
+        self.w("  " + src8 + " = bitcast " + ety + "* " + nxt + " to i8*")
+        self.w("  call i8* @memmove(i8* " + dst8 + ", i8* " + src8 + ", i64 " + bytes + ")")
+        nl = self.reg()
+        self.w("  " + nl + " = sub i64 " + len_reg + ", 1")
+        self.w("  store i64 " + nl + ", i64* " + lp)
+
+    make list_insert(self, i: Ins):
+        self.list_append(i.name, i.v2, i.ty)
+        ety = llvm_type(i.ty)
+        ht = self.header(ety)
+        lp = self.pn()
+        len_reg = self.reg()
+        self.w("  " + lp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + i.name + ", i32 0, i32 0")
+        self.w("  " + len_reg + " = load i64, i64* " + lp)
+        dp = self.pn()
+        data = self.reg()
+        self.w("  " + dp + " = getelementptr inbounds " + ht + ", " + ht + "* %" + i.name + ", i32 0, i32 2")
+        self.w("  " + data + " = load " + ety + "*, " + ety + "** " + dp)
+        idx = self.value(i.v1, "i64")
+        last_i = self.reg()
+        lastp = self.pn()
+        tmp = self.reg()
+        self.w("  " + last_i + " = sub i64 " + len_reg + ", 1")
+        self.w("  " + lastp + " = getelementptr inbounds " + ety + ", " + ety + "* " + data + ", i64 " + last_i)
+        self.w("  " + tmp + " = load " + ety + ", " + ety + "* " + lastp)
+        at = self.pn()
+        at8 = self.pn()
+        nx = self.pn()
+        nx8 = self.pn()
+        n = self.reg()
+        one = self.sizeof(ety)
+        bytes = self.reg()
+        self.w("  " + at + " = getelementptr inbounds " + ety + ", " + ety + "* " + data + ", i64 " + idx)
+        self.w("  " + nx + " = getelementptr inbounds " + ety + ", " + ety + "* " + at + ", i64 1")
+        self.w("  " + n + " = sub i64 " + last_i + ", " + idx)
+        self.w("  " + bytes + " = mul i64 " + n + ", " + one)
+        self.w("  " + at8 + " = bitcast " + ety + "* " + at + " to i8*")
+        self.w("  " + nx8 + " = bitcast " + ety + "* " + nx + " to i8*")
+        self.w("  call i8* @memmove(i8* " + nx8 + ", i8* " + at8 + ", i64 " + bytes + ")")
+        self.w("  store " + ety + " " + tmp + ", " + ety + "* " + at)
+
+    make emit_tostr(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        buf = self.pn()
+        if i.ty == "bool":
+            v = self.value(i.v1, "bool")
+            self.w("  " + d + " = select i1 " + v + ", i8* getelementptr inbounds ([5 x i8], [5 x i8]* @.str.true, i64 0, i64 0), i8* getelementptr inbounds ([6 x i8], [6 x i8]* @.str.false, i64 0, i64 0)")
+        orif i.ty == "f64":
+            v2 = self.value(i.v1, "f64")
+            self.w("  " + buf + " = call i8* @malloc(i64 48)")
+            fmt = self.pn()
+            self.w("  " + fmt + " = getelementptr inbounds [3 x i8], [3 x i8]* @.fmt.float.raw, i64 0, i64 0")
+            self.w("  call i32 (i8*, i64, i8*, ...) @snprintf(i8* " + buf + ", i64 48, i8* " + fmt + ", double " + v2 + ")")
+            self.w("  " + d + " = bitcast i8* " + buf + " to i8*")
+        else:
+            v3 = self.value(i.v1, "i64")
+            self.w("  " + buf + " = call i8* @malloc(i64 32)")
+            fmt2 = self.pn()
+            self.w("  " + fmt2 + " = getelementptr inbounds [5 x i8], [5 x i8]* @.fmt.int.raw, i64 0, i64 0")
+            self.w("  call i32 (i8*, i64, i8*, ...) @snprintf(i8* " + buf + ", i64 32, i8* " + fmt2 + ", i64 " + v3 + ")")
+            self.w("  " + d + " = bitcast i8* " + buf + " to i8*")
+
+    make emit_substr(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        v = self.value(i.v1, "str")
+        s0 = self.value(i.v2, "i64")
+        e = self.value(i.v3, "i64")
+        ln = self.reg()
+        self.w("  " + ln + " = sub i64 " + e + ", " + s0)
+        al = self.reg()
+        self.w("  " + al + " = add i64 " + ln + ", 1")
+        raw = self.pn()
+        self.w("  " + raw + " = call i8* @malloc(i64 " + al + ")")
+        sp = self.pn()
+        self.w("  " + sp + " = getelementptr inbounds i8, i8* " + v + ", i64 " + s0)
+        self.w("  call i8* @memcpy(i8* " + raw + ", i8* " + sp + ", i64 " + ln + ")")
+        np = self.pn()
+        self.w("  " + np + " = getelementptr inbounds i8, i8* " + raw + ", i64 " + ln)
+        self.w("  store i8 0, i8* " + np)
+        self.w("  " + d + " = bitcast i8* " + raw + " to i8*")
+
+    make emit_read_file(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        p = self.value(i.v1, "str")
+        slot = self.pn()
+        self.w("  " + slot + " = alloca i8*")
+        mp = self.pn()
+        self.w("  " + mp + " = getelementptr inbounds [3 x i8], [3 x i8]* @.str.mode.rb, i64 0, i64 0")
+        fp = self.pn()
+        self.w("  " + fp + " = call i8* @fopen(i8* " + p + ", i8* " + mp + ")")
+        isn = self.reg()
+        self.w("  " + isn + " = icmp eq i8* " + fp + ", null")
+        fail = self.blabel("readfile.fail")
+        ok = self.blabel("readfile.ok")
+        after = self.blabel("readfile.after")
+        self.w("  br i1 " + isn + ", label %" + fail + ", label %" + ok)
+        self.w(fail + ":")
+        ep = self.pn()
+        self.w("  " + ep + " = getelementptr inbounds [1 x i8], [1 x i8]* @.str.empty, i64 0, i64 0")
+        self.w("  store i8* " + ep + ", i8** " + slot)
+        self.w("  br label %" + after)
+        self.w(ok + ":")
+        self.w("  call i32 @fseek(i8* " + fp + ", i64 0, i32 2)")
+        size = self.reg()
+        self.w("  " + size + " = call i64 @ftell(i8* " + fp + ")")
+        self.w("  call i32 @fseek(i8* " + fp + ", i64 0, i32 0)")
+        al = self.reg()
+        self.w("  " + al + " = add i64 " + size + ", 1")
+        buf = self.pn()
+        self.w("  " + buf + " = call i8* @malloc(i64 " + al + ")")
+        self.w("  call i64 @fread(i8* " + buf + ", i64 1, i64 " + size + ", i8* " + fp + ")")
+        endp = self.pn()
+        self.w("  " + endp + " = getelementptr inbounds i8, i8* " + buf + ", i64 " + size)
+        self.w("  store i8 0, i8* " + endp)
+        self.w("  call i32 @fclose(i8* " + fp + ")")
+        self.w("  store i8* " + buf + ", i8** " + slot)
+        self.w("  br label %" + after)
+        self.w(after + ":")
+        self.w("  " + d + " = load i8*, i8** " + slot)
+
+    make emit_write_file(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        p = self.value(i.v1, "str")
+        c = self.value(i.v2, "str")
+        slot = self.pn()
+        self.w("  " + slot + " = alloca i1")
+        mp = self.pn()
+        self.w("  " + mp + " = getelementptr inbounds [3 x i8], [3 x i8]* @.str.mode.wb, i64 0, i64 0")
+        fp = self.pn()
+        self.w("  " + fp + " = call i8* @fopen(i8* " + p + ", i8* " + mp + ")")
+        isn = self.reg()
+        self.w("  " + isn + " = icmp eq i8* " + fp + ", null")
+        fail = self.blabel("writefile.fail")
+        ok = self.blabel("writefile.ok")
+        after = self.blabel("writefile.after")
+        self.w("  br i1 " + isn + ", label %" + fail + ", label %" + ok)
+        self.w(fail + ":")
+        self.w("  store i1 false, i1* " + slot)
+        self.w("  br label %" + after)
+        self.w(ok + ":")
+        cl = self.reg()
+        self.w("  " + cl + " = call i64 @strlen(i8* " + c + ")")
+        wr = self.reg()
+        self.w("  " + wr + " = call i64 @fwrite(i8* " + c + ", i64 1, i64 " + cl + ", i8* " + fp + ")")
+        self.w("  call i32 @fclose(i8* " + fp + ")")
+        su = self.reg()
+        self.w("  " + su + " = icmp eq i64 " + wr + ", " + cl)
+        self.w("  store i1 " + su + ", i1* " + slot)
+        self.w("  br label %" + after)
+        self.w(after + ":")
+        self.w("  " + d + " = load i1, i1* " + slot)
+
+    make emit_arg(self, i: Ins):
+        d = "%.t" + str(i.dest)
+        idx = self.value(i.v1, "i64")
+        ar = self.reg()
+        self.w("  " + ar + " = load i32, i32* @.kite.argc")
+        argc = self.reg()
+        self.w("  " + argc + " = sext i32 " + ar + " to i64")
+        uac = self.reg()
+        self.w("  " + uac + " = sub i64 " + argc + ", 1")
+        ts = self.reg()
+        self.w("  " + ts + " = icmp slt i64 " + idx + ", 0")
+        tb = self.reg()
+        self.w("  " + tb + " = icmp sge i64 " + idx + ", " + uac)
+        oor = self.reg()
+        self.w("  " + oor + " = or i1 " + ts + ", " + tb)
+        ok = self.blabel("arg.ok")
+        fail = self.blabel("arg.fail")
+        self.w("  br i1 " + oor + ", label %" + fail + ", label %" + ok)
+        self.w(fail + ":")
+        el = len("kite: index %lld out of range for %lld command-line argument(s) (arg() is 0-indexed)\n") + 1
+        fmtp = self.pn()
+        self.w("  " + fmtp + " = getelementptr inbounds [" + str(el) + " x i8], [" + str(el) + " x i8]* @.err.arg, i64 0, i64 0")
+        self.w("  call i32 (i8*, ...) @printf(i8* " + fmtp + ", i64 " + idx + ", i64 " + uac + ")")
+        self.w("  call void @exit(i32 1)")
+        self.w("  unreachable")
+        self.w(ok + ":")
+        argv = self.pn()
+        self.w("  " + argv + " = load i8**, i8*** @.kite.argv")
+        ai = self.reg()
+        self.w("  " + ai + " = add i64 " + idx + ", 1")
+        ep = self.pn()
+        self.w("  " + ep + " = getelementptr inbounds i8*, i8** " + argv + ", i64 " + ai)
+        self.w("  " + d + " = load i8*, i8** " + ep)
+
+// ---- module -----------------------------------------------------------------------------------
+
+make collect_strings_val(cg: Cg, v: V) -> int:
+    if v.k == "S":
+        cg.intern(v.s)
+    return 0
+
+make collect_string_constants(cg: Cg, f: IrFn) -> int:
+    for i in f.body:
+        op = i.op
+        if op == "Store" or op == "ListAppend" or op == "StrLen" or op == "ToStr" or op == "Neg" or op == "Not" or op == "Print" or op == "ListIndexGet" or op == "Exit" or op == "FieldSet" or op == "ListElemAlias" or op == "Branch" or op == "ReadFile" or op == "Arg":
+            collect_strings_val(cg, i.v1)
+            if op == "FieldSet":
+                collect_strings_val(cg, i.v1)
+        orif op == "InitAggregate" or op == "ListInit" or op == "Call" or op == "CallAgg":
+            for v in i.vals:
+                collect_strings_val(cg, v)
+        orif op == "CharAt" or op == "BinOp" or op == "WriteFile":
+            collect_strings_val(cg, i.v1)
+            collect_strings_val(cg, i.v2)
+        orif op == "Substr":
+            collect_strings_val(cg, i.v1)
+            collect_strings_val(cg, i.v2)
+            collect_strings_val(cg, i.v3)
+        orif op == "ListInsert" or op == "ListIndexSet":
+            collect_strings_val(cg, i.v1)
+            collect_strings_val(cg, i.v2)
+        orif op == "ListRemove":
+            if i.flag:
+                collect_strings_val(cg, i.v1)
+        orif op == "Return":
+            if i.flag:
+                collect_strings_val(cg, i.v1)
+    return 0
+
+make emit_function(cg: Cg, f: IrFn, freestanding: bool, mod: Out) -> int:
+    is_main = f.name == "main" and not freestanding
+    ret_ty = llvm_type(f.ret)
+    if is_main:
+        ret_ty = "i32"
+    params: [string] = []
+    if is_main:
+        append(params, "i32 %argc")
+        append(params, "i8** %argv")
+    else:
+        if f.has_sret:
+            append(params, llvm_type(f.sret) + "* %__ret")
+        k = 0
+        while k < len(f.pnames):
+            append(params, llvm_type(f.ptys[k]) + " %" + f.pnames[k])
+            k += 1
+    mod.w("define " + ret_ty + " @" + f.name + "(" + join(params, ", ") + ") {")
+    mod.w("kite.entry:")
+    cg.out = Out()
+    cg.allocas = Out()
+    cg.alloca_set = StrMap_int()
+    cg.locals = StrMap_string()
+    cg.is_main = is_main
+    if is_main:
+        cg.out.w("  store i32 %argc, i32* @.kite.argc")
+        cg.out.w("  store i8** %argv, i8*** @.kite.argv")
+    for i in f.body:
+        cg.instr(i)
+    for l in cg.allocas.lines:
+        mod.w(l)
+    for l2 in cg.out.lines:
+        mod.w(l2)
+    mod.w("}")
+    return 0
+
+// Emits the whole module; `triple` is "" when no target triple is requested.
+make emit_module(prog: IrProg, triple: string, freestanding: bool) -> string:
+    cg = Cg()
+    cg.st_idx = StrMap_int()
+    cg.str_idx = StrMap_int()
+    cg.alloca_set = StrMap_int()
+    cg.locals = StrMap_string()
+    cg.spawn_set = StrMap_int()
+    cg.out = Out()
+    cg.allocas = Out()
+    k = 0
+    while k < len(prog.st_names):
+        cg.st_idx.set(prog.st_names[k], k + 1)
+        append(cg.st_ftys, prog.st_ftys[k])
+        k += 1
+    mod = Out()
+    if len(triple) > 0:
+        mod.w("target triple = \"" + triple + "\"")
+        mod.w("")
+    k = 0
+    while k < len(prog.st_names):
+        fields: [string] = []
+        for t in prog.st_ftys[k].items:
+            append(fields, llvm_type(t))
+        mod.w("%" + prog.st_names[k] + " = type { " + join(fields, ", ") + " }")
+        k += 1
+    if len(prog.st_names) > 0:
+        mod.w("")
+    mod.w("declare i32 @printf(i8*, ...)")
+    mod.w("declare i8* @malloc(i64)")
+    mod.w("declare void @free(i8*)")
+    mod.w("declare i8* @memcpy(i8*, i8*, i64)")
+    mod.w("declare i64 @strlen(i8*)")
+    mod.w("declare i8* @memmove(i8*, i8*, i64)")
+    mod.w("declare i32 @snprintf(i8*, i64, i8*, ...)")
+    mod.w("declare i32 @strcmp(i8*, i8*)")
+    mod.w("declare void @exit(i32)")
+    mod.w("declare i8* @fopen(i8*, i8*)")
+    mod.w("declare i64 @fread(i8*, i64, i64, i8*)")
+    mod.w("declare i64 @fwrite(i8*, i64, i64, i8*)")
+    mod.w("declare i32 @fclose(i8*)")
+    mod.w("declare i32 @fseek(i8*, i64, i32)")
+    mod.w("declare i64 @ftell(i8*)")
+    mod.w("declare void @llvm.memset.p0i8.i64(i8*, i8, i64, i1)")
+    mod.w("")
+    mod.w("@.kite.argc = global i32 0")
+    mod.w("@.kite.argv = global i8** null")
+    mod.w("")
+    if len(prog.ex_names) > 0:
+        mod.w("; extern declarations (implemented outside Kite, e.g. in C)")
+        k = 0
+        while k < len(prog.ex_names):
+            ps: [string] = []
+            for t2 in prog.ex_ptys[k].items:
+                append(ps, llvm_type(t2))
+            mod.w("declare " + llvm_type(prog.ex_rets[k]) + " @" + prog.ex_names[k] + "(" + join(ps, ", ") + ")")
+            k += 1
+        mod.w("")
+    mod.w(global_string("@.fmt.int", "%lld\\0A\\00"))
+    mod.w(global_string("@.fmt.float", "%f\\0A\\00"))
+    mod.w(global_string("@.fmt.str", "%s\\0A\\00"))
+    mod.w(global_string("@.fmt.int.raw", "%lld\\00"))
+    mod.w(global_string("@.fmt.float.raw", "%g\\00"))
+    mod.w(global_string("@.str.true", "true\\00"))
+    mod.w(global_string("@.str.false", "false\\00"))
+    mod.w(global_string("@.err.bounds", "kite: index %lld out of range for a list of length %lld (lists are 0-indexed)\\0A\\00"))
+    mod.w(global_string("@.err.arg", "kite: index %lld out of range for %lld command-line argument(s) (arg() is 0-indexed)\\0A\\00"))
+    mod.w(global_string("@.str.mode.rb", "rb\\00"))
+    mod.w(global_string("@.str.mode.wb", "wb\\00"))
+    mod.w(global_string("@.str.empty", "\\00"))
+    mod.w("")
+    for f in prog.fns:
+        collect_string_constants(cg, f)
+    k = 0
+    while k < len(cg.str_texts):
+        mod.w(global_string("@.str." + str(k), escape_llvm_string(cg.str_texts[k])))
+        k += 1
+    if len(cg.str_texts) > 0:
+        mod.w("")
+    for f2 in prog.fns:
+        emit_function(cg, f2, freestanding, mod)
+        mod.w("")
+    // declarations and entry wrappers that only some programs need (kept out of the common header so
+    // programs that do not use them are byte-identical to the Rust backend's output)
+    if cg.used_realloc:
+        mod.w("declare i8* @realloc(i8*, i64)")
+        mod.w("")
+    if cg.used_threads:
+        mod.w("declare i32 @pthread_create(i64*, i8*, i8* (i8*)*, i8*)")
+        mod.w("declare i32 @pthread_join(i64, i8**)")
+        mod.w("")
+        for sn in cg.spawn_names:
+            ret = "void"
+            for f3 in prog.fns:
+                if f3.name == sn:
+                    ret = llvm_type(f3.ret)
+            mod.w("define i8* @.thr." + sn + "(i8* %a) {")
+            mod.w("entry:")
+            mod.w("  %v = ptrtoint i8* %a to i64")
+            mod.w("  call " + ret + " @" + sn + "(i64 %v)")
+            mod.w("  ret i8* null")
+            mod.w("}")
+            mod.w("")
+    return join(mod.lines, "\n") + "\n"

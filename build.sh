@@ -39,27 +39,34 @@ done
 
 bold "==> stage0: Rust compiler"
 if [ ! -x "$STAGE0" ]; then
-  (cd "$STAGE0_DIR" && CARGO_TARGET_DIR="$STAGE0_TARGET" cargo build --release --bins --examples)
+  (cd "$STAGE0_DIR" && CARGO_TARGET_DIR="$STAGE0_TARGET" cargo build -q --release --bins --examples 2>&1 | grep -v "^warning\|^ *|\|^ *-->\|^ *=\|^$\|^[0-9 ]*|" || true)
 fi
 [ -x "$STAGE0" ] || { echo "error: stage0 binary not found at $STAGE0" >&2; exit 1; }
-echo "    $("$STAGE0" --version) -> $STAGE0"
+
+# kitec embeds the prelude (compiler/src/prelude_data.ki is generated from stdlib/prelude/)
+"$ROOT/scripts/gen-prelude.sh" >/dev/null
 
 bold "==> stage1: kitec (Kite) compiled by stage0"
 (cd "$ROOT/compiler" && "$STAGE0" build --release)
-echo "    $("$KITEC" --version) -> $KITEC"
 
 PORTED="$("$KITEC" --capabilities | tr '\n' ' ')"
 echo "    ported phases: $PORTED"
 if echo "$PORTED" | grep -qw build; then
-  bold "==> stage2: kitec compiled by kitec"
-  rm -rf "$ROOT/stage2" && mkdir -p "$ROOT/stage2" && cp -r "$ROOT/compiler/." "$ROOT/stage2/"
-  rm -rf "$ROOT/stage2/target"
+  bold "==> stage2: kitec compiled by kitec (stage1)"
+  for n in stage2 stage3; do rm -rf "$ROOT/$n" && mkdir -p "$ROOT/$n" && cp -r "$ROOT/compiler/." "$ROOT/$n/" && rm -rf "$ROOT/$n/target"; done
   (cd "$ROOT/stage2" && "$KITEC" build --release)
-  if cmp -s "$ROOT/compiler/target/kitec.ll" "$ROOT/stage2/target/kitec.ll"; then
-    echo "    stage1 and stage2 produce identical LLVM IR: bootstrap complete"
+  bold "==> stage3: kitec compiled by stage2 (fixed point)"
+  (cd "$ROOT/stage3" && "$ROOT/stage2/target/release/kitec" build --release)
+  # Rust emits string constants in HashMap order: compare stage1 with the constants sorted.
+  n1=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/compiler/target/kitec.ll" | md5sum)
+  n2=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/stage2/target/release/kitec.ll" | md5sum)
+  if [ "$n1" = "$n2" ] && cmp -s "$ROOT/stage2/target/release/kitec.ll" "$ROOT/stage3/target/release/kitec.ll"; then
+    echo "    stage1 = stage2 = stage3 (identical LLVM IR): bootstrap complete"
     date -u +%FT%TZ > "$ROOT/compiler/BOOTSTRAPPED"
+    mkdir -p "$ROOT/compiler/target" && cp "$ROOT/stage2/target/release/kitec" "$ROOT/compiler/target/kite"
+    echo "    self-hosted compiler: compiler/target/kite (does not need Rust or cargo)"
   else
-    echo "error: stage2 differs from stage1" >&2; exit 1
+    echo "error: stage2/stage3 differ from stage1" >&2; exit 1
   fi
 else
   bold "==> stage2: skipped (the port of the remaining phases is in progress; ./build.sh status)"
@@ -73,4 +80,13 @@ if [ "${1:-}" = "test" ]; then
   scripts/difftest.sh tokens $FILES
   scripts/difftest.sh ast $FILES
   scripts/difftest.sh desugar $FILES
+  scripts/difftest.sh inject $FILES
+  scripts/difftest.sh sema $FILES
+  scripts/llcmp.sh $FILES
+  bold "==> examples with recorded output, built by the self-hosted compiler"
+  [ -x "$ROOT/stage2/target/release/kitec" ] && scripts/runexamples.sh "$ROOT/stage2/target/release/kitec"
+  bold "==> default pieces tests"
+  (cd "$ROOT/stdlib/tests/std_test" && KITE_PIECES="$ROOT/pieces" "$ROOT/stage2/target/release/kitec" run -q)
+  bold "==> piece registry verification"
+  KITE="$ROOT/stage2/target/release/kitec" scripts/verify-pieces.sh
 fi

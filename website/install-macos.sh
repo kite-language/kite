@@ -2,7 +2,7 @@
 # install.sh -- installs the latest (or a pinned) `kite` release on macOS.
 #
 #   curl -fsSL https://kite-lang.pages.dev/install-macos.sh | sh
-#   curl -fsSL https://kite-lang.pages.dev/install-macos.sh | sh -s -- --version 0.3.1
+#   curl -fsSL https://kite-lang.pages.dev/install-macos.sh | sh -s -- --version 0.4.1
 #   curl -fsSL https://kite-lang.pages.dev/install-macos.sh | sh -s -- --uninstall
 #
 # Options:  --version X   --prefix DIR   --no-modify-path   --uninstall   --help

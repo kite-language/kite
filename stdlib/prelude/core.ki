@@ -54,15 +54,21 @@ make split(s: string, sep: string) -> [string]:
         start = i + len(sep)
     return out
 
+// Merges neighbours pairwise (O(n log n) copying instead of O(n^2) for long lists).
 make join(xs: [string], sep: string) -> string:
-    r = ""
-    i = 0
-    while i < len(xs):
-        if i > 0:
-            r = r + sep
-        r = r + xs[i]
-        i += 1
-    return r
+    if len(xs) == 0:
+        return ""
+    cur = xs
+    while len(cur) > 1:
+        nxt: [string] = []
+        i = 0
+        while i + 1 < len(cur):
+            append(nxt, cur[i] + sep + cur[i + 1])
+            i += 2
+        if i < len(cur):
+            append(nxt, cur[i])
+        cur = nxt
+    return cur[0]
 
 make replace_all(s: string, a: string, b: string) -> string:
     if len(a) == 0:

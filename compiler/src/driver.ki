@@ -1,0 +1,122 @@
+// Compilation pipeline and clang invocation (port of driver.rs).
+
+use diag
+use ast
+use irdef
+use ir
+use codegen
+use desugar
+use prelude
+use sema
+use resolve
+use cheader
+use sysx
+
+class Checked:
+    ok: bool
+    fresh: bool
+    ast: Ast
+    root: int
+    prog: IrProg
+    fingerprint: string
+    files: [string]
+
+// What the front end needs besides the entry file: where pieces live, the package metadata
+// accessors to inject, and (optionally) the cache files that make a build "fresh".
+class Ctx:
+    registry: string
+    piece_names: [string]
+    piece_roots: [string]
+    meta_src: string
+    flags: string
+    fp_file: string
+    out_file: string
+
+make sha256_of_files(flags: string, files: [string]) -> string:
+    cmd = "(printf %s " + shell_quote(flags)
+    for f in files:
+        cmd = cmd + "; cat " + shell_quote(f)
+    cmd = cmd + ") | (sha256sum 2>/dev/null || shasum -a 256)"
+    return trim(substr(capture(cmd), 0, 64))
+
+make check_project(entry_path: string, src_root: string, freestanding: bool, cx: Ctx) -> Checked:
+    out = Checked()
+    m = load_and_merge(entry_path, src_root, cx.registry, cx.piece_names, cx.piece_roots)
+    if not m.ok:
+        return out
+    out.files = m.files_loaded
+    if len(cx.fp_file) > 0:
+        out.fingerprint = sha256_of_files(cx.flags, m.files_loaded)
+        if file_exists(cx.out_file) and trim(read_file(cx.fp_file)) == out.fingerprint:
+            out.fresh = true
+            out.ok = true
+            return out
+    ast = m.ast
+    inject_prelude_extra(ast, m.root, cx.meta_src)
+    dd = Diags()
+    desugar_program(ast, m.root, dd)
+    if len(dd.items) > 0:
+        emit_diags(dd, entry_path, read_file(entry_path))
+        if dd.had_errors():
+            return out
+    sd = Diags()
+    ok = sema_program(ast, m.root, sd, not freestanding, m.org_names, m.org_files, m.org_srcs)
+    if len(sd.items) > 0:
+        emit_diags(sd, entry_path, read_file(entry_path))
+    if not ok:
+        return out
+    // the typed program has no imports
+    ni = ast.nodes[m.root].kids[0]
+    no_imports: [int] = []
+    ast.nodes[ni].kids = no_imports
+    out.prog = lower_program(ast, m.root)
+    out.ast = ast
+    out.root = m.root
+    out.ok = true
+    return out
+
+make is_windows_target(target: string) -> bool:
+    if len(target) > 0:
+        return contains_str(target, "windows")
+    return false
+
+make normalized_executable_path(p: string, target: string) -> string:
+    if is_windows_target(target) and not path_has_extension(p):
+        return path_with_extension(p, "exe")
+    return p
+
+// Writes the LLVM IR next to the output and runs clang. `kind`: "exe", "obj" (hosted lib) or
+// "bare" (freestanding object).
+make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string]) -> string:
+    freestanding = kind != "exe"
+    llvm = emit_module(prog, target, freestanding)
+    out_path = output
+    if kind == "exe":
+        out_path = normalized_executable_path(output, target)
+    parent = path_parent(out_path)
+    if len(parent) > 0:
+        mkdir_all(parent)
+    ir_path = path_with_extension(out_path, "ll")
+    if not write_file(ir_path, llvm):
+        die("failed to write LLVM IR to " + ir_path)
+    cmd = "clang " + shell_quote(ir_path) + " -O" + str(opt_level)
+    if kind == "exe":
+        cmd = cmd + " -o " + shell_quote(out_path) + " -Wno-override-module"
+        for e in extra:
+            if not is_file(e):
+                die("--link input `" + e + "` does not exist")
+            cmd = cmd + " " + shell_quote(e)
+        if not is_windows_target(target):
+            cmd = cmd + " -pthread"
+        if static_link:
+            cmd = cmd + " -static"
+    else:
+        cmd = cmd + " -c -o " + shell_quote(out_path) + " -Wno-override-module"
+        if kind == "bare":
+            cmd = cmd + " -ffreestanding -fno-builtin"
+    if len(target) > 0:
+        cmd = cmd + " --target=" + shell_quote(target)
+    code = sh(cmd)
+    if code != 0:
+        die("clang failed to compile the generated LLVM IR (see " + ir_path + " for the generated IR)")
+    return out_path

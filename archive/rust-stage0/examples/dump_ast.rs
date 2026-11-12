@@ -261,13 +261,62 @@ fn main() {
         std::process::exit(1);
     }
     let mut p = prog.unwrap();
-    if cmd == "desugar" {
+    if cmd == "inject" {
+        kite::prelude::inject(&mut p);
+    }
+    if cmd == "desugar" || cmd == "inject" {
         let d3 = kite::desugar::desugar_program(&mut p);
         if d3.had_errors() {
             d3.emit("input", &src);
             eprintln!("desugar errors");
             std::process::exit(1);
         }
+    }
+    if cmd == "ll" {
+        kite::prelude::inject(&mut p);
+        let d3 = kite::desugar::desugar_program(&mut p);
+        if d3.had_errors() {
+            eprintln!("desugar errors");
+            std::process::exit(1);
+        }
+        let (typed, d4) = kite::sema::analyze(&p);
+        if d4.iter().count() > 0 || typed.is_none() {
+            eprintln!("sema errors");
+            std::process::exit(1);
+        }
+        let t = typed.unwrap();
+        let prog = kite::ast::Program { imports: vec![], structs: t.structs, enums: t.enums, functions: t.functions };
+        let irp = kite::ir::lower_program(&prog);
+        let opts = kite::codegen::CodegenOptions { target_triple: None, freestanding: false };
+        print!("{}", kite::codegen::emit_module(&irp, &opts));
+        return;
+    }
+    if cmd == "sema" {
+        kite::prelude::inject(&mut p);
+        let d3 = kite::desugar::desugar_program(&mut p);
+        if d3.had_errors() {
+            eprintln!("desugar errors");
+            std::process::exit(1);
+        }
+        let (typed, d4) = kite::sema::analyze(&p);
+        if d4.iter().count() > 0 || typed.is_none() {
+            for d in d4.iter() {
+                println!(
+                    "DIAG {} @{}:{}:{}-{} {} | {} | {}",
+                    d.code.unwrap_or("-"),
+                    d.span.line,
+                    d.span.column,
+                    d.span.start,
+                    d.span.end,
+                    d.title,
+                    d.label.clone().unwrap_or_default(),
+                    d.help.clone().unwrap_or_default()
+                );
+            }
+            return;
+        }
+        let t = typed.unwrap();
+        p = Program { imports: vec![], structs: t.structs, enums: t.enums, functions: t.functions };
     }
     let s0 = Span { start: 0, end: 0, line: 0, column: 0 };
     let imports = list(

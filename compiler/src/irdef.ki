@@ -1,0 +1,280 @@
+// IR definitions (port of the data types of src/ir.rs).
+//
+// IR types are text, in the exact Display form of Rust's IrType: `i64 f64 bool str void`,
+// `[T]`, `(A, B)`, `Name` (struct reference), `ptr<T>`.
+//
+// Instructions are one generic record `Ins`; which fields an opcode uses:
+//   Alloca name ty | Store name v1 | Load dest name ty | InitAggregate name lay vals
+//   ListInit name ty(elem) vals | ListAppend name(base) v1 ty(elem) | ListLen dest name(base)
+//   StrLen dest v1 | ToStr dest v1 ty(src) | CharAt dest v1 v2 | Substr dest v1 v2 v3
+//   ReadFile dest v1 | WriteFile dest v1 v2 | ArgCount dest | Arg dest v1 | Alloc dest ty
+//   AllocN dest ty v1 | Free v1 ty | PtrLoad dest v1 ty | PtrStore v1(ptr) v2(value) ty
+//   AddrOf dest name | PtrOffset dest v1 v2 ty flag(negate) | PtrEq dest v1 v2 ty flag(negate)
+//   BinOp dest name(op, e.g. "AddI") v1 v2 | Neg dest v1 ty | Not dest v1
+//   Call dest(-1 = none) name vals argtys ty(ret) | Print v1 ty | ListIndexGet dest name v1 ty
+//   ListIndexSet name v1 v2 ty | FieldGet dest name fb pos ty | FieldSet name fb pos v1 ty
+//   Label name | Jump name | Branch v1 name(then) n2(else) | Return flag(has value) v1 ty
+//   Unreachable | BindParam name ty | ListRemove dest name flag(has index) v1 ty
+//   ListInsert name v1 v2 ty | Exit v1 | ListClear name ty | PtrAlias name n2(ptr local) ty
+//   FieldAlias name n2(base) fb pos ty | ListElemAlias name n2(base) v1 ty
+//   PtrCast dest v1 ty(from) ty2(to) | RetAgg name ty | CallAgg name(target) n2(callee) vals argtys ty
+//   NoteLayout name lay | Realloc dest v1(ptr) v2(count) ty | CopyN v1(dst) v2(src) v3(count) ty
+//   ZeroN v1 v2(count) ty | PtrToInt dest v1 ty | IntToPtr dest v1 | Spawn dest name(fn) v1(arg) | ThreadJoin v1
+
+type V:
+    k: string
+    s: string
+    i: int
+
+// k: "I" int, "F" float (s = literal text), "B" bool (i = 0/1), "S" string, "L" local,
+//    "P" param, "T" temp (i = number), "N" null (s = pointer type)
+
+type StrL:
+    items: [string]
+
+type Layout:
+    kind: string
+    name: string
+    elem: string
+    elems: [string]
+    keys: [string]
+    has_keys: bool
+
+type FBase:
+    is_struct: bool
+    name: string
+    tys: [string]
+
+type Ins:
+    op: string
+    dest: int
+    name: string
+    n2: string
+    ty: string
+    ty2: string
+    v1: V
+    v2: V
+    v3: V
+    vals: [V]
+    argtys: [string]
+    pos: int
+    flag: bool
+    lay: Layout
+    fb: FBase
+
+type IrFn:
+    name: string
+    pnames: [string]
+    ptys: [string]
+    ret: string
+    has_sret: bool
+    sret: string
+    body: [Ins]
+
+class IrProg:
+    st_names: [string]
+    st_fnames: [StrL]
+    st_ftys: [StrL]
+    fns: [IrFn]
+    ex_names: [string]
+    ex_ptys: [StrL]
+    ex_rets: [string]
+
+make mk_ins(op: string) -> Ins:
+    i = Ins()
+    i.op = op
+    i.dest = -1
+    return i
+
+make v_int(n: int) -> V:
+    v = V()
+    v.k = "I"
+    v.i = n
+    return v
+
+make v_float(text: string) -> V:
+    v = V()
+    v.k = "F"
+    v.s = text
+    return v
+
+make v_bool(b: bool) -> V:
+    v = V()
+    v.k = "B"
+    if b:
+        v.i = 1
+    return v
+
+make v_str(s: string) -> V:
+    v = V()
+    v.k = "S"
+    v.s = s
+    return v
+
+make v_local(s: string) -> V:
+    v = V()
+    v.k = "L"
+    v.s = s
+    return v
+
+make v_param(s: string) -> V:
+    v = V()
+    v.k = "P"
+    v.s = s
+    return v
+
+make v_temp(n: int) -> V:
+    v = V()
+    v.k = "T"
+    v.i = n
+    return v
+
+make v_null(ty: string) -> V:
+    v = V()
+    v.k = "N"
+    v.s = ty
+    return v
+
+// ---- IR type text helpers --------------------------------------------------------------------
+
+make irt_is_list(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 91
+
+make irt_is_tuple(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 40
+
+make irt_is_ptr(t: string) -> bool:
+    return starts_with(t, "ptr<") and ends_with(t, ">")
+
+make irt_is_prim(t: string) -> bool:
+    return t == "i64" or t == "f64" or t == "bool" or t == "str" or t == "void"
+
+make irt_is_struct(t: string) -> bool:
+    return len(t) > 0 and is_alpha(char_at(t, 0)) and not irt_is_prim(t) and not irt_is_ptr(t)
+
+make irt_list_elem(t: string) -> string:
+    return substr(t, 1, len(t) - 1)
+
+make irt_ptr_inner(t: string) -> string:
+    return substr(t, 4, len(t) - 1)
+
+make irt_ptr_of(t: string) -> string:
+    return "ptr<" + t + ">"
+
+make irt_list_of(t: string) -> string:
+    return "[" + t + "]"
+
+make irt_tuple_elems(t: string) -> [string]:
+    return ty_tuple_elems(t)
+
+// Aggregate IR types: lists, tuples, struct references.
+make is_agg_ty(t: string) -> bool:
+    return irt_is_list(t) or irt_is_tuple(t) or irt_is_struct(t)
+
+// Kite (sema) type text -> IR type text (port of `IrType::from(&TypeName)`).
+make ir_type(t: string) -> string:
+    if t == "int" or ty_is_enum(t):
+        return "i64"
+    if t == "float":
+        return "f64"
+    if t == "bool":
+        return "bool"
+    if t == "string":
+        return "str"
+    if t == "()":
+        return "void"
+    if ty_is_list(t):
+        return irt_list_of(ir_type(ty_list_elem(t)))
+    if ty_is_ptr(t):
+        return irt_ptr_of(ir_type(ty_ptr_inner(t)))
+    if ty_is_tuple(t):
+        parts: [string] = []
+        for e in ty_tuple_elems(t):
+            append(parts, ir_type(e))
+        return "(" + join(parts, ", ") + ")"
+    if ty_is_dict(t):
+        dparts: [string] = []
+        df = ty_dict_fields(t)
+        for e2 in df.vals:
+            append(dparts, ir_type(e2))
+        return "(" + join(dparts, ", ") + ")"
+    return t
+
+// Layout of an aggregate Kite type (port of `layout_from_type_name`).
+make layout_from_type(t: string) -> Layout:
+    l = Layout()
+    if ty_is_list(t):
+        l.kind = "List"
+        l.elem = ir_type(ty_list_elem(t))
+    orif ty_is_tuple(t):
+        l.kind = "Tuple"
+        for e in ty_tuple_elems(t):
+            append(l.elems, ir_type(e))
+    orif ty_is_dict(t):
+        l.kind = "Tuple"
+        l.has_keys = true
+        df = ty_dict_fields(t)
+        for e2 in df.vals:
+            append(l.elems, ir_type(e2))
+        for k in df.keys:
+            // keys are stored unquoted
+            append(l.keys, dict_key_text(k))
+    else:
+        l.kind = "Struct"
+        l.name = t
+    return l
+
+// `"a\"b"` (as printed in a dict type) -> `a"b`
+make dict_key_text(q: string) -> string:
+    inner = substr(q, 1, len(q) - 1)
+    out = ""
+    i = 0
+    while i < len(inner):
+        c = char_at(inner, i)
+        if c == 92 and i + 1 < len(inner):
+            d = char_at(inner, i + 1)
+            if d == 110:
+                out = out + "\n"
+            orif d == 116:
+                out = out + "\t"
+            orif d == 114:
+                out = out + "\r"
+            else:
+                out = out + substr(inner, i + 1, i + 2)
+            i += 2
+        else:
+            out = out + substr(inner, i, i + 1)
+            i += 1
+    return out
+
+make layout_list(elem: string) -> Layout:
+    l = Layout()
+    l.kind = "List"
+    l.elem = elem
+    return l
+
+make layout_struct(name: string) -> Layout:
+    l = Layout()
+    l.kind = "Struct"
+    l.name = name
+    return l
+
+// `layout_of_ir_type`: Some(layout) for lists and struct references.
+make has_layout_of_ir_type(t: string) -> bool:
+    return irt_is_list(t) or irt_is_struct(t)
+
+make layout_of_ir_type(t: string) -> Layout:
+    if irt_is_list(t):
+        return layout_list(irt_list_elem(t))
+    return layout_struct(t)
+
+make zero_value(t: string) -> V:
+    if t == "i64":
+        return v_int(0)
+    if t == "f64":
+        return v_float("0.0")
+    if t == "bool":
+        return v_bool(false)
+    if t == "str":
+        return v_str("")
+    return v_int(0)

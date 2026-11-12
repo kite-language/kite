@@ -70,7 +70,7 @@ show_status() {
   row() { # name dir version
     if [ -d "$2" ]; then printf '  %-18s %-10s %-9s %s\n' "$1" "$3" "$(commit_of "$2")" "ok$(dirty_of "$2")"
     else printf '  %-18s %-10s %-9s %s\n' "$1" "-" "-" "MISSING at $2"; fi; }
-  row kite "$KITE" "$(ver_toml "$KITE/archive/rust-stage0/Cargo.toml")"
+  row kite "$KITE" "$(ver_toml "$KITE/compiler/kite.toml")"
   row tree-sitter-kite "$TS" "$(ver_json "$TS/package.json" version)"
   row vscode-kite "$VS" "$(ver_json "$VS/package.json" version)"
   row zed-kite "$ZED" "$(ver_toml "$ZED/extension.toml")"
@@ -93,7 +93,7 @@ do_kite() {
   say "==> kite: build (stage0 Rust -> kitec) and install into $BIN"
   run "$KITE/build.sh"
   run mkdir -p "$BIN"
-  run install -m 0755 "$KITE/archive/rust-stage0/target/release/kite" "$BIN/kite"
+  if [ -x "$KITE/compiler/target/kite" ]; then run install -m 0755 "$KITE/compiler/target/kite" "$BIN/kite"; else run install -m 0755 "$KITE/archive/rust-stage0/target/release/kite" "$BIN/kite"; fi
   [ -x "$KITE/compiler/target/kitec" ] && run install -m 0755 "$KITE/compiler/target/kitec" "$BIN/kitec"
   ok "installed $BIN/kite (add $BIN to your PATH if needed)"
   command -v clang >/dev/null 2>&1 || warn "clang not found: kite needs it to build programs (sudo apt install clang)"

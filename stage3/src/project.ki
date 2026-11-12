@@ -1,0 +1,284 @@
+// kite.toml / kite.lock handling and project discovery (port of project.rs, extended in 0.4.1:
+// package metadata, path/version dependencies, text-preserving edits).
+
+use sysx
+
+type Manifest:
+    name: string
+    version: string
+    edition: string
+    description: string
+    authors: string
+    license: string
+    repository: string
+    homepage: string
+    readme: string
+    keywords: string
+    opt_level: int
+    target: string
+    dep_names: [string]
+    dep_vers: [string]
+    dep_paths: [string]
+
+type Project:
+    root: string
+    manifest: Manifest
+    text: string
+
+make unquote(s: string) -> string:
+    t = trim(s)
+    if len(t) >= 2 and char_at(t, 0) == 34 and char_at(t, len(t) - 1) == 34:
+        inner = substr(t, 1, len(t) - 1)
+        inner = replace_all(inner, "\\n", "\n")
+        inner = replace_all(inner, "\\\"", "\"")
+        return replace_all(inner, "\\\\", "\\")
+    return t
+
+make new_manifest(name: string) -> Manifest:
+    m = Manifest()
+    m.name = name
+    m.version = "0.1.0"
+    m.edition = "2026"
+    return m
+
+// `["a", "b"]` -> `a, b`
+make toml_array_join(v: string) -> string:
+    t = trim(v)
+    if not (starts_with(t, "[") and ends_with(t, "]")):
+        return unquote(t)
+    inner = substr(t, 1, len(t) - 1)
+    out: [string] = []
+    for part in split(inner, ","):
+        p = unquote(part)
+        if len(p) > 0:
+            append(out, p)
+    return join(out, ", ")
+
+// Value of `key` inside an inline table `{ a = "x", b = "y" }` ("" if absent).
+make inline_get(v: string, key: string) -> string:
+    t = trim(v)
+    if not (starts_with(t, "{") and ends_with(t, "}")):
+        return ""
+    inner = substr(t, 1, len(t) - 1)
+    for part in split(inner, ","):
+        eq = find(part, "=")
+        if eq >= 0 and trim(substr(part, 0, eq)) == key:
+            return unquote(substr(part, eq + 1, len(part)))
+    return ""
+
+// Strips a trailing ` # comment` that is not inside quotes.
+make strip_comment(line: string) -> string:
+    inq = false
+    i = 0
+    while i < len(line):
+        c = char_at(line, i)
+        if c == 34:
+            inq = not inq
+        orif c == 35 and not inq:
+            return trim(substr(line, 0, i))
+        i += 1
+    return line
+
+// Minimal TOML reader: `[section]` headers and `key = value` lines (strings, integers, arrays of
+// strings, inline tables for dependencies).
+make manifest_parse(text: string) -> Manifest:
+    m = new_manifest("")
+    m.version = ""
+    section = ""
+    for raw in split(text, "\n"):
+        line = strip_comment(trim(raw))
+        if len(line) == 0 or starts_with(line, "#"):
+            continue
+        if starts_with(line, "["):
+            section = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq < 0:
+            continue
+        key = trim(substr(line, 0, eq))
+        rawval = trim(substr(line, eq + 1, len(line)))
+        val = toml_array_join(rawval)
+        if section == "package":
+            if key == "name":
+                m.name = val
+            orif key == "version":
+                m.version = val
+            orif key == "edition":
+                m.edition = val
+            orif key == "description":
+                m.description = val
+            orif key == "authors" or key == "author":
+                m.authors = val
+            orif key == "license":
+                m.license = val
+            orif key == "repository":
+                m.repository = val
+            orif key == "homepage":
+                m.homepage = val
+            orif key == "readme":
+                m.readme = val
+            orif key == "keywords":
+                m.keywords = val
+        orif section == "build":
+            if key == "opt_level":
+                m.opt_level = to_int(val)
+            orif key == "target":
+                m.target = val
+        orif section == "dependencies":
+            append(m.dep_names, key)
+            if starts_with(rawval, "{"):
+                v2 = inline_get(rawval, "version")
+                if len(v2) == 0:
+                    v2 = "*"
+                append(m.dep_vers, v2)
+                append(m.dep_paths, inline_get(rawval, "path"))
+            else:
+                append(m.dep_vers, val)
+                append(m.dep_paths, "")
+    return m
+
+make quote_toml(s: string) -> string:
+    return "\"" + replace_all(replace_all(replace_all(s, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n") + "\""
+
+make quote_list(csv: string) -> string:
+    out: [string] = []
+    for p in split(csv, ","):
+        t = trim(p)
+        if len(t) > 0:
+            append(out, quote_toml(t))
+    return "[" + join(out, ", ") + "]"
+
+// A fresh manifest for `kite init`.
+make manifest_to_string(m: Manifest) -> string:
+    out = "[package]\nname = " + quote_toml(m.name) + "\nversion = " + quote_toml(m.version) + "\nedition = " + quote_toml(m.edition) + "\n"
+    out = out + "description = " + quote_toml(m.description) + "\n"
+    out = out + "authors = " + quote_list(m.authors) + "\n"
+    out = out + "license = " + quote_toml(m.license) + "\n"
+    out = out + "repository = " + quote_toml(m.repository) + "\n"
+    out = out + "\n[build]\nopt_level = " + str(m.opt_level) + "\n\n[dependencies]\n"
+    return out
+
+// ---- text-preserving dependency edits ------------------------------------------------------------
+
+make is_dep_line_of(line: string, name: string) -> bool:
+    t = trim(line)
+    eq = find(t, "=")
+    return eq > 0 and trim(substr(t, 0, eq)) == name
+
+// Sets `name = spec` in [dependencies] (adds the section when missing), keeping everything else.
+make manifest_text_set_dep(text: string, name: string, spec: string) -> string:
+    lines = split(text, "\n")
+    out: [string] = []
+    in_deps = false
+    done = false
+    for line in lines:
+        t = trim(line)
+        if starts_with(t, "["):
+            if in_deps and not done:
+                append(out, name + " = " + spec)
+                done = true
+            in_deps = t == "[dependencies]"
+            append(out, line)
+        orif in_deps and is_dep_line_of(line, name):
+            append(out, name + " = " + spec)
+            done = true
+        else:
+            append(out, line)
+    if not done:
+        // drop trailing blank lines, then append the section/entry
+        while len(out) > 0 and len(trim(out[len(out) - 1])) == 0:
+            pop(out)
+        if in_deps:
+            append(out, name + " = " + spec)
+            append(out, "")
+        else:
+            append(out, "")
+            append(out, "[dependencies]")
+            append(out, name + " = " + spec)
+            append(out, "")
+    return join(out, "\n")
+
+make manifest_text_remove_dep(text: string, name: string) -> string:
+    in_deps = false
+    out: [string] = []
+    for line in split(text, "\n"):
+        t = trim(line)
+        if starts_with(t, "["):
+            in_deps = t == "[dependencies]"
+            append(out, line)
+        orif in_deps and is_dep_line_of(line, name):
+            continue
+        else:
+            append(out, line)
+    return join(out, "\n")
+
+// Dependencies sorted by name (BTreeMap order) -- used for the lock file.
+make manifest_sorted_dep_names(m: Manifest) -> [string]:
+    names: [string] = []
+    for n in m.dep_names:
+        append(names, n)
+    i = 1
+    while i < len(names):
+        j = i
+        while j > 0 and names[j - 1] > names[j]:
+            tmp = names[j]
+            names[j] = names[j - 1]
+            names[j - 1] = tmp
+            j -= 1
+        i += 1
+    return names
+
+make manifest_dep_index(m: Manifest, name: string) -> int:
+    i = 0
+    while i < len(m.dep_names):
+        if m.dep_names[i] == name:
+            return i
+        i += 1
+    return -1
+
+// Walks up from `start` to the directory holding kite.toml.
+make project_discover(start: string) -> Project:
+    p = Project()
+    dir = start
+    while true:
+        cand = path_join(dir, "kite.toml")
+        if file_exists(cand):
+            p.root = dir
+            p.text = read_file(cand)
+            p.manifest = manifest_parse(p.text)
+            return p
+        parent = path_parent(dir)
+        if parent == "" or parent == dir:
+            die("could not find `kite.toml` in `" + start + "` or any parent directory\n(run `kite init` to create a new project)")
+            return p
+        dir = parent
+    return p
+
+// `src/main.ki`, or `src/lib.ki` for a library piece.
+make project_main_path(p: Project) -> string:
+    m = path_join(path_join(p.root, "src"), "main.ki")
+    if file_exists(m):
+        return m
+    return path_join(path_join(p.root, "src"), "lib.ki")
+
+make project_is_lib(p: Project) -> bool:
+    return not file_exists(path_join(path_join(p.root, "src"), "main.ki"))
+
+make project_src_dir(p: Project) -> string:
+    return path_join(p.root, "src")
+
+make project_build_dir(p: Project) -> string:
+    return path_join(p.root, "target")
+
+// target/debug/<name> or target/release/<name> (like cargo)
+make project_profile_dir(p: Project, release: bool) -> string:
+    if release:
+        return path_join(project_build_dir(p), "release")
+    return path_join(project_build_dir(p), "debug")
+
+make project_output_path(p: Project, release: bool) -> string:
+    return path_join(project_profile_dir(p, release), p.manifest.name)
+
+make project_save_text(p: Project, text: string):
+    p.text = text
+    write_file(path_join(p.root, "kite.toml"), text)

@@ -1,22 +1,32 @@
-# Kite: what is left (v0.3.1)
+# Kite: what is left (v0.4.1)
 
-## 1. Bootstrap: port the Rust compiler to Kite
-Done: lexer, parser, diagnostics, desugar (≈ 31 % of ≈ 12 000 Rust lines). **Goal of 0.4.0: finish everything below.** Each phase is verified against the Rust one with
-canonical dumps (`scripts/difftest.sh`).
+## 1. Bootstrap: done in 0.4.0 ✅
+The whole Rust compiler is ported to Kite (`compiler/`). `./build.sh` builds stage1 (kitec compiled by the Rust seed),
+stage2 (kitec compiled by kitec) and stage3 (compiled by stage2); the three produce the same LLVM IR and
+`compiler/BOOTSTRAPPED` is written. From now on the Rust seed (`archive/rust-stage0`) is only needed to
+bootstrap from scratch and as a test oracle (`scripts/difftest.sh`, `scripts/llcmp.sh`).
 
-| # | phase | Rust size | Kite file | check |
-|---|-------|-----------|-----------|-------|
-| 1 | ~~desugar~~ ✅ done in 0.3.1 | 1 147 | `compiler/src/desugar.ki` | dump of the desugared AST: 37 files identical |
-| 2 | prelude injection | 122 | `prelude.ki` | dump after injection |
-| 3 | sema | 2 001 | `sema.ki` | typed dump + same diagnostics |
-| 4 | IR lowering | 2 861 | `ir.ki` | IR dump |
-| 5 | LLVM codegen | 1 557 | `codegen.ki` | identical `.ll` |
-| 6 | project / `kite.toml`, imports, C headers | ≈ 530 | `project.ki`, `resolve.ki`, `cheader.ki` | same results |
-| 7 | driver + CLI (`init build run check clean bench package`) | ≈ 1 400 | `driver.ki`, `cli.ki` | same outputs |
-| 8 | stage2: `kitec` compiles itself, same IR as stage1 | – | `./build.sh` | writes `compiler/BOOTSTRAPPED` |
-| 9 | ship `kitec` as `kite` | – | `package-release.sh --compiler auto` | Rust tests re-run |
+| phase | Kite file | verified against Rust |
+|-------|-----------|-----------------------|
+| lexer, parser, diagnostics | `lexer.ki`, `parser.ki`, `diag.ki` | tokens / AST dumps, 49 files |
+| desugar, prelude injection | `desugar.ki`, `prelude.ki` | desugared / injected dumps |
+| sema | `sema.ki`, `types.ki` | typed dump and diagnostics (49 files + 36 error cases) |
+| IR, LLVM codegen | `irdef.ki`, `ir.ki`, `codegen.ki` | identical `.ll` (string constants compared sorted) |
+| project, imports, C headers | `project.ki`, `resolve.ki`, `cheader.ki` | stage2 = stage3 = stage1 |
+| driver, CLI | `driver.ki`, `cli.ki`, `sysx.ki` | `init build run check clean bench add remove update` |
 
-Probably needed on the way: float formatting/parsing, directory/process helpers, `sort`, better prelude error spans.
+Still open from this chapter: `kite package`, `--target` cross builds from `kite` itself on every OS
+(Windows/macOS releases still use the Rust seed), colours for diagnostics, making the CLI itself use `std.*`
+(`sysx.ki`/`project.ki` are private copies), `bool == bool` in the code generator (also a Rust-seed limitation).
+The default pieces (`std.*`), the piece registry, `kite publish`/`verify`, threads, memory primitives, package
+metadata, `target/debug|release` with a fingerprint cache and `kite target` are done in 0.4.1: see `docs/pieces.md`
+and `docs/targets.md`.
+
+Still open: a remote registry/mirror (the registry is the repository's `pieces/` folder), real `thread:` blocks
+(only the `spawn` builtin is threaded), thread-safe `StrMap`/lists, `condvar`/channels pieces, `kite doc`.
+
+## 1b. Package system (0.5.0)
+Design in `docs/packages.md`; implemented after the bootstrap, on top of the `git`, `toml`, `json`, `semver`, `sha256` libraries.
 
 ## 2. Language and runtime
 `**kwargs`, user generics, dynamic dict literals and key deletion, struct `b = a` aliasing, nested collections,

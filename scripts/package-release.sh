@@ -15,8 +15,8 @@
 #   scripts/package-release.sh --no-deb --no-rpm
 #
 # --compiler selects which `kite` goes into the packages:
-#   rust   the stable Rust compiler (archive/rust-stage0)   <- default today
-#   kite   the self-hosted compiler (`kitec`), once it is complete
+#   rust   the Rust seed compiler (archive/rust-stage0)
+#   kite   the self-hosted compiler (`kitec`, built by ./build.sh)
 #   auto   `kite` if compiler/BOOTSTRAPPED exists, otherwise `rust`
 #
 # Cross-compilation needs the usual toolchains (or `cross` + Docker); targets
@@ -45,16 +45,51 @@ if [ "$COMPILER" = auto ]; then
 fi
 VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' "$SRC/Cargo.toml" | head -1)
 echo "==> release $VERSION, compiler: $COMPILER, targets: $TARGETS"
-if [ "$COMPILER" = kite ]; then
-  echo "error: the self-hosted compiler is not packaged yet (compiler/BOOTSTRAPPED missing)." >&2
-  echo "       use --compiler rust until the bootstrap is complete." >&2
+if [ "$COMPILER" = kite ] && [ ! -f "$ROOT/compiler/BOOTSTRAPPED" ]; then
+  echo "error: the self-hosted compiler is not built yet (compiler/BOOTSTRAPPED missing): run ./build.sh" >&2
   exit 1
 fi
 rm -rf "$OUT"; mkdir -p "$OUT"
 
-# 1. archives (tar.gz / zip) through the cross-build matrix
-"$ROOT/scripts/cross-build.sh" --targets "$TARGETS" --output-dir "$OUT" || \
-  echo "   (some targets were skipped, see above)"
+# 1. archives (tar.gz / zip)
+if [ "$COMPILER" = kite ]; then
+  # Self-hosted: `kite` is compiled by `kite` itself (no Rust). The host target uses the binary
+  # produced by ./build.sh; other targets are built with `kite build --target` (needs clang
+  # plus a linker/sysroot for that target) -- or natively on a runner of that OS (release.yml).
+  KITE_BIN="$ROOT/compiler/target/kite"
+  [ -x "$KITE_BIN" ] || { echo "error: $KITE_BIN missing: run ./build.sh" >&2; exit 1; }
+  HOST=""; case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) HOST=linux-x64 ;; Linux-aarch64|Linux-arm64) HOST=linux-arm64 ;;
+    Darwin-arm64) HOST=macos-arm64 ;; Darwin-x86_64) HOST=macos-x64 ;; esac
+  triple_of() { case "$1" in
+    linux-x64) echo x86_64-unknown-linux-gnu ;; linux-arm64) echo aarch64-unknown-linux-gnu ;;
+    windows-x64) echo x86_64-pc-windows-msvc ;; windows-arm64) echo aarch64-pc-windows-msvc ;;
+    macos-x64) echo x86_64-apple-darwin ;; macos-arm64) echo arm64-apple-darwin ;; esac; }
+  IFS=, read -ra TLIST <<< "$TARGETS"
+  for short in "${TLIST[@]}"; do
+    name="kite-${VERSION}-${short}"; stage="$OUT/.stage/$name"; mkdir -p "$stage"
+    exe=kite; case "$short" in windows-*) exe=kite.exe ;; esac
+    if [ "$short" = "$HOST" ]; then
+      cp "$KITE_BIN" "$stage/$exe"
+    else
+      if ! ( cd "$ROOT/compiler" && "$KITE_BIN" build --release -q --target "$(triple_of "$short")" -o "$stage/$exe" ) >/tmp/kite-pkg-"$short".log 2>&1; then
+        echo "   $short: skipped (cannot link for that target here, see /tmp/kite-pkg-$short.log)"; rm -rf "$stage"; continue
+      fi
+    fi
+    rm -f "$stage"/kite.ll "$stage"/kite.exe.ll
+    cp -r "$ROOT/pieces" "$stage/pieces"
+    cp "$ROOT/README.md" "$ROOT/LICENSE" "$stage/" 2>/dev/null || true
+    case "$short" in
+      windows-*) (cd "$OUT/.stage" && zip -r -q "$OUT/$name.zip" "$name") ;;
+      *)         tar -C "$OUT/.stage" -czf "$OUT/$name.tar.gz" "$name" ;;
+    esac
+    echo "   -> $name"
+  done
+  rm -rf "$OUT/.stage"
+else
+  "$ROOT/scripts/cross-build.sh" --targets "$TARGETS" --output-dir "$OUT" || \
+    echo "   (some targets were skipped, see above)"
+fi
 
 if [ -z "$(find "$OUT" -maxdepth 1 \( -name 'kite-*.tar.gz' -o -name 'kite-*.zip' \) 2>/dev/null)" ]; then
   echo "error: no target could be built (see the logs above)." >&2
@@ -75,6 +110,7 @@ make_deb() {
   tar -xzf "$tarball" -C "$tmp/x"
   install -m 0755 "$(find "$tmp/x" -type f -name kite | head -1)" "$pkg/usr/bin/kite"
   cp -r "$ROOT/stdlib" "$pkg/usr/share/kite/stdlib"
+  cp -r "$ROOT/pieces" "$pkg/usr/share/kite/pieces"
   cp -r "$ROOT/examples" "$pkg/usr/share/kite/examples"
   cp -r "$ROOT/docs/." "$pkg/usr/share/doc/kite/"
   cp "$ROOT/LICENSE" "$pkg/usr/share/doc/kite/copyright"
@@ -126,6 +162,7 @@ Compiles through LLVM; needs clang to produce native executables.
 mkdir -p %{buildroot}/usr/bin %{buildroot}/usr/share/kite %{buildroot}/usr/share/doc/kite
 install -m 0755 $bin %{buildroot}/usr/bin/kite
 cp -r $ROOT/stdlib %{buildroot}/usr/share/kite/stdlib
+cp -r $ROOT/pieces %{buildroot}/usr/share/kite/pieces
 cp -r $ROOT/examples %{buildroot}/usr/share/kite/examples
 cp -r $ROOT/docs/. %{buildroot}/usr/share/doc/kite/
 

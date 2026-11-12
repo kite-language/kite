@@ -206,10 +206,10 @@ jobs:
         working-directory: smoke_test_project
         run: .\..\archive\rust-stage0\target\release\kite.exe build --lib
 
-  # The bootstrap: Rust stage0 builds the Kite compiler written in Kite and
-  # the differential tests compare it with the Rust implementation.
+  # The bootstrap: the Rust seed builds kitec (stage1), kitec builds itself (stage2, stage3: identical IR),
+  # differential tests compare every phase with the Rust implementation, examples run with stage2.
   bootstrap:
-    name: bootstrap (stage0 -> stage1 -> differential tests)
+    name: bootstrap (stage0 -> stage1 -> stage2 -> stage3 + tests)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
