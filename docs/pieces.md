@@ -4,7 +4,13 @@ A **piece** is a Kite library: a project with `src/lib.ki` and a `kite.toml`. Pi
 the language itself is "made of pieces" -- the default ones (`std.*`) live in the same registry as everyone else's.
 
 ## The registry
-The registry is the `pieces/` directory of the Kite repository: `pieces/<name>/<version>/{kite.toml, src/...}`.
+The registry is the `pieces/` directory of the Kite repository, in two clearly separated tiers:
+
+- `pieces/std/<name>/<version>/` -- the **default pieces**, maintained with the language. They need no declaration:
+  `use std.<name>`. They are installed with the compiler.
+- `pieces/community/<name>/<version>/` -- **third-party pieces**, added by pull request. They are declared in
+  `[dependencies]` and imported by name. A community piece cannot take the name of a default piece.
+
 Published versions are **immutable**. kite finds it through `$KITE_PIECES`, a `pieces/` folder (with a `REGISTRY`
 file) above the project, `~/.kite/pieces`, or `/usr/share/kite/pieces` (installed with the `.deb`/`.rpm`/archive).
 
@@ -22,10 +28,16 @@ kite remove sha256
 `kite.lock` records name, version, source and a sha256 checksum of every registry piece; a mismatch with the
 registry copy aborts the build.
 
-In code: `use sha256` (a declared dependency), `use mylib.sub` (a module of a piece, `src/sub.ki`),
-and `use std.fs` for the **default pieces**, which need no declaration (the equivalent of Rust's `std::`).
-A project's own `src/<name>.ki` wins over a piece of the same name. Functions share one global namespace:
-prefix them with the piece name (`sha256_hex`, `fs_read`, ...).
+In code: `use sha256` (a declared community dependency), `use mylib.sub` (a module of a piece, `src/sub.ki`),
+and `use std.fs` for the **default pieces** (the equivalent of Rust's `std::`). A project's own `src/<name>.ki`
+wins over a piece of the same name. `kite add fs` answers that `fs` is a default piece.
+
+**Qualified calls**: call a piece's function as `piece.function(...)` -- `fs.read(path)`, `sha256.hex(text)`,
+`types.clamp(v, 0, 10)`. It stands for the function named `<piece>_<function>` (the naming convention of pieces:
+`fs_read`), or else a function called `<function>` defined by that piece. The prefixed names keep working. The name
+is only a piece inside functions that do not use it as a variable (a local called `fs` shadows the piece), and
+only in files that import the piece; an unknown function is an error that lists the names it looked for.
+Functions still share one global namespace under the hood, so name your piece's functions `<piece>_<function>`.
 
 ## Default pieces (`std.*`)
 | piece | what it offers |
@@ -56,12 +68,12 @@ Threads: `h = spawn(worker, arg)` runs `make worker(arg: int)` (returns nothing 
 kite init --lib my-piece   # src/lib.ki, kite.toml with metadata (authors from git config)
 kite verify                # same checks as the registry CI
 export KITE_PIECES=~/src/kite/pieces      # your clone of the Kite repository
-kite publish               # validates, compiles, copies into pieces/my-piece/<version>/ and prints the commands
+kite publish               # validates, compiles, copies into pieces/community/my-piece/<version>/ and prints the commands
 ```
 `kite publish` never runs git or touches GitHub: it prints `git checkout -b`, `git add`, `git commit`,
 `git push` and `gh pr create` for you to run. The pull request is checked by `.github/workflows/pieces.yml`
 (`scripts/verify-pieces.sh`): metadata complete (`description`, `license`, `authors`, valid name and semver),
-directory names match `kite.toml`, the piece compiles with its dependencies, and no existing version changed.
+directory names match `kite.toml` (`pieces/<tier>/<name>/<version>`), the piece compiles with its dependencies, and no existing version changed.
 A published piece may only depend on registry pieces (no `path` dependencies).
 
 ## Build output (like cargo)

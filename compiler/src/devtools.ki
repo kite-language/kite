@@ -1,0 +1,156 @@
+// `kite test`, `kite fmt` and `kite doc`.
+
+use sysx
+use project
+use pieces
+use driver
+use cli
+
+// ---- test -------------------------------------------------------------------------------------
+
+// Builds and runs every `tests/*.ki` (each a program with `make main()` that exits non-zero on failure).
+make cmd_test(filter: string):
+    p = project_discover(cwd())
+    r = prepare_deps(p, false)
+    tdir = path_join(p.root, "tests")
+    if not is_dir(tdir):
+        die("no `tests/` directory: put test programs in tests/*.ki (each has a `make main()` and exits non-zero on failure)")
+    files: [string] = []
+    for n in list_dir(tdir):
+        if ends_with(n, ".ki") and (filter == "" or contains_str(n, filter)):
+            append(files, n)
+    if len(files) == 0:
+        die("no tests found in " + tdir)
+    status("Testing", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
+    passed = 0
+    bad = 0
+    no_links: [string] = []
+    outdir = path_join(project_profile_dir(p, false), "tests")
+    mkdir_all(outdir)
+    for n2 in files:
+        stem = substr(n2, 0, len(n2) - 3)
+        cx = make_ctx(p, r)
+        c = check_project(path_join(tdir, n2), project_src_dir(p), false, cx)
+        if not c.ok:
+            print("test " + n2 + " ... " + red_bold_err("FAILED") + " (does not compile)")
+            bad += 1
+            continue
+        exe = build_from_ir(c.prog, path_join(outdir, stem), 0, "", "exe", false, no_links)
+        log = path_join(outdir, stem + ".log")
+        code = sh(shell_quote(exe) + " > " + shell_quote(log) + " 2>&1")
+        if code == 0:
+            print("test " + n2 + " ... " + green_bold("ok"))
+            passed += 1
+        else:
+            print("test " + n2 + " ... " + red_bold_err("FAILED") + " (exit code " + str(code) + ")")
+            print(read_file(log))
+            bad += 1
+    print("")
+    print("test result: " + str(passed) + " passed; " + str(bad) + " failed")
+    if bad > 0:
+        exit(1)
+
+// ---- fmt --------------------------------------------------------------------------------------
+
+make fmt_text(text: string) -> string:
+    out: [string] = []
+    blanks = 0
+    for raw in split(text, "\n"):
+        line = raw
+        if ends_with(line, chr(13)):
+            line = substr(line, 0, len(line) - 1)
+        // trailing whitespace
+        e = len(line)
+        while e > 0 and (char_at(line, e - 1) == 32 or char_at(line, e - 1) == 9):
+            e -= 1
+        line = substr(line, 0, e)
+        // leading tabs -> 4 spaces
+        lead = 0
+        while lead < len(line) and char_at(line, lead) == 9:
+            lead += 1
+        if lead > 0:
+            line = repeat("    ", lead) + substr(line, lead, len(line))
+        if len(line) == 0:
+            blanks += 1
+            if blanks > 2:
+                continue
+        else:
+            blanks = 0
+        append(out, line)
+    while len(out) > 0 and len(out[len(out) - 1]) == 0:
+        pop(out)
+    return join(out, "\n") + "\n"
+
+make source_files(p: Project) -> [string]:
+    out: [string] = []
+    cmd = "find " + shell_quote(project_src_dir(p)) + " " + shell_quote(path_join(p.root, "tests")) + " -name '*.ki' 2>/dev/null | LC_ALL=C sort"
+    for line in split(capture(cmd), "\n"):
+        if len(trim(line)) > 0:
+            append(out, trim(line))
+    return out
+
+make cmd_fmt(check_only: bool):
+    p = project_discover(cwd())
+    changed = 0
+    for f in source_files(p):
+        old = read_file(f)
+        fresh = fmt_text(old)
+        if fresh != old:
+            changed += 1
+            if check_only:
+                print("would reformat " + path_display(f, p.root))
+            else:
+                write_file(f, fresh)
+                status("Formatted", path_display(f, p.root))
+    if check_only and changed > 0:
+        die(str(changed) + " file(s) need formatting (run `kite fmt`)")
+    if changed == 0:
+        status("Formatted", "nothing to change")
+
+// ---- doc --------------------------------------------------------------------------------------
+
+make doc_signature(line: string) -> string:
+    t = trim(line)
+    if ends_with(t, ":"):
+        t = substr(t, 0, len(t) - 1)
+    return t
+
+make doc_is_item(line: string) -> bool:
+    return starts_with(line, "make ") or starts_with(line, "class ") or starts_with(line, "type ") or starts_with(line, "enum ") or starts_with(line, "const ") or starts_with(line, "async make ") or starts_with(line, "extern make ")
+
+// Markdown for one source file: every top-level item with the `//` comment lines right above it.
+make doc_file(text: string, title: string) -> string:
+    out = "## `" + title + "`\n\n"
+    pending: [string] = []
+    for raw in split(text, "\n"):
+        line = raw
+        if starts_with(line, "//"):
+            c = trim(substr(line, 2, len(line)))
+            append(pending, c)
+        orif doc_is_item(line):
+            out = out + "### `" + doc_signature(line) + "`\n\n"
+            if len(pending) > 0:
+                out = out + join(pending, "\n") + "\n\n"
+            clear(pending)
+        else:
+            clear(pending)
+    return out
+
+make cmd_doc():
+    p = project_discover(cwd())
+    m = p.manifest
+    out = "# " + m.name + " " + m.version + "\n\n"
+    if len(m.description) > 0:
+        out = out + m.description + "\n\n"
+    if len(m.authors) > 0:
+        out = out + "Authors: " + m.authors + "\n\n"
+    if len(m.license) > 0:
+        out = out + "License: " + m.license + "\n\n"
+    for f in source_files(p):
+        if contains_str(f, "/tests/"):
+            continue
+        out = out + doc_file(read_file(f), path_display(f, p.root))
+    dest = path_join(path_join(project_build_dir(p), "doc"), m.name + ".md")
+    mkdir_all(path_parent(dest))
+    write_file(dest, out)
+    status("Documented", dest)

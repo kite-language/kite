@@ -11,7 +11,7 @@ BASE=""
 [ "${1:-}" = "--base" ] && BASE="${2:?--base needs a ref}"
 export KITE_PIECES="$ROOT/pieces"
 bad=0; n=0
-for dir in "$ROOT"/pieces/*/*/; do
+for dir in "$ROOT"/pieces/*/*/*/; do
   [ -f "$dir/kite.toml" ] || continue
   n=$((n+1))
   if ! (cd "$dir" && "$KITE" verify > /tmp/verify-piece.log 2>&1); then

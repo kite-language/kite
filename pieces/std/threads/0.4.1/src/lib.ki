@@ -1,0 +1,74 @@
+// threads -- threads, mutexes and atomics.
+//
+//   Threads come from two builtins: `h = spawn(worker, arg)` starts `worker(arg: int)` on a new thread
+//   and `thread_join(h)` waits for it. Share data by passing an address: allocate with `mem`/`alloc_n`,
+//   pass `ptr_to_int(p)` as the argument and rebuild the pointer in the worker with `int_to_ptr(n)`.
+//
+//   This piece adds the synchronisation: a mutex is an int handle (the address of its storage).
+
+extern make pthread_mutex_init(m: ptr<int>, attr: ptr<int>) -> int
+extern make pthread_mutex_lock(m: ptr<int>) -> int
+extern make pthread_mutex_unlock(m: ptr<int>) -> int
+extern make pthread_mutex_destroy(m: ptr<int>) -> int
+extern make usleep(us: int) -> int
+extern make sched_yield() -> int
+
+make mutex_new() -> int:
+    block = alloc_n(int, 8)
+    pthread_mutex_init(block, null)
+    return ptr_to_int(block)
+
+make mutex_lock(m: int):
+    pthread_mutex_lock(int_to_ptr(m))
+
+make mutex_unlock(m: int):
+    pthread_mutex_unlock(int_to_ptr(m))
+
+make mutex_free(m: int):
+    p = int_to_ptr(m)
+    pthread_mutex_destroy(p)
+    free(p)
+
+// An atomic integer: a mutex plus a value (handle = address of the block).
+make atomic_new(initial: int) -> int:
+    block = alloc_n(int, 10)
+    pthread_mutex_init(block, null)
+    v = block + 8
+    *v = initial
+    return ptr_to_int(block)
+
+make atomic_get(a: int) -> int:
+    block = int_to_ptr(a)
+    pthread_mutex_lock(block)
+    v = block + 8
+    r = *v
+    pthread_mutex_unlock(block)
+    return r
+
+make atomic_set(a: int, value: int):
+    block = int_to_ptr(a)
+    pthread_mutex_lock(block)
+    v = block + 8
+    *v = value
+    pthread_mutex_unlock(block)
+
+// Adds `delta` and returns the new value.
+make atomic_add(a: int, delta: int) -> int:
+    block = int_to_ptr(a)
+    pthread_mutex_lock(block)
+    v = block + 8
+    *v = *v + delta
+    r = *v
+    pthread_mutex_unlock(block)
+    return r
+
+make atomic_free(a: int):
+    block = int_to_ptr(a)
+    pthread_mutex_destroy(block)
+    free(block)
+
+make thread_sleep_ms(ms: int):
+    usleep(ms * 1000)
+
+make thread_yield():
+    sched_yield()

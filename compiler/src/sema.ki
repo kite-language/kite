@@ -102,7 +102,7 @@ class Sema:
     make tag_from(self, d: Diags, before: int, name: string):
         if not self.org_idx.has(name):
             return
-        oi = self.org_idx.get(name)
+        oi = self.org_idx.get(name) - 1
         i = before
         while i < len(d.items):
             if not d.items[i].has_file:
@@ -584,6 +584,8 @@ class Sema:
                 return ""
             self.err("E0054", "dictionary index must be a string literal key", self.ast.nodes[index].span)
             return ""
+        if ty_is_ptr(base_ty):
+            return ty_ptr_inner(base_ty)
         self.err("E0055", "cannot index into a value of type `" + ty_disp(base_ty) + "`", span)
         return ""
 
@@ -818,6 +820,16 @@ class Sema:
                 self.err("E0142", "`int_to_ptr` takes exactly 1 argument, found " + str(na), span)
             self.arg_is(args, 0, "int", "E0143", "`int_to_ptr` expects an `int` address, found `", "`")
             return "ptr<int>"
+        if name == "float_of":
+            if na != 1:
+                self.err("E0150", "`float_of` takes exactly 1 argument, found " + str(na), span)
+            self.arg_is(args, 0, "int", "E0151", "`float_of` expects an `int`, found `", "`")
+            return "float"
+        if name == "int_of":
+            if na != 1:
+                self.err("E0152", "`int_of` takes exactly 1 argument, found " + str(na), span)
+            self.arg_is(args, 0, "float", "E0153", "`int_of` expects a `float`, found `", "`")
+            return "int"
         if name == "realloc_n":
             if na != 2:
                 self.err("E0120", "`realloc_n` takes exactly 2 arguments (pointer, new element count), found " + str(na), span)

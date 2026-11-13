@@ -24,7 +24,9 @@ make bump(addr: int):
 
 make main():
     t = test_new("std")
-    test_eq_str(t, "join", path_join("a", "b"), "a/b")
+    test_eq_str(t, "join", path.join("a", "b"), "a/b")
+    test_eq_str(t, "qualified sha", sha256.hex("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    test_eq_str(t, "qualified fmt", fmt.hex(255), "ff")
     test_eq_str(t, "norm", path_norm("/a/./b/../c//d"), "/a/c/d")
     test_eq_str(t, "ext", path_extension("x/y.tar.gz"), "gz")
     test_eq_str(t, "stem", path_stem("x/y.tar.gz"), "y.tar")

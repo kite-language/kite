@@ -20,6 +20,47 @@ make retag_diags(d: Diags, file: string, source: string):
 
 use pieces
 
+// Whether the function subtree binds a variable called `name` (parameter, assignment, loop variable).
+make fn_binds(fa: Ast, id: int, name: string) -> bool:
+    if id < 0:
+        return false
+    k = fa.nodes[id].kind
+    if (k == "LIdent" or k == "Param" or k == "ForRange" or k == "ForEach" or k == "Try") and fa.nodes[id].text == name:
+        return true
+    kl = fa.nodes[id].kids
+    for c in kl:
+        if fn_binds(fa, c, name):
+            return true
+    return false
+
+// Uses of `const NAME` (a function flagged "const") become calls, unless the function binds NAME itself.
+make cwalk(ast: Ast, id: int, active: [string]) -> int:
+    if id < 0:
+        return 0
+    if ast.nodes[id].kind == "Ident" and index_of_name(active, ast.nodes[id].text) >= 0:
+        ast.nodes[id].kind = "Call"
+    kl = ast.nodes[id].kids
+    for c in kl:
+        cwalk(ast, c, active)
+    return 0
+
+make rewrite_consts(ast: Ast, root: int) -> int:
+    fl = ast.nodes[ast.nodes[root].kids[3]].kids
+    names: [string] = []
+    for f in fl:
+        if ast.nodes[ast.nodes[f].kids[2]].text == "const":
+            append(names, ast.nodes[f].text)
+    if len(names) == 0:
+        return 0
+    for f2 in fl:
+        active: [string] = []
+        for n in names:
+            if not fn_binds(ast, f2, n):
+                append(active, n)
+        if len(active) > 0:
+            cwalk(ast, f2, active)
+    return 0
+
 class Loader:
     ast: Ast
     src_root: string
@@ -72,10 +113,10 @@ class Loader:
             if self.std_cache.has(head):
                 proot = self.std_cache.get(head)
             else:
-                vers = registry_versions(self.registry, head)
+                vers = std_versions(self.registry, head)
                 best = sv_best(vers, "*")
                 if len(best) > 0:
-                    proot = registry_piece_root(self.registry, head, best)
+                    proot = std_piece_root(self.registry, head, best)
                 self.std_cache.set(head, proot)
         else:
             k = index_of_name(self.piece_names, head)
@@ -97,6 +138,66 @@ class Loader:
             self.found_root = src
             return cand
         return ""
+
+    // Function of piece `pname` (rooted at `root`) that `pname.method(...)` stands for: `<pname>_<method>`
+    // (the naming convention of pieces), else a function called `<method>` defined by that piece. "" if none.
+    make pick_piece_fn(self, pname: string, method: string, root: string) -> string:
+        c1 = replace_all(pname, "-", "_") + "_" + method
+        if self.org_idx.has(c1):
+            if starts_with(self.org_files[self.org_idx.get(c1) - 1], root):
+                return c1
+        if self.org_idx.has(method):
+            if starts_with(self.org_files[self.org_idx.get(method) - 1], root):
+                return method
+        return ""
+
+    // Rewrites `piece.func(args)` into a plain call, in the subtree `id` of one file's AST.
+    make qualify_walk(self, fa: Ast, id: int, names: [string], roots: [string], display: string, source: string) -> bool:
+        if id < 0:
+            return true
+        ok = true
+        if fa.nodes[id].kind == "MethodCall":
+            mk = fa.nodes[id].kids
+            if len(mk) > 0 and fa.nodes[mk[0]].kind == "Ident":
+                recv = fa.nodes[mk[0]].text
+                pi = index_of_name(names, recv)
+                if pi >= 0:
+                    target = self.pick_piece_fn(recv, fa.nodes[id].text, roots[pi])
+                    if len(target) == 0:
+                        self.error("E0072", "piece `" + recv + "` has no function `" + fa.nodes[id].text + "` (looked for `" + replace_all(recv, "-", "_") + "_" + fa.nodes[id].text + "` and `" + fa.nodes[id].text + "`)", fa.nodes[id].span, display, source, "call a function of a piece as `piece.function(...)`; pieces name their functions `<piece>_<function>`")
+                        ok = false
+                    else:
+                        args: [int] = []
+                        j = 1
+                        while j < len(mk):
+                            append(args, mk[j])
+                            j += 1
+                        fa.nodes[id].kind = "Call"
+                        fa.nodes[id].text = target
+                        fa.nodes[id].kids = args
+        kl = fa.nodes[id].kids
+        for c in kl:
+            if not self.qualify_walk(fa, c, names, roots, display, source):
+                ok = false
+        return ok
+
+    make qualify_calls(self, fa: Ast, root: int, names: [string], roots: [string], display: string, source: string) -> bool:
+        if len(names) == 0:
+            return true
+        ok = true
+        fl = fa.nodes[fa.nodes[root].kids[3]].kids
+        for f in fl:
+            active: [string] = []
+            aroots: [string] = []
+            i = 0
+            while i < len(names):
+                if not fn_binds(fa, f, names[i]):
+                    append(active, names[i])
+                    append(aroots, roots[i])
+                i += 1
+            if not self.qualify_walk(fa, f, active, aroots, display, source):
+                ok = false
+        return ok
 
     make load_file(self, path: string, cur_root: string) -> bool:
         canonical = path_norm(path)
@@ -128,6 +229,8 @@ class Loader:
         append(self.files_loaded, path)
 
         all_ok = true
+        scope_names: [string] = []
+        scope_roots: [string] = []
         imp_list = fa.nodes[fa.nodes[root].kids[0]].kids
         for imp in imp_list:
             mod_path = fa.nodes[imp].text
@@ -141,6 +244,24 @@ class Loader:
             module_root = self.found_root
             if not self.load_file(resolved, module_root):
                 all_ok = false
+            // the piece this import brings into scope (for `piece.function(...)`)
+            segs = split(mod_path, ".")
+            scope_name = segs[0]
+            scope_root = ""
+            if segs[0] == "std" and len(segs) >= 2:
+                scope_name = segs[1]
+                if self.std_cache.has(scope_name):
+                    scope_root = self.std_cache.get(scope_name)
+            else:
+                pk = index_of_name(self.piece_names, segs[0])
+                if pk >= 0:
+                    scope_root = self.piece_roots[pk]
+            if len(scope_root) > 0 and index_of_name(scope_names, scope_name) < 0:
+                append(scope_names, scope_name)
+                append(scope_roots, scope_root)
+
+        if not self.qualify_calls(fa, root, scope_names, scope_roots, display, source):
+            all_ok = false
 
         fl = fa.nodes[fa.nodes[root].kids[3]].kids
         for f in fl:
@@ -204,6 +325,7 @@ make load_and_merge(entry_path: string, src_root: string, registry: string, piec
     fn_l = lo.ast.addl("List", "", span_dummy(), lo.fns)
     kids: [int] = [imp_l, st_l, en_l, fn_l]
     root = lo.ast.addl("Program", "", span_dummy(), kids)
+    rewrite_consts(lo.ast, root)
     out.ast = lo.ast
     out.root = root
     out.ok = true

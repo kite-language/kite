@@ -1,0 +1,14 @@
+[package]
+name = "fs"
+version = "0.4.1"
+edition = "2026"
+description = "files and directories"
+authors = ["The Kite developers"]
+license = "MIT"
+repository = "https://github.com/kite-language/kite"
+keywords = ["std"]
+
+[build]
+opt_level = 0
+
+[dependencies]

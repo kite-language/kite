@@ -55,3 +55,5 @@ Each one has its own version: [docs/versions.md](docs/versions.md).
 ## Releases
 `scripts/package-release.sh` builds the Linux and Windows archives (x64, arm64), `.deb`, `.rpm` and
 `checksums.txt` into `dist/release/`. It packages the Rust compiler until the bootstrap is complete.
+
+See `docs/language-tour.md` for a short tour and `ROADMAP.md` for what is planned.

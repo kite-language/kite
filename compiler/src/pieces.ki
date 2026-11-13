@@ -143,11 +143,16 @@ make registry_dir(start: string) -> string:
             return c2
     return ""
 
-make registry_versions(reg: string, name: string) -> [string]:
+// The registry has two tiers: `std/` (default pieces, imported as `std.<name>`, no declaration needed) and
+// `community/` (declared in [dependencies], imported by name).
+make tier_dir(reg: string, tier: string) -> string:
+    return path_join(reg, tier)
+
+make registry_versions_in(reg: string, tier: string, name: string) -> [string]:
     out: [string] = []
     if len(reg) == 0:
         return out
-    pdir = path_join(reg, name)
+    pdir = path_join(tier_dir(reg, tier), name)
     if not is_dir(pdir):
         return out
     for v in list_dir(pdir):
@@ -155,8 +160,18 @@ make registry_versions(reg: string, name: string) -> [string]:
             append(out, v)
     return out
 
+// community pieces
+make registry_versions(reg: string, name: string) -> [string]:
+    return registry_versions_in(reg, "community", name)
+
+make std_versions(reg: string, name: string) -> [string]:
+    return registry_versions_in(reg, "std", name)
+
 make registry_piece_root(reg: string, name: string, version: string) -> string:
-    return path_join(path_join(reg, name), version)
+    return path_join(path_join(tier_dir(reg, "community"), name), version)
+
+make std_piece_root(reg: string, name: string, version: string) -> string:
+    return path_join(path_join(tier_dir(reg, "std"), name), version)
 
 make valid_piece_name(n: string) -> bool:
     if len(n) == 0 or len(n) > 64:
@@ -210,6 +225,8 @@ make resolve_one(r: Resolved, requester: string, name: string, req: string, path
     else:
         vers = registry_versions(r.registry, name)
         if len(vers) == 0:
+            if len(std_versions(r.registry, name)) > 0:
+                die("`" + name + "` is a default piece: it needs no dependency, write `use std." + name + "`")
             die("piece `" + name + "` was not found in the registry" + hint_registry(r.registry))
         version = sv_best(vers, req)
         if len(version) == 0:

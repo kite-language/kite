@@ -1,0 +1,61 @@
+// std.toml -- a small TOML reader for flat configuration: `[section]` headers and
+// `key = value` lines (strings, integers, booleans). Tables of tables, arrays and inline tables
+// are not supported.
+
+make toml_unquote(s: string) -> string:
+    t = trim(s)
+    if len(t) >= 2 and char_at(t, 0) == 34 and char_at(t, len(t) - 1) == 34:
+        inner = substr(t, 1, len(t) - 1)
+        inner = replace_all(inner, "\\n", "\n")
+        inner = replace_all(inner, "\\\"", "\"")
+        return replace_all(inner, "\\\\", "\\")
+    hash = find(t, " #")
+    if hash >= 0:
+        return trim(substr(t, 0, hash))
+    return t
+
+// Value of `key` in `section` ("" for the top level); `dflt` when absent.
+make toml_get(text: string, section: string, key: string, dflt: string) -> string:
+    cur = ""
+    for raw in split(text, "\n"):
+        line = trim(raw)
+        if len(line) == 0 or starts_with(line, "#"):
+            continue
+        if starts_with(line, "["):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq < 0:
+            continue
+        if cur == section and trim(substr(line, 0, eq)) == key:
+            return toml_unquote(substr(line, eq + 1, len(line)))
+    return dflt
+
+make toml_has(text: string, section: string, key: string) -> bool:
+    marker = chr(1)
+    return toml_get(text, section, key, marker) != marker
+
+make toml_get_int(text: string, section: string, key: string, dflt: int) -> int:
+    v = toml_get(text, section, key, "")
+    if len(v) == 0:
+        return dflt
+    return to_int(v)
+
+// Keys of a section, in file order.
+make toml_keys(text: string, section: string) -> [string]:
+    out: [string] = []
+    cur = ""
+    for raw in split(text, "\n"):
+        line = trim(raw)
+        if len(line) == 0 or starts_with(line, "#"):
+            continue
+        if starts_with(line, "["):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq >= 0 and cur == section:
+            append(out, trim(substr(line, 0, eq)))
+    return out
+
+make toml_quote(s: string) -> string:
+    return "\"" + replace_all(replace_all(replace_all(s, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n") + "\""

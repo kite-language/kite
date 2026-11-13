@@ -46,7 +46,7 @@ make cmd_ast(path: string):
 // this to decide how far the bootstrap can go; "build" appears once the whole
 // pipeline (lex -> parse -> desugar -> sema -> ir -> codegen -> driver) exists.
 make capabilities() -> [string]:
-    return ["lexer", "parser", "diagnostics", "desugar", "prelude", "sema", "ir", "codegen", "resolve", "driver", "build", "pieces", "targets"]
+    return ["lexer", "parser", "diagnostics", "desugar", "prelude", "sema", "ir", "codegen", "resolve", "driver", "build", "pieces", "targets", "test", "fmt", "doc"]
 
 make cmd_desugar(path: string):
     src = read_source(path)

@@ -102,8 +102,10 @@ make quick_expr_type(ast: Ast, e: int, t: IrTab) -> string:
             return "str"
         if nm == "write_file":
             return "bool"
-        if nm == "arg_count" or nm == "spawn":
+        if nm == "arg_count" or nm == "spawn" or nm == "int_of":
             return "i64"
+        if nm == "float_of":
+            return "f64"
         if t.sig_idx.has(nm):
             return t.sig_ret[t.sig_idx.get(nm) - 1]
         return ""
@@ -355,6 +357,24 @@ class Lower:
             fi.v1 = rv2.v
             fi.ty = rv2.ty
             self.emit(fi)
+            return
+        if tk == "LIndex" and len(self.scalar_ptr_local(tkids[0])) > 0:
+            pname = self.scalar_ptr_local(tkids[0])
+            pinner = irt_ptr_inner(self.infer_local_type(pname))
+            pval = self.lower_expr_expecting(value, pinner)
+            pidx = self.lower_expr(tkids[1])
+            pod = self.fresh_temp()
+            ppo = mk_ins("PtrOffset")
+            ppo.dest = pod
+            ppo.v1 = v_local(pname)
+            ppo.v2 = pidx.v
+            ppo.ty = pinner
+            self.emit(ppo)
+            pps = mk_ins("PtrStore")
+            pps.v1 = v_temp(pod)
+            pps.v2 = pval.v
+            pps.ty = pinner
+            self.emit(pps)
             return
         if tk == "LIndex":
             base_name2 = self.require_named_base(tkids[0])
@@ -1070,7 +1090,38 @@ class Lower:
         self.emit(fg)
         return rr(v_temp(dest), fty)
 
+    // Local that holds a pointer to a scalar (`p[i]` is then pointer arithmetic); "" otherwise.
+    make scalar_ptr_local(self, e: int) -> string:
+        if self.ast.nodes[e].kind != "Ident":
+            return ""
+        nm = self.ast.nodes[e].text
+        if not self.local_declared(nm):
+            return ""
+        lt = self.infer_local_type(nm)
+        if irt_is_ptr(lt) and not irt_is_struct(irt_ptr_inner(lt)):
+            return nm
+        return ""
+
     make lower_index_get(self, base: int, index: int) -> R:
+        pl_name = self.scalar_ptr_local(base)
+        if len(pl_name) > 0:
+            pty = self.infer_local_type(pl_name)
+            inner = irt_ptr_inner(pty)
+            iv0 = self.lower_expr(index)
+            od = self.fresh_temp()
+            po = mk_ins("PtrOffset")
+            po.dest = od
+            po.v1 = v_local(pl_name)
+            po.v2 = iv0.v
+            po.ty = inner
+            self.emit(po)
+            ld = self.fresh_temp()
+            pl = mk_ins("PtrLoad")
+            pl.dest = ld
+            pl.v1 = v_temp(od)
+            pl.ty = inner
+            self.emit(pl)
+            return rr(v_temp(ld), inner)
         base_name = self.require_named_base(base)
         lay = self.layout_of(base_name)
         if lay.kind == "List":
@@ -1196,6 +1247,7 @@ class Lower:
             return rr(v_temp(dest2), "bool")
         is_float = lty == "f64"
         is_str = lty == "str"
+        is_bool = lty == "bool"
         ir_op = ""
         res = "bool"
         if op == "Add":
@@ -1218,17 +1270,17 @@ class Lower:
             ir_op = "RemI"
             res = lty
         orif op == "Eq":
-            ir_op = cmp_op("Eq", is_str, is_float)
+            ir_op = cmp_op("Eq", is_str, is_float, is_bool)
         orif op == "NotEq":
-            ir_op = cmp_op("Ne", is_str, is_float)
+            ir_op = cmp_op("Ne", is_str, is_float, is_bool)
         orif op == "Lt":
-            ir_op = cmp_op("Lt", is_str, is_float)
+            ir_op = cmp_op("Lt", is_str, is_float, is_bool)
         orif op == "Gt":
-            ir_op = cmp_op("Gt", is_str, is_float)
+            ir_op = cmp_op("Gt", is_str, is_float, is_bool)
         orif op == "LtEq":
-            ir_op = cmp_op("Le", is_str, is_float)
+            ir_op = cmp_op("Le", is_str, is_float, is_bool)
         orif op == "GtEq":
-            ir_op = cmp_op("Ge", is_str, is_float)
+            ir_op = cmp_op("Ge", is_str, is_float, is_bool)
         else:
             res = "i64"
             if op == "BitAnd":
@@ -1431,6 +1483,22 @@ class Lower:
             ni2.v1 = na2.v
             self.emit(ni2)
             return rr(v_temp(nd), "ptr<i64>")
+        if name == "float_of":
+            fa = self.lower_expr(args[0])
+            fd = self.fresh_temp()
+            fi = mk_ins("IntToFloat")
+            fi.dest = fd
+            fi.v1 = fa.v
+            self.emit(fi)
+            return rr(v_temp(fd), "f64")
+        if name == "int_of":
+            ia = self.lower_expr(args[0])
+            idt = self.fresh_temp()
+            ii = mk_ins("FloatToInt")
+            ii.dest = idt
+            ii.v1 = ia.v
+            self.emit(ii)
+            return rr(v_temp(idt), "i64")
         if name == "realloc_n":
             rp = self.lower_expr(args[0])
             rn = self.lower_expr(args[1])
@@ -1519,7 +1587,9 @@ make pick(c: bool, a: string, b: string) -> string:
         return a
     return b
 
-make cmp_op(base: string, is_str: bool, is_float: bool) -> string:
+make cmp_op(base: string, is_str: bool, is_float: bool, is_bool: bool) -> string:
+    if is_bool and (base == "Eq" or base == "Ne"):
+        return base + "B"
     if is_str:
         return base + "Str"
     if is_float:

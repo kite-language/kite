@@ -8,6 +8,17 @@ Editor repositories have their own changelogs: see docs/versions.md.
   CLI: `kite init --lib`, `add`, `remove`, `update`, `tree`, `search`, `info`, `verify`, `publish` (prepares the pull
   request and prints the git/gh commands, never runs them). Transitive dependencies, semver requirements
   (`^ ~ >= < =`), path dependencies, `kite.lock` with sha256 checksums. See `docs/pieces.md`.
+- **Language**: `const NAME = expr`, `bool == bool`, `p[i]` on `ptr<T>`, `float_of` / `int_of` (+ `std.math`),
+  string escapes `\x41 \e \r \0`, `panic` / `assert`.
+- **Tools**: `kite test` (runs `tests/*.ki`), `kite fmt [--check]`, `kite doc` (markdown from `//` comments).
+- `ROADMAP.md` and `docs/language-tour.md` (the planned work, ending with the LLVM-free multi-arch back end, has no date).
+- **Qualified calls**: `piece.function(...)` (`fs.read(p)`, `sha256.hex(t)`) for imported pieces; shadowed by locals.
+- **Two registry tiers**: `pieces/std/` (default pieces, `use std.<name>`, installed with the compiler) and
+  `pieces/community/` (declared dependencies, added by pull request); names cannot clash.
+- **Releases ship stage3** on Linux, macOS and Windows (`release.yml`); the install scripts (`install.sh`,
+  `install-macos.sh`, `install.ps1`) also install `~/.kite/pieces`; the site shows v0.4.1.
+- Fix: diagnostics of multi-file projects were tagged with the wrong file (off-by-one in `Sema.tag_from`) and
+  could crash the renderer.
 - **Default pieces** replace `stdlib/std`: `sys path fs process term args fmt time toml json semver sha256 git test`
   and the new `types`, `error`, `mem`, `threads` (`use std.<piece>`).
 - **Language**: `spawn(fn, arg)` / `thread_join(h)` (pthreads), `realloc_n`, `copy_n`, `zero_n`, `ptr_to_int`,

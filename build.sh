@@ -58,13 +58,13 @@ if echo "$PORTED" | grep -qw build; then
   bold "==> stage3: kitec compiled by stage2 (fixed point)"
   (cd "$ROOT/stage3" && "$ROOT/stage2/target/release/kitec" build --release)
   # Rust emits string constants in HashMap order: compare stage1 with the constants sorted.
-  n1=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/compiler/target/kitec.ll" | md5sum)
-  n2=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/stage2/target/release/kitec.ll" | md5sum)
+  n1=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/compiler/target/kitec.ll" | python3 -c 'import sys,hashlib;print(hashlib.md5(sys.stdin.buffer.read()).hexdigest())')
+  n2=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/stage2/target/release/kitec.ll" | python3 -c 'import sys,hashlib;print(hashlib.md5(sys.stdin.buffer.read()).hexdigest())')
   if [ "$n1" = "$n2" ] && cmp -s "$ROOT/stage2/target/release/kitec.ll" "$ROOT/stage3/target/release/kitec.ll"; then
-    echo "    stage1 = stage2 = stage3 (identical LLVM IR): bootstrap complete"
+    echo "    stage1 = stage2 = stage3 (identical LLVM IR): bootstrap complete; shipping stage3"
     date -u +%FT%TZ > "$ROOT/compiler/BOOTSTRAPPED"
-    mkdir -p "$ROOT/compiler/target" && cp "$ROOT/stage2/target/release/kitec" "$ROOT/compiler/target/kite"
-    echo "    self-hosted compiler: compiler/target/kite (does not need Rust or cargo)"
+    mkdir -p "$ROOT/compiler/target" && cp "$ROOT/stage3/target/release/kitec" "$ROOT/compiler/target/kite"
+    echo "    self-hosted compiler (stage3): compiler/target/kite (does not need Rust or cargo)"
   else
     echo "error: stage2/stage3 differ from stage1" >&2; exit 1
   fi
@@ -87,6 +87,8 @@ if [ "${1:-}" = "test" ]; then
   [ -x "$ROOT/stage2/target/release/kitec" ] && scripts/runexamples.sh "$ROOT/stage2/target/release/kitec"
   bold "==> default pieces tests"
   (cd "$ROOT/stdlib/tests/std_test" && KITE_PIECES="$ROOT/pieces" "$ROOT/stage2/target/release/kitec" run -q)
+  bold "==> language feature tests (kite test)"
+  (cd "$ROOT/stdlib/tests/lang_test" && KITE_PIECES="$ROOT/pieces" "$ROOT/stage2/target/release/kitec" test)
   bold "==> piece registry verification"
   KITE="$ROOT/stage2/target/release/kitec" scripts/verify-pieces.sh
 fi

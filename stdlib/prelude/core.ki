@@ -83,13 +83,22 @@ make repeat(s: string, n: int) -> string:
         i += 1
     return r
 
+extern make calloc(n: int, size: int) -> string
+extern make memset(s: string, c: int, n: int) -> string
+
+// A one-byte string holding byte `b` (the seed compiler's lexer has no `\r` escape, so this is built at run time).
+make chr_byte(b: int) -> string:
+    s = calloc(2, 1)
+    memset(s, b, 1)
+    return s
+
 make chr(c: int) -> string:
     if c == 10:
         return "\n"
     if c == 9:
         return "\t"
     if c == 13:
-        return "\r"
+        return chr_byte(13)
     if c == 34:
         return "\""
     if c == 92:
@@ -145,3 +154,12 @@ make abs(a: int) -> int:
     if a < 0:
         return 0 - a
     return a
+
+// Prints `panic: msg` and stops the program with exit code 101.
+make panic(msg: string):
+    print("panic: " + msg)
+    exit(101)
+
+make assert(cond: bool, msg: string):
+    if not cond:
+        panic("assertion failed: " + msg)

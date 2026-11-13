@@ -122,6 +122,12 @@ class Parser:
                     ok = false
                 else:
                     append(enums, r)
+            orif k == "Identifier" and self.ttext(self.cur()) == "const":
+                r = self.parse_const()
+                if r < 0:
+                    ok = false
+                else:
+                    append(functions, r)
             orif k == "Async" or k == "Make" or k == "Extern":
                 r = self.parse_function()
                 if r < 0:
@@ -399,6 +405,36 @@ class Parser:
         return -1
 
     // ---- functions -----------------------------------------------------------
+    // `const NAME = expr` / `const NAME: type = expr`: a zero-argument function flagged "const"; uses of
+    // NAME are rewritten into calls when the program is merged (resolve.ki).
+    make parse_const(self) -> int:
+        ct = self.advance()
+        start = self.tspan(ct)
+        nt = self.expect_identifier()
+        if nt < 0:
+            return -1
+        name = self.ttext(nt)
+        ret = -1
+        if self.at("Colon"):
+            self.advance()
+            ret = self.parse_type()
+            if ret < 0:
+                return -1
+        if self.expect("Eq") < 0:
+            return -1
+        value = self.parse_expr()
+        if value < 0:
+            return -1
+        if self.expect("Newline") < 0:
+            return -1
+        r = self.ast.add1("Return", "", start, value)
+        stmts: [int] = [r]
+        body = self.ast.addl("Block", "", start, stmts)
+        fl = self.ast.add0("Flags", "const", start)
+        none: [int] = []
+        pl = self.ast.addl("List", "", start, none)
+        return self.ast.add4("Function", name, start, pl, ret, fl, body)
+
     make parse_function(self) -> int:
         is_extern = false
         is_async = false

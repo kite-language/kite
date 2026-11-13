@@ -107,7 +107,7 @@ make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string,
                 die("--link input `" + e + "` does not exist")
             cmd = cmd + " " + shell_quote(e)
         if not is_windows_target(target):
-            cmd = cmd + " -pthread"
+            cmd = cmd + " -pthread -lm"
         if static_link:
             cmd = cmd + " -static"
     else:

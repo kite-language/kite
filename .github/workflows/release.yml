@@ -1,7 +1,7 @@
 name: release
 # Builds the release files on native runners and attaches them to the GitHub
 # release of a v* tag. Linux archives ship the self-hosted compiler (built by ./build.sh: Rust seed -> stage1 -> stage2
-# -> stage3). Windows/macOS archives still use the Rust seed until the self-hosted build is validated on those runners.
+# -> stage3). Windows/macOS archives are built the same way.
 on:
   push:
     tags: ["v*"]
@@ -26,27 +26,30 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: "release-${{ matrix.short }}", path: dist/release/*.* }
 
+  # Windows and macOS ship the self-hosted compiler too (stage3 of ./build.sh: Rust seed -> stage1 -> stage2 ->
+  # stage3 with identical IR). The CLI drives clang and a POSIX shell (`sh`): on Windows that is Git for Windows'
+  # (bash.exe/sh.exe on PATH), which the runners have.
   windows:
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       matrix:
         include:
-          - { os: windows-latest,  short: windows-x64,   triple: x86_64-pc-windows-msvc }
-          - { os: windows-11-arm,  short: windows-arm64, triple: aarch64-pc-windows-msvc }
+          - { os: windows-latest,  short: windows-x64 }
+          - { os: windows-11-arm,  short: windows-arm64 }
     runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: build and zip
-        shell: pwsh
+      - name: build the self-hosted compiler (stage3)
+        run: ./build.sh
+      - name: package
         run: |
-          Set-Location archive/rust-stage0
-          cargo build --release
-          $v = (Select-String -Path Cargo.toml -Pattern '^version\s*=\s*"(.*)"').Matches[0].Groups[1].Value
-          New-Item -ItemType Directory -Force -Path ../../dist/release, ../../stage | Out-Null
-          Copy-Item target/release/kite.exe ../../stage/
-          Copy-Item ../../LICENSE ../../stage/
-          Compress-Archive -Path ../../stage/* -DestinationPath "../../dist/release/kite-$v-${{ matrix.short }}.zip"
+          v=$(sed -n 's/^version *= *"\(.*\)"/\1/p' compiler/kite.toml | head -1)
+          d=stage/kite-$v-${{ matrix.short }}; mkdir -p $d dist/release
+          cp "$(ls compiler/target/kite compiler/target/kite.exe 2>/dev/null | head -1)" $d/kite.exe
+          cp -r pieces $d/pieces; cp LICENSE README.md $d/
+          pwsh -c "Compress-Archive -Path stage/kite-$v-${{ matrix.short }} -DestinationPath dist/release/kite-$v-${{ matrix.short }}.zip"
       - uses: actions/upload-artifact@v4
         with: { name: "release-${{ matrix.short }}", path: dist/release/*.zip }
 
@@ -54,23 +57,12 @@ jobs:
   # (the Intel runner `macos-13` has been retired by GitHub and never starts).
   macos:
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: "x86_64-apple-darwin,aarch64-apple-darwin" }
-      - name: build and tar (arm64 + x64)
-        run: |
-          cd archive/rust-stage0
-          v=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -1)
-          mkdir -p ../../dist/release
-          for pair in "macos-arm64 aarch64-apple-darwin" "macos-x64 x86_64-apple-darwin"; do
-            set -- $pair; short=$1; triple=$2
-            cargo build --release --target $triple
-            d=stage/kite-$v-$short; mkdir -p $d
-            cp target/$triple/release/kite $d/; cp ../../LICENSE $d/
-            tar -C stage -czf ../../dist/release/kite-$v-$short.tar.gz kite-$v-$short
-          done
+      - run: ./build.sh
+      - run: scripts/package-release.sh --compiler kite --no-deb --no-rpm --targets macos-arm64,macos-x64
       - uses: actions/upload-artifact@v4
         with: { name: "release-macos", path: dist/release/*.tar.gz }
 

@@ -10,6 +10,7 @@ use driver
 use cheader
 use pieces
 use targets
+use devtools
 
 make version_text() -> string:
     return "0.4.1"
@@ -32,6 +33,9 @@ make usage() -> string:
     out = out + "  publish Validate a piece and prepare its pull request to the registry\n"
     out = out + "  verify  Check a piece the way the registry CI does\n"
     out = out + "  target  Manage build targets (list, add, remove, show)\n"
+    out = out + "  test    Build and run tests/*.ki (non-zero exit code = failure)\n"
+    out = out + "  fmt     Normalise whitespace in src/ and tests/ (`--check` only reports)\n"
+    out = out + "  doc     Generate target/doc/<name>.md from the `//` comments above items\n"
     out = out + "  help    Print this message\n\n"
     out = out + "Options:\n  -h, --help     Print help\n  -V, --version  Print version\n"
     return out
@@ -359,6 +363,8 @@ make cmd_add(spec: string):
     reg = registry_dir(p.root)
     vers = registry_versions(reg, name)
     if len(vers) == 0:
+        if len(std_versions(reg, name)) > 0:
+            die("`" + name + "` is a default piece: it needs no dependency, write `use std." + name + "`")
         die("piece `" + name + "` was not found in the registry" + hint_registry(reg))
     best = sv_best(vers, req)
     if len(best) == 0:
@@ -401,20 +407,30 @@ make cmd_tree():
     p = project_discover(cwd())
     print_tree(p, resolve_all(p, registry_dir(p.root)))
 
+make search_tier(reg: string, tier: string, query: string) -> int:
+    found = 0
+    tdir = tier_dir(reg, tier)
+    if not is_dir(tdir):
+        return 0
+    for name in list_dir(tdir):
+        vers = registry_versions_in(reg, tier, name)
+        if len(vers) == 0:
+            continue
+        best = sv_best(vers, "*")
+        m = read_manifest_at(path_join(path_join(tdir, name), best))
+        if query == "" or contains_str(name, query) or contains_str(m.description, query) or contains_str(m.keywords, query):
+            if tier == "std":
+                print(fmt_pad("std." + name, 18) + " " + best + "    # " + m.description + "  [default piece]")
+            else:
+                print(fmt_pad(name, 18) + " = \"" + best + "\"    # " + m.description)
+            found += 1
+    return found
+
 make cmd_search(query: string):
     reg = registry_dir(cwd())
     if len(reg) == 0:
         die("no registry found" + hint_registry(reg))
-    found = 0
-    for name in list_dir(reg):
-        vers = registry_versions(reg, name)
-        if len(vers) == 0:
-            continue
-        best = sv_best(vers, "*")
-        m = read_manifest_at(registry_piece_root(reg, name, best))
-        if query == "" or contains_str(name, query) or contains_str(m.description, query) or contains_str(m.keywords, query):
-            print(fmt_pad(name, 14) + " = \"" + best + "\"    # " + m.description)
-            found += 1
+    found = search_tier(reg, "std", query) + search_tier(reg, "community", query)
     if found == 0:
         print("no pieces found")
 
@@ -425,12 +441,19 @@ make fmt_pad(s: string, w: int) -> string:
 
 make cmd_info(name: string):
     reg = registry_dir(cwd())
+    tier = "community"
     vers = registry_versions(reg, name)
+    if len(vers) == 0:
+        tier = "std"
+        vers = std_versions(reg, name)
     if len(vers) == 0:
         die("piece `" + name + "` was not found in the registry" + hint_registry(reg))
     best = sv_best(vers, "*")
-    m = read_manifest_at(registry_piece_root(reg, name, best))
-    print(name + " v" + best)
+    m = read_manifest_at(path_join(path_join(tier_dir(reg, tier), name), best))
+    if tier == "std":
+        print("std." + name + " v" + best + "  (default piece: `use std." + name + "`)")
+    else:
+        print(name + " v" + best)
     print("description: " + m.description)
     print("authors:     " + m.authors)
     print("license:     " + m.license)
@@ -454,6 +477,8 @@ make validate_piece(p: Project):
         die("`src/lib.ki` not found")
     if not valid_piece_name(m.name):
         die("`" + m.name + "` is not a valid piece name (lowercase letters, digits, `_` and `-`, starting with a letter)")
+    if len(std_versions(registry_dir(p.root), m.name)) > 0 and not path_contains_tier(p.root, "std"):
+        die("`" + m.name + "` is the name of a default piece: choose another name")
     if not sv_parse(m.version).ok:
         die("`version = \"" + m.version + "\"` is not a valid semantic version (e.g. 0.1.0)")
     if len(trim(m.description)) == 0:
@@ -468,6 +493,10 @@ make validate_piece(p: Project):
             die("dependency `" + m.dep_names[i] + "` is a path dependency; published pieces may only depend on registry pieces")
         i += 1
 
+// Whether `root` is `.../<tier>/<name>/<version>` of a registry.
+make path_contains_tier(root: string, tier: string) -> bool:
+    return path_file_name(path_parent(path_parent(root))) == tier
+
 make verify_compiles(p: Project):
     r = prepare_deps(p, false)
     c = check_project(project_main_path(p), project_src_dir(p), true, make_ctx(p, r))
@@ -481,7 +510,7 @@ make cmd_verify():
     // when inside a registry (`.../<name>/<version>`), the directory names must match the manifest
     ver_dir = path_file_name(p.root)
     name_dir = path_file_name(path_parent(p.root))
-    if file_exists(path_join(path_parent(path_parent(p.root)), "REGISTRY")):
+    if file_exists(path_join(path_parent(path_parent(path_parent(p.root))), "REGISTRY")):
         if ver_dir != p.manifest.version or name_dir != p.manifest.name:
             die("registry path `" + name_dir + "/" + ver_dir + "` does not match kite.toml (" + p.manifest.name + " " + p.manifest.version + ")")
     verify_compiles(p)
@@ -631,6 +660,22 @@ make cli_main():
         cmd_publish()
     orif cmd == "verify":
         cmd_verify()
+    orif cmd == "test":
+        ft = ""
+        if not a.done():
+            ft = a.next()
+        cmd_test(ft)
+    orif cmd == "fmt":
+        chk = false
+        while not a.done():
+            f3 = a.next()
+            if f3 == "--check":
+                chk = true
+            else:
+                die("unexpected argument '" + f3 + "' found")
+        cmd_fmt(chk)
+    orif cmd == "doc":
+        cmd_doc()
     orif cmd == "target":
         if a.done():
             die("usage: kite target <list|add|remove|show> [NAME]")

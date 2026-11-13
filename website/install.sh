@@ -36,7 +36,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$UNINSTALL" = 1 ]; then
-  rm -f "$INSTALL_DIR/kite"; ok "removed $INSTALL_DIR/kite"
+  rm -f "$INSTALL_DIR/kite"; rm -rf "${KITE_HOME:-$HOME/.kite}/pieces"; ok "removed $INSTALL_DIR/kite and the installed pieces"
   command -v dpkg >/dev/null 2>&1 && dpkg -s kite >/dev/null 2>&1 && info "a .deb install exists: sudo apt remove kite"
   exit 0
 fi
@@ -118,6 +118,12 @@ tar -xzf "$TMP/$FILE" -C "$TMP"
 BIN="$(find "$TMP" -type f -name kite | head -n1)"
 [ -n "$BIN" ] || die "no 'kite' binary inside $FILE"
 mkdir -p "$INSTALL_DIR"; cp "$BIN" "$INSTALL_DIR/kite"; chmod +x "$INSTALL_DIR/kite"
+# the default pieces (std.*) and the registry travel with the compiler: ~/.kite/pieces
+PIECES_SRC="$(dirname "$BIN")/pieces"
+if [ -d "$PIECES_SRC" ]; then
+  KITE_HOME_DIR="${KITE_HOME:-$HOME/.kite}"; rm -rf "$KITE_HOME_DIR/pieces"; mkdir -p "$KITE_HOME_DIR"
+  cp -R "$PIECES_SRC" "$KITE_HOME_DIR/pieces" && ok "pieces installed to $KITE_HOME_DIR/pieces"
+fi
 "$INSTALL_DIR/kite" --version >/dev/null 2>&1 || warn "the installed binary did not run (wrong libc? try the -musl build)"
 ok "kite ${VERSION} installed to ${INSTALL_DIR}/kite"
 check_clang

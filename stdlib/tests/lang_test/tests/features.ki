@@ -1,0 +1,33 @@
+use std.test
+use std.math
+use std.types
+
+const LIMIT: int = 3
+const NAME = "kite"
+
+make main():
+    t = test_new("language features")
+    // bool == bool
+    a = true
+    b = false
+    test_true(t, "bool eq", a == a)
+    test_true(t, "bool ne", a != b)
+    // pointer indexing
+    buf = alloc_n(int, 4)
+    i = 0
+    while i < LIMIT + 1:
+        buf[i] = i * 10
+        i += 1
+    test_eq_int(t, "ptr index", buf[2] + buf[3], 50)
+    // conversions and math
+    test_eq_int(t, "sqrt", int_of(math.sqrt(16.0)), 4)
+    test_eq_int(t, "float_of", int_of(float_of(7) / 2.0), 3)
+    test_eq_int(t, "round", math.round(2.5), 3)
+    // escapes
+    test_eq_int(t, "\\x escape", char_at("\x41", 0), 65)
+    test_eq_int(t, "\\e escape", char_at("\e", 0), 27)
+    // const and qualified calls
+    test_eq_str(t, "const", NAME, "kite")
+    test_eq_int(t, "qualified", types.clamp(15, 0, LIMIT), 3)
+    assert(LIMIT == 3, "limit")
+    exit(test_finish(t))

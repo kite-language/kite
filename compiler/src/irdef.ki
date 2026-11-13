@@ -19,7 +19,7 @@
 //   FieldAlias name n2(base) fb pos ty | ListElemAlias name n2(base) v1 ty
 //   PtrCast dest v1 ty(from) ty2(to) | RetAgg name ty | CallAgg name(target) n2(callee) vals argtys ty
 //   NoteLayout name lay | Realloc dest v1(ptr) v2(count) ty | CopyN v1(dst) v2(src) v3(count) ty
-//   ZeroN v1 v2(count) ty | PtrToInt dest v1 ty | IntToPtr dest v1 | Spawn dest name(fn) v1(arg) | ThreadJoin v1
+//   ZeroN v1 v2(count) ty | IntToFloat dest v1 | FloatToInt dest v1 | PtrToInt dest v1 ty | IntToPtr dest v1 | Spawn dest name(fn) v1(arg) | ThreadJoin v1
 
 type V:
     k: string
@@ -238,7 +238,7 @@ make dict_key_text(q: string) -> string:
             orif d == 116:
                 out = out + "\t"
             orif d == 114:
-                out = out + "\r"
+                out = out + chr(13)
             else:
                 out = out + substr(inner, i + 1, i + 2)
             i += 2

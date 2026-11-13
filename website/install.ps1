@@ -28,6 +28,9 @@ function Write-Die($msg)  { Write-Host "ERR $msg" -ForegroundColor Red; exit 1 }
 if ($Uninstall) {
   $exe = Join-Path $InstallDir "kite.exe"
   if (Test-Path $exe) { Remove-Item $exe -Force }
+  $kh = $(if ($env:KITE_HOME) { $env:KITE_HOME } else { Join-Path $env:USERPROFILE ".kite" })
+  $ph = Join-Path $kh "pieces"
+  if (Test-Path $ph) { Remove-Item -Recurse -Force $ph }
   Write-Ok "removed $exe"
   exit 0
 }
@@ -90,6 +93,15 @@ try {
 
   New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
   Copy-Item $BinPath.FullName (Join-Path $InstallDir "kite.exe") -Force
+  # the default pieces (std.*) and the registry travel with the compiler: %USERPROFILE%\.kite\pieces
+  $PiecesSrc = Join-Path $BinPath.DirectoryName "pieces"
+  if (Test-Path $PiecesSrc) {
+    $KiteHome = if ($env:KITE_HOME) { $env:KITE_HOME } else { Join-Path $env:USERPROFILE ".kite" }
+    $PiecesDst = Join-Path $KiteHome "pieces"
+    if (Test-Path $PiecesDst) { Remove-Item -Recurse -Force $PiecesDst }
+    New-Item -ItemType Directory -Force -Path $KiteHome | Out-Null
+    Copy-Item -Recurse $PiecesSrc $PiecesDst
+  }
   try { & (Join-Path $InstallDir "kite.exe") --version | Out-Null } catch { Write-Host "! the installed binary did not run" -ForegroundColor Yellow }
 
   Write-Ok "kite $Version installed to $InstallDir\kite.exe"

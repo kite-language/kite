@@ -114,6 +114,8 @@ make format_llvm_float(text: string) -> string:
     return out
 
 make binop_operand_type(op: string) -> string:
+    if ends_with(op, "B"):
+        return "bool"
     if ends_with(op, "Str"):
         return "str"
     if ends_with(op, "F"):
@@ -151,6 +153,10 @@ make binop_mnemonic(op: string) -> string:
         return "fmul"
     orif op == "DivF":
         return "fdiv"
+    orif op == "EqB":
+        return "icmp eq"
+    orif op == "NeB":
+        return "icmp ne"
     orif op == "EqF":
         return "fcmp oeq"
     orif op == "NeF":
@@ -680,6 +686,12 @@ class Cg:
             self.w("  " + fp2 + " = getelementptr inbounds " + alty4 + ", " + alty4 + "* %" + i.name + ", i32 0, i32 " + str(i.pos))
             fl2 = llvm_type(i.ty)
             self.w("  store " + fl2 + " " + fv + ", " + fl2 + "* " + fp2)
+        orif op == "IntToFloat":
+            fv = self.value(i.v1, "i64")
+            self.w("  " + d + " = sitofp i64 " + fv + " to double")
+        orif op == "FloatToInt":
+            gv = self.value(i.v1, "f64")
+            self.w("  " + d + " = fptosi double " + gv + " to i64")
         orif op == "PtrToInt":
             qty = llvm_type(i.ty)
             qp = self.value(i.v1, irt_ptr_of(i.ty))

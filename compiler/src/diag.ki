@@ -104,8 +104,9 @@ make render_diag(d: Diag, default_file: string, default_source: string) -> strin
     pad = repeat(" ", gutter)
     out = out + pad + "--> " + filename + ":" + str(line_no) + ":" + str(d.span.col) + "\n"
     out = out + pad + " |\n"
-    src_line = nth_line(source, line_no - 1)
+    src_line = ""
     if line_no - 1 < count_lines(source):
+        src_line = nth_line(source, line_no - 1)
         out = out + str(line_no) + " | " + src_line + "\n"
         col = max(d.span.col - 1, 0)
         width = max(d.span.end - d.span.start, 1)
