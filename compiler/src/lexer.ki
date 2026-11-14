@@ -566,16 +566,16 @@ class Lexer:
                 orif e == 92:
                     value = value + "\\"
                 orif e == 114:
-                    value = value + byte_str(13)
+                    value = value + chr_byte(13)
                 orif e == 101:
-                    value = value + byte_str(27)
+                    value = value + chr_byte(27)
                 orif e == 48:
-                    value = value + byte_str(0)
+                    value = value + chr_byte(0)
                 orif e == 120 and hex_digit_value(self.peek()) >= 0 and hex_digit_value(self.peek_at(1)) >= 0:
                     hv = hex_digit_value(self.peek()) * 16 + hex_digit_value(self.peek_at(1))
                     self.advance()
                     self.advance()
-                    value = value + byte_str(hv)
+                    value = value + chr_byte(hv)
                 else:
                     value = value + self.slice(at, at + 1)
             else:

@@ -1,4 +1,4 @@
-# Kite: what is left (v0.4.1)
+# Kite: what is left (v0.4.2)
 
 ## 1. Bootstrap: done in 0.4.0 ✅
 The whole Rust compiler is ported to Kite (`compiler/`). `./build.sh` builds stage1 (kitec compiled by the Rust seed),

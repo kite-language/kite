@@ -149,9 +149,16 @@ impl Loader {
                 Import::Module { path, span } => (path.clone(), *span),
                 Import::Items { path, span, .. } => (path.clone(), *span),
             };
-            let resolved = self
+            let mut resolved = self
                 .src_root
                 .join(module_path_str.replace('.', "/") + ".ki");
+            if !resolved.is_file() {
+                // `use std.<piece>`: the default pieces of the registry (pieces/std/<piece>/<version>/src/lib.ki),
+                // so the compiler's own sources can use them while the seed compiles them.
+                if let Some(p) = std_piece_file(&self.src_root, &module_path_str) {
+                    resolved = p;
+                }
+            }
             if !resolved.is_file() {
                 self.diagnostics.push(
                     Diagnostic::error(
@@ -245,4 +252,54 @@ fn display_path(path: &Path, src_root: &Path) -> String {
     path.strip_prefix(src_root)
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| path.display().to_string())
+}
+
+/// The registry directory (a `pieces/` folder holding a `REGISTRY` file): `$KITE_PIECES`, or the nearest one above
+/// the project's `src/`.
+fn find_registry(src_root: &Path) -> Option<PathBuf> {
+    if let Ok(env) = std::env::var("KITE_PIECES") {
+        let p = PathBuf::from(env);
+        if p.is_dir() {
+            return Some(p);
+        }
+    }
+    let mut dir = src_root.parent().map(|p| p.to_path_buf());
+    while let Some(d) = dir {
+        let c = d.join("pieces");
+        if c.is_dir() && c.join("REGISTRY").is_file() {
+            return Some(c);
+        }
+        dir = d.parent().map(|p| p.to_path_buf());
+    }
+    None
+}
+
+fn version_key(v: &str) -> Vec<u64> {
+    v.split(|c| c == '.' || c == '-').map(|p| p.parse().unwrap_or(0)).collect()
+}
+
+/// `std.<piece>[.<module>]` -> the file of the highest installed version of that default piece.
+fn std_piece_file(src_root: &Path, module: &str) -> Option<PathBuf> {
+    let segs: Vec<&str> = module.split('.').collect();
+    if segs.len() < 2 || segs[0] != "std" {
+        return None;
+    }
+    let reg = find_registry(src_root)?;
+    let dir = reg.join("std").join(segs[1]);
+    let mut best: Option<(Vec<u64>, PathBuf)> = None;
+    for e in std::fs::read_dir(&dir).ok()? {
+        let e = e.ok()?;
+        if !e.path().join("kite.toml").is_file() {
+            continue;
+        }
+        let key = version_key(&e.file_name().to_string_lossy());
+        if best.as_ref().map_or(true, |(b, _)| key > *b) {
+            best = Some((key, e.path()));
+        }
+    }
+    let root = best?.1;
+    let rest = &segs[2..];
+    let file = if rest.is_empty() { "lib".to_string() } else { rest.join("/") };
+    let p = root.join("src").join(format!("{file}.ki"));
+    if p.is_file() { Some(p) } else { None }
 }

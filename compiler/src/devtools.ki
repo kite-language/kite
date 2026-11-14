@@ -5,18 +5,21 @@ use project
 use pieces
 use driver
 use cli
+use std.sys
+use std.fs
+use std.path
 
 // ---- test -------------------------------------------------------------------------------------
 
 // Builds and runs every `tests/*.ki` (each a program with `make main()` that exits non-zero on failure).
 make cmd_test(filter: string):
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     r = prepare_deps(p, false)
     tdir = path_join(p.root, "tests")
-    if not is_dir(tdir):
+    if not fs_is_dir(tdir):
         die("no `tests/` directory: put test programs in tests/*.ki (each has a `make main()` and exits non-zero on failure)")
     files: [string] = []
-    for n in list_dir(tdir):
+    for n in fs_list(tdir):
         if ends_with(n, ".ki") and (filter == "" or contains_str(n, filter)):
             append(files, n)
     if len(files) == 0:
@@ -26,7 +29,7 @@ make cmd_test(filter: string):
     bad = 0
     no_links: [string] = []
     outdir = path_join(project_profile_dir(p, false), "tests")
-    mkdir_all(outdir)
+    fs_mkdir_all(outdir)
     for n2 in files:
         stem = substr(n2, 0, len(n2) - 3)
         cx = make_ctx(p, r)
@@ -37,7 +40,7 @@ make cmd_test(filter: string):
             continue
         exe = build_from_ir(c.prog, path_join(outdir, stem), 0, "", "exe", false, no_links)
         log = path_join(outdir, stem + ".log")
-        code = sh(shell_quote(exe) + " > " + shell_quote(log) + " 2>&1")
+        code = sys_sh(sys_quote(exe) + " > " + sys_quote(log) + " 2>&1")
         if code == 0:
             print("test " + n2 + " ... " + green_bold("ok"))
             passed += 1
@@ -83,14 +86,14 @@ make fmt_text(text: string) -> string:
 
 make source_files(p: Project) -> [string]:
     out: [string] = []
-    cmd = "find " + shell_quote(project_src_dir(p)) + " " + shell_quote(path_join(p.root, "tests")) + " -name '*.ki' 2>/dev/null | LC_ALL=C sort"
-    for line in split(capture(cmd), "\n"):
+    cmd = "find " + sys_quote(project_src_dir(p)) + " " + sys_quote(path_join(p.root, "tests")) + " -name '*.ki' 2>/dev/null | LC_ALL=C sort"
+    for line in split(sys_capture(cmd), "\n"):
         if len(trim(line)) > 0:
             append(out, trim(line))
     return out
 
 make cmd_fmt(check_only: bool):
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     changed = 0
     for f in source_files(p):
         old = read_file(f)
@@ -137,7 +140,7 @@ make doc_file(text: string, title: string) -> string:
     return out
 
 make cmd_doc():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     m = p.manifest
     out = "# " + m.name + " " + m.version + "\n\n"
     if len(m.description) > 0:
@@ -151,6 +154,6 @@ make cmd_doc():
             continue
         out = out + doc_file(read_file(f), path_display(f, p.root))
     dest = path_join(path_join(project_build_dir(p), "doc"), m.name + ".md")
-    mkdir_all(path_parent(dest))
+    fs_mkdir_all(path_parent(dest))
     write_file(dest, out)
     status("Documented", dest)

@@ -1,7 +1,6 @@
 // Thin runtime layer over libc (stderr, processes, exit).
 
 extern make write(fd: int, buf: string, n: int) -> int
-extern make system(cmd: string) -> int
 
 make eprint(s: string):
     write(2, s, len(s))
@@ -9,12 +8,3 @@ make eprint(s: string):
 make eprint_line(s: string):
     write(2, s, len(s))
     write(2, "\n", 1)
-
-extern make calloc(n: int, size: int) -> string
-extern make memset(s: string, c: int, n: int) -> string
-
-// A one-byte string holding byte `b` (0..255), for characters string literals cannot spell.
-make byte_str(b: int) -> string:
-    s = calloc(2, 1)
-    memset(s, b, 1)
-    return s

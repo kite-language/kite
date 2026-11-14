@@ -5,141 +5,37 @@
 
 use sysx
 use project
+use std.sys
+use std.fs
+use std.path
+use std.process
+use std.toml
+use std.semver
 
 // ---- versions ---------------------------------------------------------------------------------
 
-type SemV:
-    major: int
-    minor: int
-    patch: int
-    pre: string
-    ok: bool
-
-make sv_parse(text: string) -> SemV:
-    v = SemV()
-    t = trim(text)
-    if starts_with(t, "v"):
-        t = substr(t, 1, len(t))
-    dash = find(t, "-")
-    if dash >= 0:
-        v.pre = substr(t, dash + 1, len(t))
-        t = substr(t, 0, dash)
-    parts = split(t, ".")
-    if len(parts) < 1 or len(parts) > 3:
-        return v
-    nums: [int] = [0, 0, 0]
-    i = 0
-    while i < len(parts):
-        p = parts[i]
-        if len(p) == 0:
-            return v
-        j = 0
-        while j < len(p):
-            if not is_digit(char_at(p, j)):
-                return v
-            j += 1
-        nums[i] = to_int(p)
-        i += 1
-    v.major = nums[0]
-    v.minor = nums[1]
-    v.patch = nums[2]
-    v.ok = true
-    return v
-
-make sv_cmp(a: string, b: string) -> int:
-    x = sv_parse(a)
-    y = sv_parse(b)
-    if x.major != y.major:
-        if x.major < y.major:
-            return -1
-        return 1
-    if x.minor != y.minor:
-        if x.minor < y.minor:
-            return -1
-        return 1
-    if x.patch != y.patch:
-        if x.patch < y.patch:
-            return -1
-        return 1
-    if x.pre == y.pre:
-        return 0
-    if len(x.pre) == 0:
-        return 1
-    if len(y.pre) == 0:
-        return -1
-    if x.pre < y.pre:
-        return -1
-    return 1
-
-make sv_satisfies(version: string, req: string) -> bool:
-    r = trim(req)
-    if r == "*" or r == "":
-        return true
-    v = sv_parse(version)
-    if not v.ok:
-        return false
-    if starts_with(r, ">="):
-        return sv_cmp(version, trim(substr(r, 2, len(r)))) >= 0
-    if starts_with(r, "<="):
-        return sv_cmp(version, trim(substr(r, 2, len(r)))) <= 0
-    if starts_with(r, ">"):
-        return sv_cmp(version, trim(substr(r, 1, len(r)))) > 0
-    if starts_with(r, "<"):
-        return sv_cmp(version, trim(substr(r, 1, len(r)))) < 0
-    if starts_with(r, "="):
-        return sv_cmp(version, trim(substr(r, 1, len(r)))) == 0
-    if starts_with(r, "~"):
-        low = sv_parse(substr(r, 1, len(r)))
-        return sv_cmp(version, substr(r, 1, len(r))) >= 0 and v.major == low.major and v.minor == low.minor
-    base = r
-    if starts_with(r, "^"):
-        base = substr(r, 1, len(r))
-    low2 = sv_parse(base)
-    if sv_cmp(version, base) < 0:
-        return false
-    if low2.major > 0:
-        return v.major == low2.major
-    if low2.minor > 0:
-        return v.major == 0 and v.minor == low2.minor
-    return v.major == 0 and v.minor == 0 and v.patch == low2.patch
-
 // Highest version of `versions` that satisfies `req` ("" when none).
-make sv_best(versions: [string], req: string) -> string:
-    best = ""
-    for v in versions:
-        if sv_satisfies(v, req):
-            if len(best) == 0 or sv_cmp(v, best) > 0:
-                best = v
-    return best
-
 // ---- registry ---------------------------------------------------------------------------------
-
-make list_dir(dir: string) -> [string]:
-    out: [string] = []
-    for line in split(capture("ls -1 " + shell_quote(dir)), "\n"):
-        if len(trim(line)) > 0:
-            append(out, trim(line))
-    return out
 
 // The registry directory: $KITE_PIECES, a `pieces/` folder in a parent of `start` (repository
 // checkout), or an installed copy. "" when none exists.
 make registry_dir(start: string) -> string:
-    env = trim(capture("printf %s \"$KITE_PIECES\""))
-    if len(env) > 0 and is_dir(env):
+    env = process_env("KITE_PIECES")
+    if len(env) > 0 and fs_is_dir(env):
         return env
     dir = start
     while len(dir) > 0:
         c = path_join(dir, "pieces")
-        if is_dir(c) and file_exists(path_join(c, "REGISTRY")):
+        if fs_is_dir(c) and sys_path_exists(path_join(c, "REGISTRY")):
             return c
         up = path_parent(dir)
         if up == dir:
             break
         dir = up
-    home = trim(capture("printf %s \"$HOME\""))
+    home = process_env("HOME")
     cands: [string] = [path_join(home, ".kite/pieces"), "/usr/local/share/kite/pieces", "/usr/share/kite/pieces"]
     for c2 in cands:
-        if is_dir(c2):
+        if fs_is_dir(c2):
             return c2
     return ""
 
@@ -153,10 +49,10 @@ make registry_versions_in(reg: string, tier: string, name: string) -> [string]:
     if len(reg) == 0:
         return out
     pdir = path_join(tier_dir(reg, tier), name)
-    if not is_dir(pdir):
+    if not fs_is_dir(pdir):
         return out
-    for v in list_dir(pdir):
-        if file_exists(path_join(path_join(pdir, v), "kite.toml")):
+    for v in fs_list(pdir):
+        if sys_path_exists(path_join(path_join(pdir, v), "kite.toml")):
             append(out, v)
     return out
 
@@ -218,7 +114,7 @@ make resolve_one(r: Resolved, requester: string, name: string, req: string, path
     source = "registry"
     if len(path_dep) > 0:
         root = path_norm(path_join(base_dir, path_dep))
-        if not file_exists(path_join(root, "kite.toml")):
+        if not sys_path_exists(path_join(root, "kite.toml")):
             die("dependency `" + name + "`: no kite.toml in `" + root + "`")
         version = read_manifest_at(root).version
         source = "path"
@@ -228,13 +124,13 @@ make resolve_one(r: Resolved, requester: string, name: string, req: string, path
             if len(std_versions(r.registry, name)) > 0:
                 die("`" + name + "` is a default piece: it needs no dependency, write `use std." + name + "`")
             die("piece `" + name + "` was not found in the registry" + hint_registry(r.registry))
-        version = sv_best(vers, req)
+        version = semver_best(vers, req)
         if len(version) == 0:
             die("no version of piece `" + name + "` satisfies `" + req + "` (available: " + join(vers, ", ") + ")")
         root = registry_piece_root(r.registry, name, version)
     existing = r.index(name)
     if existing >= 0:
-        if len(path_dep) == 0 and r.sources[existing] == "registry" and not sv_satisfies(r.versions[existing], req):
+        if len(path_dep) == 0 and r.sources[existing] == "registry" and not semver_satisfies(r.versions[existing], req):
             die("conflicting requirements for piece `" + name + "`: `" + req + "` is not satisfied by the already selected version " + r.versions[existing])
         return 0
     append(r.names, name)
@@ -264,14 +160,14 @@ make resolve_all(p: Project, reg: string) -> Resolved:
     return r
 
 make piece_checksum(root: string) -> string:
-    out = capture("cd " + shell_quote(root) + " && find . -type f ! -path './target/*' ! -name kite.lock | LC_ALL=C sort | xargs cat | (sha256sum 2>/dev/null || shasum -a 256)")
+    out = sys_capture("cd " + sys_quote(root) + " && find . -type f ! -path './target/*' ! -name kite.lock | LC_ALL=C sort | xargs cat | (sha256sum 2>/dev/null || shasum -a 256)")
     return trim(substr(out, 0, 64))
 
 make lock_text(r: Resolved) -> string:
     out = "# This file is automatically generated by `kite`.\n# Do not edit it by hand.\n\n"
     i = 0
     while i < len(r.names):
-        out = out + "[[piece]]\nname = " + quote_toml(r.names[i]) + "\nversion = " + quote_toml(r.versions[i]) + "\nsource = " + quote_toml(r.sources[i]) + "\n"
+        out = out + "[[piece]]\nname = " + toml_quote(r.names[i]) + "\nversion = " + toml_quote(r.versions[i]) + "\nsource = " + toml_quote(r.sources[i]) + "\n"
         if r.sources[i] == "registry":
             out = out + "checksum = \"sha256:" + piece_checksum(r.roots[i]) + "\"\n"
         out = out + "\n"
@@ -281,18 +177,18 @@ make lock_text(r: Resolved) -> string:
 // Verifies the checksums recorded in kite.lock against the registry copies.
 make verify_lock(p: Project, r: Resolved):
     lock = path_join(p.root, "kite.lock")
-    if not file_exists(lock):
+    if not sys_path_exists(lock):
         return
     cur = ""
     curv = ""
     for raw in split(read_file(lock), "\n"):
         line = trim(raw)
         if starts_with(line, "name = "):
-            cur = unquote(substr(line, 7, len(line)))
+            cur = toml_unquote(substr(line, 7, len(line)))
         orif starts_with(line, "version = "):
-            curv = unquote(substr(line, 10, len(line)))
+            curv = toml_unquote(substr(line, 10, len(line)))
         orif starts_with(line, "checksum = "):
-            want = unquote(substr(line, 11, len(line)))
+            want = toml_unquote(substr(line, 11, len(line)))
             idx = r.index(cur)
             if idx >= 0 and r.versions[idx] == curv and r.sources[idx] == "registry":
                 got = "sha256:" + piece_checksum(r.roots[idx])

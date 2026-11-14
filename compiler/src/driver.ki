@@ -11,6 +11,9 @@ use sema
 use resolve
 use cheader
 use sysx
+use std.sys
+use std.fs
+use std.path
 
 class Checked:
     ok: bool
@@ -33,11 +36,11 @@ class Ctx:
     out_file: string
 
 make sha256_of_files(flags: string, files: [string]) -> string:
-    cmd = "(printf %s " + shell_quote(flags)
+    cmd = "(printf %s " + sys_quote(flags)
     for f in files:
-        cmd = cmd + "; cat " + shell_quote(f)
+        cmd = cmd + "; cat " + sys_quote(f)
     cmd = cmd + ") | (sha256sum 2>/dev/null || shasum -a 256)"
-    return trim(substr(capture(cmd), 0, 64))
+    return trim(substr(sys_capture(cmd), 0, 64))
 
 make check_project(entry_path: string, src_root: string, freestanding: bool, cx: Ctx) -> Checked:
     out = Checked()
@@ -47,7 +50,7 @@ make check_project(entry_path: string, src_root: string, freestanding: bool, cx:
     out.files = m.files_loaded
     if len(cx.fp_file) > 0:
         out.fingerprint = sha256_of_files(cx.flags, m.files_loaded)
-        if file_exists(cx.out_file) and trim(read_file(cx.fp_file)) == out.fingerprint:
+        if sys_path_exists(cx.out_file) and trim(read_file(cx.fp_file)) == out.fingerprint:
             out.fresh = true
             out.ok = true
             return out
@@ -95,28 +98,28 @@ make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string,
         out_path = normalized_executable_path(output, target)
     parent = path_parent(out_path)
     if len(parent) > 0:
-        mkdir_all(parent)
+        fs_mkdir_all(parent)
     ir_path = path_with_extension(out_path, "ll")
     if not write_file(ir_path, llvm):
         die("failed to write LLVM IR to " + ir_path)
-    cmd = "clang " + shell_quote(ir_path) + " -O" + str(opt_level)
+    cmd = "clang " + sys_quote(ir_path) + " -O" + str(opt_level)
     if kind == "exe":
-        cmd = cmd + " -o " + shell_quote(out_path) + " -Wno-override-module"
+        cmd = cmd + " -o " + sys_quote(out_path) + " -Wno-override-module"
         for e in extra:
-            if not is_file(e):
+            if not fs_is_file(e):
                 die("--link input `" + e + "` does not exist")
-            cmd = cmd + " " + shell_quote(e)
+            cmd = cmd + " " + sys_quote(e)
         if not is_windows_target(target):
             cmd = cmd + " -pthread -lm"
         if static_link:
             cmd = cmd + " -static"
     else:
-        cmd = cmd + " -c -o " + shell_quote(out_path) + " -Wno-override-module"
+        cmd = cmd + " -c -o " + sys_quote(out_path) + " -Wno-override-module"
         if kind == "bare":
             cmd = cmd + " -ffreestanding -fno-builtin"
     if len(target) > 0:
-        cmd = cmd + " --target=" + shell_quote(target)
-    code = sh(cmd)
+        cmd = cmd + " --target=" + sys_quote(target)
+    code = sys_sh(cmd)
     if code != 0:
         die("clang failed to compile the generated LLVM IR (see " + ir_path + " for the generated IR)")
     return out_path

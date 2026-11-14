@@ -2,6 +2,19 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
+## 0.4.2 -- the compiler uses its own pieces
+- `compiler/src/` now imports the default pieces instead of private copies: shell and process helpers (`std.sys`,
+  `std.process`), files and directories (`std.fs`), paths (`std.path`), colours (`std.term`), clock and durations
+  (`std.time`), formatting (`std.fmt`), integer helpers (`std.types`), TOML values (`std.toml`) and version
+  requirements (`std.semver`). `sysx.ki` shrank to the cargo-style status lines; `project.ki` and `pieces.ki` lost their
+  TOML and semver code.
+- The Rust seed resolves `use std.<piece>` (registry: `$KITE_PIECES` or the nearest `pieces/`), so stage 1 still builds.
+- Pieces gained what the compiler needed: `path_has_extension`, `path_display`, `toml_array_join`, `toml_inline_get`,
+  `toml_strip_comment`, `toml_quote_list`, `semver_best`, `types_isqrt`, `time_fmt_secs`, `term_paint_if`,
+  `term_is_tty_fd`, `term_esc`. `term` no longer uses a `\x1b` literal (the seed's lexer has none).
+- Default pieces are versioned with the language (`pieces/std/<name>/0.4.2`); only community versions are immutable.
+- Everything is 0.4.2: compiler, seed, default pieces, site, install scripts.
+
 ## 0.4.1 -- pieces
 - **Pieces**: Kite's packages ("crates"). The registry is `pieces/<name>/<version>/` in the repository, verified by
   CI (`scripts/verify-pieces.sh`, `.github/workflows/pieces.yml`): metadata, names, compilation, immutability.

@@ -1,6 +1,6 @@
 [package]
 name = "kitec"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2026"
 description = "The Kite compiler and package manager, written in Kite"
 authors = ["The Kite developers"]

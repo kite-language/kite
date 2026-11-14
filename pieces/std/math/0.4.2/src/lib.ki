@@ -1,0 +1,71 @@
+// math -- floating point math over libm. Convert with the builtins `float_of(int)` and `int_of(float)`.
+//
+//   r = math.sqrt(2.0)            // or math_sqrt(2.0)
+//   n = int_of(math.floor(r))
+
+extern make sqrt(x: float) -> float
+extern make pow(x: float, y: float) -> float
+extern make sin(x: float) -> float
+extern make cos(x: float) -> float
+extern make tan(x: float) -> float
+extern make atan2(y: float, x: float) -> float
+extern make exp(x: float) -> float
+extern make log(x: float) -> float
+extern make floor(x: float) -> float
+extern make ceil(x: float) -> float
+extern make fabs(x: float) -> float
+
+make math_sqrt(x: float) -> float:
+    return sqrt(x)
+
+make math_pow(x: float, y: float) -> float:
+    return pow(x, y)
+
+make math_sin(x: float) -> float:
+    return sin(x)
+
+make math_cos(x: float) -> float:
+    return cos(x)
+
+make math_tan(x: float) -> float:
+    return tan(x)
+
+make math_atan2(y: float, x: float) -> float:
+    return atan2(y, x)
+
+make math_exp(x: float) -> float:
+    return exp(x)
+
+make math_log(x: float) -> float:
+    return log(x)
+
+make math_floor(x: float) -> float:
+    return floor(x)
+
+make math_ceil(x: float) -> float:
+    return ceil(x)
+
+make math_abs(x: float) -> float:
+    return fabs(x)
+
+make math_min(a: float, b: float) -> float:
+    if a < b:
+        return a
+    return b
+
+make math_max(a: float, b: float) -> float:
+    if a > b:
+        return a
+    return b
+
+// Rounds to the nearest integer (halves away from zero).
+make math_round(x: float) -> int:
+    if x < 0.0:
+        return int_of(ceil(x - 0.5))
+    return int_of(floor(x + 0.5))
+
+make math_pi() -> float:
+    return 3.141592653589793
+
+make math_e() -> float:
+    return 2.718281828459045

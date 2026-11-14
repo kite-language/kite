@@ -6,6 +6,7 @@
 use diag
 use ast
 use types
+use std.sys
 
 type SigT:
     params: [string]

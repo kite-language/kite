@@ -11,9 +11,18 @@ use cheader
 use pieces
 use targets
 use devtools
+use std.fs
+use std.path
+use std.process
+use std.semver
+use std.sys
+use std.toml
+use std.time
+use std.fmt
+use std.types
 
 make version_text() -> string:
-    return "0.4.1"
+    return "0.4.2"
 
 make usage() -> string:
     out = "The Kite programming language compiler and project manager\n\n"
@@ -40,36 +49,8 @@ make usage() -> string:
     out = out + "Options:\n  -h, --help     Print help\n  -V, --version  Print version\n"
     return out
 
-make now_ns() -> int:
-    return to_int(trim(capture("date +%s%N")))
-
 // seconds with two decimals from a nanosecond duration
-make fmt_secs(ns: int) -> string:
-    cs = (ns + 5000000) / 10000000
-    frac = cs % 100
-    fs = str(frac)
-    if frac < 10:
-        fs = "0" + fs
-    return str(cs / 100) + "." + fs
-
 // milliseconds with three decimals from a microsecond count
-make fmt_ms(us: int) -> string:
-    frac = us % 1000
-    fs = str(frac)
-    while len(fs) < 3:
-        fs = "0" + fs
-    return str(us / 1000) + "." + fs
-
-make isqrt(n: int) -> int:
-    if n <= 0:
-        return 0
-    x = n
-    y = (x + 1) / 2
-    while y < x:
-        x = y
-        y = (x + n / x) / 2
-    return x
-
 class Args:
     items: [string]
     pos: int
@@ -98,7 +79,7 @@ class BuildOpts:
     links: [string]
 
 make git_config(key: string) -> string:
-    return trim(capture("git config " + key))
+    return trim(sys_capture("git config " + key))
 
 make cmd_init(name: string, has_name: bool, lib: bool):
     project_dir = ""
@@ -110,19 +91,19 @@ make cmd_init(name: string, has_name: bool, lib: bool):
         if package_name == "":
             package_name = name
     else:
-        project_dir = cwd()
+        project_dir = fs_cwd()
         package_name = path_file_name(project_dir)
         if package_name == "":
             package_name = "kite_project"
     if lib and not valid_piece_name(package_name):
         die("`" + package_name + "` is not a valid piece name (lowercase letters, digits, `_` and `-`, starting with a letter)")
     if creating:
-        if file_exists(project_dir):
+        if sys_path_exists(project_dir):
             die("destination `" + project_dir + "` already exists; choose a different name or `cd` into it and rerun without one")
-        if not mkdir_all(project_dir):
+        if not fs_mkdir_all(project_dir):
             die("failed to create directory " + project_dir)
     manifest_path = path_join(project_dir, "kite.toml")
-    if file_exists(manifest_path):
+    if sys_path_exists(manifest_path):
         die("`kite.toml` already exists in `" + project_dir + "` -- this is already a Kite project")
     m = new_manifest(package_name)
     gname = git_config("user.name")
@@ -136,14 +117,14 @@ make cmd_init(name: string, has_name: bool, lib: bool):
         m.license = "MIT"
     write_file(manifest_path, manifest_to_string(m))
     src_dir = path_join(project_dir, "src")
-    mkdir_all(src_dir)
+    fs_mkdir_all(src_dir)
     if lib:
         ident = replace_all(package_name, "-", "_")
         write_file(path_join(src_dir, "lib.ki"), "// Functions of a piece share one global namespace: prefix them with the piece name.\nmake " + ident + "_hello() -> string:\n    return \"Hello from " + package_name + "!\"\n")
     else:
         write_file(path_join(src_dir, "main.ki"), "make main():\n    print(\"Hello, Kite!\")\n")
     gi = path_join(project_dir, ".gitignore")
-    if not file_exists(gi):
+    if not sys_path_exists(gi):
         write_file(gi, "/target\n/.kite-cache\n")
     label = ""
     if creating:
@@ -160,15 +141,15 @@ make cmd_init(name: string, has_name: bool, lib: bool):
 // Kite source of the package-metadata accessors (`pkg_name()`, ...), compiled in only when used.
 make pkg_meta_source(m: Manifest) -> string:
     out = ""
-    out = out + "make pkg_name() -> string:\n    return " + quote_toml(m.name) + "\n\n"
-    out = out + "make pkg_version() -> string:\n    return " + quote_toml(m.version) + "\n\n"
-    out = out + "make pkg_edition() -> string:\n    return " + quote_toml(m.edition) + "\n\n"
-    out = out + "make pkg_description() -> string:\n    return " + quote_toml(m.description) + "\n\n"
-    out = out + "make pkg_authors() -> string:\n    return " + quote_toml(m.authors) + "\n\n"
-    out = out + "make pkg_license() -> string:\n    return " + quote_toml(m.license) + "\n\n"
-    out = out + "make pkg_repository() -> string:\n    return " + quote_toml(m.repository) + "\n\n"
-    out = out + "make pkg_homepage() -> string:\n    return " + quote_toml(m.homepage) + "\n\n"
-    out = out + "make pkg_keywords() -> string:\n    return " + quote_toml(m.keywords) + "\n\n"
+    out = out + "make pkg_name() -> string:\n    return " + toml_quote(m.name) + "\n\n"
+    out = out + "make pkg_version() -> string:\n    return " + toml_quote(m.version) + "\n\n"
+    out = out + "make pkg_edition() -> string:\n    return " + toml_quote(m.edition) + "\n\n"
+    out = out + "make pkg_description() -> string:\n    return " + toml_quote(m.description) + "\n\n"
+    out = out + "make pkg_authors() -> string:\n    return " + toml_quote(m.authors) + "\n\n"
+    out = out + "make pkg_license() -> string:\n    return " + toml_quote(m.license) + "\n\n"
+    out = out + "make pkg_repository() -> string:\n    return " + toml_quote(m.repository) + "\n\n"
+    out = out + "make pkg_homepage() -> string:\n    return " + toml_quote(m.homepage) + "\n\n"
+    out = out + "make pkg_keywords() -> string:\n    return " + toml_quote(m.keywords) + "\n\n"
     return out
 
 // Resolves the dependencies, (re)writes kite.lock when it changed, and returns the pieces.
@@ -176,7 +157,7 @@ make prepare_deps(p: Project, write_lock: bool) -> Resolved:
     reg = registry_dir(p.root)
     r = resolve_all(p, reg)
     verify_lock(p, r)
-    if write_lock and (len(r.names) > 0 or file_exists(path_join(p.root, "kite.lock"))):
+    if write_lock and (len(r.names) > 0 or sys_path_exists(path_join(p.root, "kite.lock"))):
         lock = lock_text(r)
         lp = path_join(p.root, "kite.lock")
         if read_file(lp) != lock:
@@ -197,12 +178,12 @@ make profile_label(release: bool) -> string:
     return "dev [unoptimized]"
 
 make build_run(o: BuildOpts) -> string:
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     r = prepare_deps(p, true)
     cx = make_ctx(p, r)
     entry = project_main_path(p)
     src_root = project_src_dir(p)
-    if not is_file(entry):
+    if not fs_is_file(entry):
         die("`" + entry + "` not found -- does this project have a `src/main.ki` (or `src/lib.ki`)?")
     opt = p.manifest.opt_level
     if o.release:
@@ -246,14 +227,14 @@ make build_run(o: BuildOpts) -> string:
         cx.fp_file = path_join(path_join(profile_dir, ".fingerprint"), p.manifest.name)
         cx.out_file = out_path
         cx.flags = "kite " + version_text() + " opt=" + str(opt) + " target=" + triple + " static=" + str(o.static_link) + " links=" + join(o.links, ",")
-    start = now_ns()
+    start = time_now_ns()
     c = check_project_with_ui(p, r, entry, src_root, mode != "exe", cx, o.quiet, mode_label)
     header_path = ""
     if not c.fresh:
-        mkdir_all(profile_dir)
+        fs_mkdir_all(profile_dir)
         if mode == "exe":
             out_path = build_from_ir(c.prog, out_path, opt, triple, "exe", o.static_link, o.links)
-            mkdir_all(path_parent(cx.fp_file))
+            fs_mkdir_all(path_parent(cx.fp_file))
             write_file(cx.fp_file, c.fingerprint)
         orif mode == "freestanding":
             build_from_ir(c.prog, out_path, opt, triple, "bare", false, o.links)
@@ -272,7 +253,7 @@ make build_run(o: BuildOpts) -> string:
             header_path = path_with_extension(out_path, "h")
             if not write_file(header_path, header):
                 die("failed to write C header to " + header_path)
-    elapsed = now_ns() - start
+    elapsed = time_now_ns() - start
     if not o.quiet:
         extra = ""
         if mode == "freestanding":
@@ -281,7 +262,7 @@ make build_run(o: BuildOpts) -> string:
             extra = " -> " + out_path + " + " + header_path + " (object file + C header)"
         orif mode == "bare-link":
             extra = " -> " + out_path
-        status("Finished", profile_label(o.release) + " target(s) in " + fmt_secs(elapsed) + "s" + extra)
+        status("Finished", profile_label(o.release) + " target(s) in " + time_fmt_secs(elapsed) + "s" + extra)
     return out_path
 
 // The front end with the cargo-like progress lines: one `Compiling` line per piece, then the package.
@@ -328,12 +309,12 @@ make parse_build_args(a: Args, allow_all: bool) -> BuildOpts:
     return o
 
 make cmd_check(quiet: bool):
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     if not quiet:
         status("Checking", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
     r = prepare_deps(p, false)
     entry = project_main_path(p)
-    if not is_file(entry):
+    if not fs_is_file(entry):
         die("`" + entry + "` not found -- does this project have a `src/main.ki` (or `src/lib.ki`)?")
     c = check_project(entry, project_src_dir(p), project_is_lib(p), make_ctx(p, r))
     if not c.ok:
@@ -342,16 +323,16 @@ make cmd_check(quiet: bool):
         status("Checked", "no errors found")
 
 make cmd_clean():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     bd = project_build_dir(p)
-    if file_exists(bd):
-        remove_dir_all(bd)
+    if sys_path_exists(bd):
+        fs_remove_all(bd)
         status("Removed", bd)
     else:
         status("Clean", "nothing to clean")
 
 make cmd_add(spec: string):
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     name = spec
     req = "*"
     at = find(spec, "@")
@@ -366,14 +347,14 @@ make cmd_add(spec: string):
         if len(std_versions(reg, name)) > 0:
             die("`" + name + "` is a default piece: it needs no dependency, write `use std." + name + "`")
         die("piece `" + name + "` was not found in the registry" + hint_registry(reg))
-    best = sv_best(vers, req)
+    best = semver_best(vers, req)
     if len(best) == 0:
         die("no version of `" + name + "` satisfies `" + req + "` (available: " + join(vers, ", ") + ")")
     written = req
     if req == "*":
         written = best
     existed = manifest_dep_index(p.manifest, name) >= 0
-    project_save_text(p, manifest_text_set_dep(p.text, name, quote_toml(written)))
+    project_save_text(p, manifest_text_set_dep(p.text, name, toml_quote(written)))
     p.manifest = manifest_parse(p.text)
     prepare_deps(p, true)
     verb = "Added"
@@ -382,7 +363,7 @@ make cmd_add(spec: string):
     status(verb, name + " v" + best + " to dependencies")
 
 make cmd_remove(name: string):
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     if manifest_dep_index(p.manifest, name) < 0:
         die("piece `" + name + "` is not a dependency of `" + p.manifest.name + "`")
     project_save_text(p, manifest_text_remove_dep(p.text, name))
@@ -391,7 +372,7 @@ make cmd_remove(name: string):
     status("Removed", name)
 
 make cmd_update():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     reg = registry_dir(p.root)
     r = resolve_all(p, reg)
     write_file(path_join(p.root, "kite.lock"), lock_text(r))
@@ -404,43 +385,38 @@ make cmd_update():
             i += 1
 
 make cmd_tree():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     print_tree(p, resolve_all(p, registry_dir(p.root)))
 
 make search_tier(reg: string, tier: string, query: string) -> int:
     found = 0
     tdir = tier_dir(reg, tier)
-    if not is_dir(tdir):
+    if not fs_is_dir(tdir):
         return 0
-    for name in list_dir(tdir):
+    for name in fs_list(tdir):
         vers = registry_versions_in(reg, tier, name)
         if len(vers) == 0:
             continue
-        best = sv_best(vers, "*")
+        best = semver_best(vers, "*")
         m = read_manifest_at(path_join(path_join(tdir, name), best))
         if query == "" or contains_str(name, query) or contains_str(m.description, query) or contains_str(m.keywords, query):
             if tier == "std":
-                print(fmt_pad("std." + name, 18) + " " + best + "    # " + m.description + "  [default piece]")
+                print(fmt_pad_right("std." + name, 18) + " " + best + "    # " + m.description + "  [default piece]")
             else:
-                print(fmt_pad(name, 18) + " = \"" + best + "\"    # " + m.description)
+                print(fmt_pad_right(name, 18) + " = \"" + best + "\"    # " + m.description)
             found += 1
     return found
 
 make cmd_search(query: string):
-    reg = registry_dir(cwd())
+    reg = registry_dir(fs_cwd())
     if len(reg) == 0:
         die("no registry found" + hint_registry(reg))
     found = search_tier(reg, "std", query) + search_tier(reg, "community", query)
     if found == 0:
         print("no pieces found")
 
-make fmt_pad(s: string, w: int) -> string:
-    if len(s) >= w:
-        return s
-    return s + repeat(" ", w - len(s))
-
 make cmd_info(name: string):
-    reg = registry_dir(cwd())
+    reg = registry_dir(fs_cwd())
     tier = "community"
     vers = registry_versions(reg, name)
     if len(vers) == 0:
@@ -448,7 +424,7 @@ make cmd_info(name: string):
         vers = std_versions(reg, name)
     if len(vers) == 0:
         die("piece `" + name + "` was not found in the registry" + hint_registry(reg))
-    best = sv_best(vers, "*")
+    best = semver_best(vers, "*")
     m = read_manifest_at(path_join(path_join(tier_dir(reg, tier), name), best))
     if tier == "std":
         print("std." + name + " v" + best + "  (default piece: `use std." + name + "`)")
@@ -473,13 +449,13 @@ make validate_piece(p: Project):
     m = p.manifest
     if not project_is_lib(p):
         die("a piece is a library: it has `src/lib.ki` and no `src/main.ki`")
-    if not file_exists(path_join(path_join(p.root, "src"), "lib.ki")):
+    if not sys_path_exists(path_join(path_join(p.root, "src"), "lib.ki")):
         die("`src/lib.ki` not found")
     if not valid_piece_name(m.name):
         die("`" + m.name + "` is not a valid piece name (lowercase letters, digits, `_` and `-`, starting with a letter)")
     if len(std_versions(registry_dir(p.root), m.name)) > 0 and not path_contains_tier(p.root, "std"):
         die("`" + m.name + "` is the name of a default piece: choose another name")
-    if not sv_parse(m.version).ok:
+    if not semver_parse(m.version).ok:
         die("`version = \"" + m.version + "\"` is not a valid semantic version (e.g. 0.1.0)")
     if len(trim(m.description)) == 0:
         die("`description` is required in [package]")
@@ -504,34 +480,34 @@ make verify_compiles(p: Project):
         die("the piece does not compile")
 
 make cmd_verify():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     validate_piece(p)
     status("Verifying", p.manifest.name + " v" + p.manifest.version)
     // when inside a registry (`.../<name>/<version>`), the directory names must match the manifest
     ver_dir = path_file_name(p.root)
     name_dir = path_file_name(path_parent(p.root))
-    if file_exists(path_join(path_parent(path_parent(path_parent(p.root))), "REGISTRY")):
+    if sys_path_exists(path_join(path_parent(path_parent(path_parent(p.root))), "REGISTRY")):
         if ver_dir != p.manifest.version or name_dir != p.manifest.name:
             die("registry path `" + name_dir + "/" + ver_dir + "` does not match kite.toml (" + p.manifest.name + " " + p.manifest.version + ")")
     verify_compiles(p)
     status("Verified", "no problems found")
 
 make cmd_publish():
-    p = project_discover(cwd())
+    p = project_discover(fs_cwd())
     validate_piece(p)
     status("Verifying", p.manifest.name + " v" + p.manifest.version)
     verify_compiles(p)
-    reg = trim(capture("printf %s \"$KITE_PIECES\""))
-    if reg == "" or not file_exists(path_join(reg, "REGISTRY")):
+    reg = process_env("KITE_PIECES")
+    if reg == "" or not sys_path_exists(path_join(reg, "REGISTRY")):
         die("set KITE_PIECES to the `pieces/` directory of your clone of the Kite repository (the registry lives there)")
     name = p.manifest.name
     version = p.manifest.version
     dest = registry_piece_root(reg, name, version)
-    if file_exists(dest):
+    if sys_path_exists(dest):
         die("`" + name + " " + version + "` already exists in the registry: published versions are immutable, bump `version`")
-    mkdir_all(dest)
-    cmd = "(cd " + shell_quote(p.root) + " && tar --exclude=./target --exclude=./.git --exclude=./kite.lock -cf - .) | (cd " + shell_quote(dest) + " && tar -xf -)"
-    if sh(cmd) != 0:
+    fs_mkdir_all(dest)
+    cmd = "(cd " + sys_quote(p.root) + " && tar --exclude=./target --exclude=./.git --exclude=./kite.lock -cf - .) | (cd " + sys_quote(dest) + " && tar -xf -)"
+    if sys_sh(cmd) != 0:
         die("failed to copy the piece into the registry")
     status("Prepared", dest)
     print("")
@@ -547,7 +523,7 @@ make cmd_run(o: BuildOpts):
     binary = build_run(o)
     if not o.quiet:
         status("Running", "`" + binary + "`")
-    code = sh(shell_quote(binary))
+    code = sys_sh(sys_quote(binary))
     exit(code)
 
 make cmd_bench(runs: int, target: string):
@@ -563,9 +539,9 @@ make cmd_bench(runs: int, target: string):
     times: [int] = []
     i = 1
     while i <= runs:
-        t0 = now_ns()
-        code = sh(shell_quote(binary) + " > /dev/null 2>&1")
-        t1 = now_ns()
+        t0 = time_now_ns()
+        code = sys_sh(sys_quote(binary) + " > /dev/null 2>&1")
+        t1 = time_now_ns()
         if code != 0:
             die("run " + str(i) + "/" + str(runs) + " exited with a non-zero status (Some(" + str(code) + ")) -- aborting benchmark")
         append(times, (t1 - t0) / 1000)
@@ -583,14 +559,14 @@ make cmd_bench(runs: int, target: string):
     var = 0
     for t2 in times:
         var += (t2 - avg) * (t2 - avg)
-    sd = isqrt(var / len(times))
+    sd = types_isqrt(var / len(times))
     print("")
     print("Kite benchmark")
     print("       Runs: " + str(runs))
-    print("    Average: " + fmt_ms(avg) + " ms")
-    print("        Min: " + fmt_ms(mn) + " ms")
-    print("        Max: " + fmt_ms(mx) + " ms")
-    print("    Std dev: " + fmt_ms(sd) + " ms")
+    print("    Average: " + fmt_milli(avg) + " ms")
+    print("        Min: " + fmt_milli(mn) + " ms")
+    print("        Max: " + fmt_milli(mx) + " ms")
+    print("    Std dev: " + fmt_milli(sd) + " ms")
 
 make need_arg(a: Args):
     if a.done():

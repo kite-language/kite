@@ -39,3 +39,9 @@ libc and clang. Dev commands for each phase remain: `kitec tokens|ast|desugar|in
 Pitfalls found on the way (see also the notes in `desugar.ki`): arena reallocation while a pointer into it is held
 (loops over `ast.nodes[i].kids`, assignments whose right side creates nodes) and quadratic string building (use
 lists + `join`).
+
+## 0.4.2: the compiler imports pieces
+The compiler's sources now use the default pieces (`use std.path`, ...). Stage 1 is still built by the Rust seed, which was
+taught to resolve `use std.<piece>` from the registry (`archive/rust-stage0/src/resolve.rs`); stages 2 and 3 use the Kite
+resolver. Keep the pieces the compiler imports compatible with the seed: no `piece.function()` calls, no `\x`/`\e`/`\r`/`\0`
+string escapes (the seed's lexer reads them as plain letters; use `chr_byte(n)`).

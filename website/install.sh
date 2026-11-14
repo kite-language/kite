@@ -2,7 +2,7 @@
 # install.sh -- installs the latest (or a pinned) `kite` release on Linux.
 #
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh
-#   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.4.1
+#   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.4.2
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --deb        (Debian/Ubuntu: .deb via dpkg)
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --rpm        (Fedora/RHEL/openSUSE: .rpm via dnf)
 #   curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --uninstall

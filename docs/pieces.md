@@ -11,14 +11,16 @@ The registry is the `pieces/` directory of the Kite repository, in two clearly s
 - `pieces/community/<name>/<version>/` -- **third-party pieces**, added by pull request. They are declared in
   `[dependencies]` and imported by name. A community piece cannot take the name of a default piece.
 
-Published versions are **immutable**. kite finds it through `$KITE_PIECES`, a `pieces/` folder (with a `REGISTRY`
+Published **community** versions are **immutable**. The default pieces are versioned with the language (each release
+replaces the directory of the previous one: `pieces/std/<name>/0.4.2/`), so they are exempt from the immutability
+check. kite finds it through `$KITE_PIECES`, a `pieces/` folder (with a `REGISTRY`
 file) above the project, `~/.kite/pieces`, or `/usr/share/kite/pieces` (installed with the `.deb`/`.rpm`/archive).
 
 ## Using pieces
 ```
 kite search json          # search names, descriptions, keywords
 kite info semver          # metadata and versions
-kite add sha256           # writes `sha256 = "0.4.1"` to [dependencies] and updates kite.lock
+kite add sha256           # writes `sha256 = "0.4.2"` to [dependencies] and updates kite.lock
 kite add semver@^0.4      # a requirement: "1.2" / "^1.2" / "~1.2.3" / ">=1.0" / "=1.2.3" / "*"
 kite tree                 # dependency tree (transitive dependencies are detected and resolved)
 kite update               # re-resolve and rewrite kite.lock
@@ -80,3 +82,11 @@ A published piece may only depend on registry pieces (no `path` dependencies).
 `target/debug/<name>` or `target/release/<name>` (`--release` = optimised, `-O3`), with the LLVM IR next to it and
 a fingerprint (compiler version, flags, every source file of the package and its pieces). When nothing changed
 kite prints `Fresh` and skips compilation. `--target <t>` builds into `target/<t>/<profile>/`.
+
+## The compiler uses the default pieces itself
+Since 0.4.2 `compiler/src/` imports `std.sys`, `std.fs`, `std.path`, `std.process`, `std.term`, `std.time`, `std.fmt`,
+`std.types`, `std.toml` and `std.semver` instead of keeping private copies (what remains in `sysx.ki` is the
+cargo-style status output). To make that possible the Rust seed resolves `use std.<piece>` too (`KITE_PIECES`, or the
+nearest `pieces/` folder with a `REGISTRY` file above `src/`); the seed does not support `piece.function()` calls, so the
+compiler's own code uses the prefixed names (`path_join`, `fs_is_dir`). Pieces that the compiler imports must not use
+features the seed lacks (for example the `\x1b` string escape): `term` builds ESC with `chr_byte(27)`.

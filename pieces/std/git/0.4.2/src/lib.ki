@@ -1,0 +1,49 @@
+// std.git -- thin wrappers over the `git` command line (the package system's transport).
+// Only read-only helpers and clone/fetch are provided; nothing here pushes or tags.
+
+use std.sys
+
+make git_available() -> bool:
+    return sys_sh("command -v git > /dev/null 2>&1") == 0
+
+// Shallow clone of `tag` (or the default branch when `tag` is "") into `dir`.
+make git_clone(url: string, dir: string, tag: string) -> bool:
+    cmd = "git clone --depth 1 -q "
+    if len(tag) > 0:
+        cmd = cmd + "--branch " + sys_quote(tag) + " "
+    return sys_sh(cmd + sys_quote(url) + " " + sys_quote(dir)) == 0
+
+make git_fetch(dir: string) -> bool:
+    return sys_sh("git -C " + sys_quote(dir) + " fetch -q --tags --force") == 0
+
+make git_pull(dir: string) -> bool:
+    return sys_sh("git -C " + sys_quote(dir) + " pull -q --ff-only") == 0
+
+// Full commit hash of HEAD (or of `rev`), "" on failure.
+make git_rev_parse(dir: string, rev: string) -> string:
+    return trim(sys_capture("git -C " + sys_quote(dir) + " rev-parse " + sys_quote(rev)))
+
+make git_head(dir: string) -> string:
+    return git_rev_parse(dir, "HEAD")
+
+make git_is_repo(dir: string) -> bool:
+    return sys_sh("git -C " + sys_quote(dir) + " rev-parse --git-dir > /dev/null 2>&1") == 0
+
+make git_tags(dir: string) -> [string]:
+    out: [string] = []
+    for line in split(sys_capture("git -C " + sys_quote(dir) + " tag --list"), "\n"):
+        if len(line) > 0:
+            append(out, line)
+    return out
+
+make git_remote_url(dir: string) -> string:
+    return trim(sys_capture("git -C " + sys_quote(dir) + " remote get-url origin"))
+
+// `git ls-remote --tags URL`: tag names (without refs/tags/).
+make git_remote_tags(url: string) -> [string]:
+    out: [string] = []
+    for line in split(sys_capture("git ls-remote --tags --refs " + sys_quote(url)), "\n"):
+        i = find(line, "refs/tags/")
+        if i >= 0:
+            append(out, substr(line, i + 10, len(line)))
+    return out

@@ -20,7 +20,8 @@ for dir in "$ROOT"/pieces/*/*/*/; do
 done
 if [ -n "$BASE" ]; then
   # files changed under an existing version directory (modified or deleted, not added) are rejected
-  changed=$(git -C "$ROOT" diff --name-status --diff-filter=MDR "$BASE"...HEAD -- pieces 2>/dev/null | awk '{print $2}')
+  # (only community pieces are immutable: the default pieces are versioned with the language)
+  changed=$(git -C "$ROOT" diff --name-status --diff-filter=MDR "$BASE"...HEAD -- pieces/community 2>/dev/null | awk '{print $2}')
   if [ -n "$changed" ]; then
     echo "FAIL published piece versions are immutable; these files changed:"; echo "$changed" | sed 's/^/    /'; bad=$((bad+1))
   fi

@@ -19,6 +19,10 @@ make retag_diags(d: Diags, file: string, source: string):
         i += 1
 
 use pieces
+use std.sys
+use std.fs
+use std.path
+use std.semver
 
 // Whether the function subtree binds a variable called `name` (parameter, assignment, loop variable).
 make fn_binds(fa: Ast, id: int, name: string) -> bool:
@@ -100,7 +104,7 @@ class Loader:
     make find_module(self, mod_path: string, cur_root: string) -> string:
         rel = replace_all(mod_path, ".", "/")
         local = path_join(cur_root, rel + ".ki")
-        if is_file(local):
+        if fs_is_file(local):
             self.found_root = cur_root
             return local
         segs = split(mod_path, ".")
@@ -114,7 +118,7 @@ class Loader:
                 proot = self.std_cache.get(head)
             else:
                 vers = std_versions(self.registry, head)
-                best = sv_best(vers, "*")
+                best = semver_best(vers, "*")
                 if len(best) > 0:
                     proot = std_piece_root(self.registry, head, best)
                 self.std_cache.set(head, proot)
@@ -134,7 +138,7 @@ class Loader:
             file = join(parts, "/")
         src = path_join(proot, "src")
         cand = path_join(src, file + ".ki")
-        if is_file(cand):
+        if fs_is_file(cand):
             self.found_root = src
             return cand
         return ""
@@ -205,7 +209,7 @@ class Loader:
             return true
         self.visited.set(canonical, 1)
         display = path_display(path, self.src_root)
-        if not file_exists(path):
+        if not sys_path_exists(path):
             self.error("E0070", "could not read `" + display + "`: No such file or directory (os error 2)", span_dummy(), display, "", "")
             return false
         source = read_file(path)

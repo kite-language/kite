@@ -8,6 +8,7 @@ Versions are `0.x`: the compiler is written in Kite and compiles itself since 0.
 |---------|------|
 | 0.4.0 | self-hosted compiler (stage1 = stage2 = stage3), `std.*` libraries |
 | 0.4.1 | pieces (packages) with a `std/` and a `community/` registry, `piece.function()` calls, threads (`spawn`), memory builtins, `kite.toml` metadata (`pkg_*()`), cargo-like `target/`, `kite target` for bare-metal OS builds, `kite test` / `fmt` / `doc`, `const`, `bool == bool`, `p[i]` on pointers, `float_of` / `int_of` + `std.math`, `\x41` `\e` `\r` `\0` escapes, `panic` / `assert` |
+| 0.4.2 | the compiler's own source uses the default pieces (`use std.path`, `std.fs`, `std.sys`, `std.term`, `std.toml`, `std.semver`, ...) instead of private copies; the Rust seed resolves `use std.<piece>` so stage 1 still builds; default pieces are versioned with the language |
 
 ## Planned
 Each stage is ordered by how much it unlocks; the version numbers are indicative.
