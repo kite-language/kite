@@ -1,0 +1,120 @@
+// Helpers on textual types ("int", "[int]", "(int, string)", "ptr<T>", "Name").
+// The Kite AST keeps types as their source text; these functions take them apart.
+
+make ty_is_list(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 91 and char_at(t, len(t) - 1) == 93
+
+// "[T]" -> "T" ("" if `t` is not a list type)
+make ty_list_elem(t: string) -> string:
+    if ty_is_list(t):
+        return substr(t, 1, len(t) - 1)
+    return ""
+
+make ty_list_of(t: string) -> string:
+    return "[" + t + "]"
+
+make ty_is_ptr(t: string) -> bool:
+    return starts_with(t, "ptr<") and ends_with(t, ">")
+
+// "ptr<T>" -> "T" ("" if `t` is not a pointer type)
+make ty_ptr_inner(t: string) -> string:
+    if ty_is_ptr(t):
+        return substr(t, 4, len(t) - 1)
+    return ""
+
+make ty_ptr_of(t: string) -> string:
+    return "ptr<" + t + ">"
+
+// A user-defined (struct/class/enum) type is a plain identifier that is not a primitive.
+make ty_is_named(t: string) -> bool:
+    if len(t) == 0:
+        return false
+    if t == "int" or t == "float" or t == "bool" or t == "string" or t == "void":
+        return false
+    if not is_alpha(char_at(t, 0)):
+        return false
+    i = 0
+    while i < len(t):
+        if not is_alnum(char_at(t, i)):
+            return false
+        i += 1
+    return true
+
+// The struct/class name behind `t` (`Name` or `ptr<Name>`), "" otherwise.
+make ty_struct_or_ptr(t: string) -> string:
+    if ty_is_named(t):
+        return t
+    inner = ty_ptr_inner(t)
+    if ty_is_named(inner):
+        return inner
+    return ""
+
+// ---- sema additions ------------------------------------------------------------------------
+// Types stay textual. After sema's name resolution a top-level enum type is written "@Name"
+// (Rust: TypeName::Enum); everything else that is a plain identifier is a struct. `ty_disp`
+// gives the Display form (marker removed).
+
+make ty_disp(t: string) -> string:
+    if find(t, "@") < 0:
+        return t
+    return replace_all(t, "@", "")
+
+make ty_is_enum(t: string) -> bool:
+    return len(t) > 1 and char_at(t, 0) == 64
+
+make ty_is_tuple(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 40 and t != "()"
+
+make ty_is_dict(t: string) -> bool:
+    return len(t) >= 2 and char_at(t, 0) == 123
+
+make ty_is_scalar_name(t: string) -> bool:
+    return t == "int" or t == "float" or t == "bool" or t == "string"
+
+// Elements of "(a, b, c)" (split at top-level commas).
+make ty_tuple_elems(t: string) -> [string]:
+    out: [string] = []
+    inner = substr(t, 1, len(t) - 1)
+    depth = 0
+    start = 0
+    i = 0
+    while i < len(inner):
+        c = char_at(inner, i)
+        if c == 40 or c == 91 or c == 123 or c == 60:
+            depth += 1
+        orif c == 41 or c == 93 or c == 125 or c == 62:
+            depth -= 1
+        orif c == 44 and depth == 0:
+            append(out, trim(substr(inner, start, i)))
+            start = i + 1
+        i += 1
+    append(out, trim(substr(inner, start, len(inner))))
+    return out
+
+// Fields of `{"a": int, "b": string}`: quoted keys (as written) in `keys`, value types in `vals`.
+type DictFields:
+    keys: [string]
+    vals: [string]
+
+make ty_dict_fields(t: string) -> DictFields:
+    d = DictFields()
+    i = 1
+    n = len(t) - 1
+    while i < n:
+        if char_at(t, i) == 34:
+            j = i + 1
+            while j < n and char_at(t, j) != 34:
+                if char_at(t, j) == 92:
+                    j += 1
+                j += 1
+            append(d.keys, substr(t, i, j + 1))
+            // skip `": `
+            k = j + 3
+            e = k
+            while e < n and not (char_at(t, e) == 44 and e + 1 < n and char_at(t, e + 1) == 32):
+                e += 1
+            append(d.vals, substr(t, k, e))
+            i = e + 2
+        else:
+            i += 1
+    return d

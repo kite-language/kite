@@ -1,0 +1,1 @@
+Kite piece registry: pieces/<name>/<version>/{kite.toml,src/lib.ki}. Versions are immutable. See docs/pieces.md.

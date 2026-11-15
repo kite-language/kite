@@ -1,0 +1,26 @@
+// The compiler's console output: cargo-style status lines and fatal errors. Everything else it needs
+// (shell, files, paths, colours, time, formatting, TOML, versions) comes from the default pieces: `use std.<piece>`.
+
+use std.sys
+use std.term
+use std.fmt
+
+// `{:>12}` of a label (padding is computed on the plain text, colour is added around it)
+make status_label(label: string, color: string) -> string:
+    code = "1;32"
+    if color == "yellow":
+        code = "1;33"
+    return fmt.pad_left("", 12 - len(label)) + term.paint_if(code, label, term.is_tty())
+
+make status(label: string, rest: string):
+    print(status_label(label, "green") + " " + rest)
+
+make die(msg: string):
+    sys.eprint(term.paint_if("1;31", "error:", term.is_tty_fd(2)) + " " + msg + "\n")
+    exit(1)
+
+make green_bold(s: string) -> string:
+    return term.paint_if("1;32", s, term.is_tty())
+
+make red_bold_err(s: string) -> string:
+    return term.paint_if("1;31", s, term.is_tty_fd(2))

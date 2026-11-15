@@ -1,0 +1,125 @@
+// types -- number and character helpers.
+
+make types_min(a: int, b: int) -> int:
+    if a < b:
+        return a
+    return b
+
+make types_max(a: int, b: int) -> int:
+    if a > b:
+        return a
+    return b
+
+make types_abs(a: int) -> int:
+    if a < 0:
+        return 0 - a
+    return a
+
+make types_clamp(v: int, lo: int, hi: int) -> int:
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
+    return v
+
+make types_sign(a: int) -> int:
+    if a < 0:
+        return -1
+    if a > 0:
+        return 1
+    return 0
+
+make types_is_even(a: int) -> bool:
+    return a % 2 == 0
+
+make types_gcd(a: int, b: int) -> int:
+    x = types_abs(a)
+    y = types_abs(b)
+    while y != 0:
+        t = x % y
+        x = y
+        y = t
+    return x
+
+make types_pow(base: int, exp: int) -> int:
+    r = 1
+    i = 0
+    while i < exp:
+        r = r * base
+        i += 1
+    return r
+
+// True when `s` is an optionally signed decimal integer.
+make types_is_int(s: string) -> bool:
+    t = trim(s)
+    i = 0
+    if len(t) > 0 and (char_at(t, 0) == 45 or char_at(t, 0) == 43):
+        i = 1
+    if i >= len(t):
+        return false
+    while i < len(t):
+        if not is_digit(char_at(t, i)):
+            return false
+        i += 1
+    return true
+
+// Integer value of `s`, or `dflt` when it is not an integer.
+make types_parse_int(s: string, dflt: int) -> int:
+    if not types_is_int(s):
+        return dflt
+    t = trim(s)
+    if char_at(t, 0) == 43:
+        return to_int(substr(t, 1, len(t)))
+    return to_int(t)
+
+// "true"/"yes"/"1"/"on" -> true, "false"/"no"/"0"/"off" -> false, anything else -> `dflt`.
+make types_parse_bool(s: string, dflt: bool) -> bool:
+    t = trim(s)
+    if t == "true" or t == "yes" or t == "1" or t == "on":
+        return true
+    if t == "false" or t == "no" or t == "0" or t == "off":
+        return false
+    return dflt
+
+make types_is_upper(c: int) -> bool:
+    return c >= 65 and c <= 90
+
+make types_is_lower(c: int) -> bool:
+    return c >= 97 and c <= 122
+
+make types_to_upper(c: int) -> int:
+    if types_is_lower(c):
+        return c - 32
+    return c
+
+make types_to_lower(c: int) -> int:
+    if types_is_upper(c):
+        return c + 32
+    return c
+
+make types_upper(s: string) -> string:
+    out = ""
+    i = 0
+    while i < len(s):
+        out = out + chr(types_to_upper(char_at(s, i)))
+        i += 1
+    return out
+
+make types_lower(s: string) -> string:
+    out = ""
+    i = 0
+    while i < len(s):
+        out = out + chr(types_to_lower(char_at(s, i)))
+        i += 1
+    return out
+
+// Integer square root (floor).
+make types_isqrt(n: int) -> int:
+    if n <= 0:
+        return 0
+    x = n
+    y = (x + 1) / 2
+    while y < x:
+        x = y
+        y = (x + n / x) / 2
+    return x

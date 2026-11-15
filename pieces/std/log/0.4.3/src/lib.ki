@@ -1,0 +1,28 @@
+// log -- `[LEVEL] message` lines; the `_ts` variants prefix an ISO timestamp.
+
+use std.time
+use std.datetime
+
+make log_line(level: string, msg: string) -> string:
+    return "[" + level + "] " + msg
+
+make log_debug(msg: string):
+    print(log_line("DEBUG", msg))
+
+make log_info(msg: string):
+    print(log_line("INFO", msg))
+
+make log_warn(msg: string):
+    print(log_line("WARN", msg))
+
+make log_error(msg: string):
+    print(log_line("ERROR", msg))
+
+make log_stamp() -> string:
+    return datetime.format_iso(time.now_secs())
+
+make log_info_ts(msg: string):
+    print(log_stamp() + " " + log_line("INFO", msg))
+
+make log_error_ts(msg: string):
+    print(log_stamp() + " " + log_line("ERROR", msg))

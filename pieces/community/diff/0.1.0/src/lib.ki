@@ -1,0 +1,54 @@
+// diff -- compare two lists of lines; the result has one line per input line prefixed by
+// "  " (same), "- " (only in a) or "+ " (only in b).
+
+make diff_lines(a: [string], b: [string]) -> [string]:
+    n = len(a)
+    m = len(b)
+    w = m + 1
+    t: [int] = []
+    k = 0
+    while k < (n + 1) * w:
+        append(t, 0)
+        k += 1
+    i = n - 1
+    while i >= 0:
+        j = m - 1
+        while j >= 0:
+            if a[i] == b[j]:
+                t[i * w + j] = t[(i + 1) * w + j + 1] + 1
+            else:
+                down = t[(i + 1) * w + j]
+                right = t[i * w + j + 1]
+                if down >= right:
+                    t[i * w + j] = down
+                else:
+                    t[i * w + j] = right
+            j -= 1
+        i -= 1
+    out: [string] = []
+    x = 0
+    y = 0
+    while x < n and y < m:
+        if a[x] == b[y]:
+            append(out, "  " + a[x])
+            x += 1
+            y += 1
+        orif t[(x + 1) * w + y] >= t[x * w + y + 1]:
+            append(out, "- " + a[x])
+            x += 1
+        else:
+            append(out, "+ " + b[y])
+            y += 1
+    while x < n:
+        append(out, "- " + a[x])
+        x += 1
+    while y < m:
+        append(out, "+ " + b[y])
+        y += 1
+    return out
+
+make diff_changed(a: [string], b: [string]) -> bool:
+    for l in diff_lines(a, b):
+        if not starts_with(l, "  "):
+            return true
+    return false

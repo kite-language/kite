@@ -1,0 +1,16 @@
+// http -- thin wrappers over `curl` (which must be installed). Bodies are text.
+
+use std.sys
+
+make http_get(url: string) -> string:
+    return sys_capture("curl -fsSL " + sys_quote(url))
+
+make http_post(url: string, body: string) -> string:
+    return sys_capture("curl -fsSL -X POST --data-binary " + sys_quote(body) + " " + sys_quote(url))
+
+// HTTP status code (0 when the request could not be made).
+make http_status(url: string) -> int:
+    return to_int(trim(sys_capture("curl -s -o " + sys_null() + " -w %{http_code} " + sys_quote(url))))
+
+make http_download(url: string, path: string) -> bool:
+    return sys_sh("curl -fsSL -o " + sys_quote(path) + " " + sys_quote(url)) == 0

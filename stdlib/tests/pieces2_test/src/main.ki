@@ -1,0 +1,131 @@
+use std.test
+use std.random
+use std.strings
+use std.collections
+use std.bits
+use std.stats
+use std.hex
+use std.base64
+use std.crc32
+use std.url
+use std.csv
+use std.datetime
+use std.glob
+use std.uuid
+use std.utf8
+use std.log
+use std.io
+use std.http
+use std.json
+use table
+use ini
+use progress
+use diff
+
+make main():
+    t = test_new("pieces 0.4.3")
+    // random
+    r = random.new(42)
+    r2 = random.new(42)
+    test_eq_int(t, "random reproducible", random.next(r), random.next(r2))
+    inrange = true
+    k = 0
+    while k < 200:
+        v = random.range(r, 5, 10)
+        if v < 5 or v >= 10:
+            inrange = false
+        k += 1
+    test_true(t, "random range", inrange)
+    test_eq_int(t, "shuffle keeps size", len(random.shuffle(r, [1, 2, 3, 4, 5])), 5)
+    test_eq_int(t, "random string", len(random.string(r, 12)), 12)
+    // strings
+    test_eq_str(t, "reverse", strings.reverse("kite"), "etik")
+    test_eq_int(t, "count", strings.count("a,b,c,d", ","), 3)
+    test_eq_str(t, "title", strings.title("hello big world"), "Hello Big World")
+    test_eq_str(t, "pad_center", strings.pad_center("ab", 6), "  ab  ")
+    test_eq_int(t, "wrap", len(strings.wrap("the quick brown fox jumps over", 10)), 3)
+    test_eq_str(t, "truncate", strings.truncate("abcdefghij", 6, "..."), "abc...")
+    test_eq_int(t, "lines", len(strings.lines("a\nb\nc\n")), 3)
+    test_eq_str(t, "after", strings.after("k=v", "="), "v")
+    // collections
+    s = collections.sort_ints([5, 3, 9, 1, 3])
+    test_eq_str(t, "sort ints", strings.join_ints(s, ","), "1,3,3,5,9")
+    test_eq_str(t, "unique", strings.join_ints(collections.unique_ints([3, 1, 3, 2, 1]), ","), "1,2,3")
+    test_eq_str(t, "sort strings", join(collections.sort_strings(["pear", "apple", "fig"]), ","), "apple,fig,pear")
+    st = intstack_new()
+    intstack_push(st, 1)
+    intstack_push(st, 2)
+    test_eq_int(t, "stack", intstack_pop(st), 2)
+    q = intqueue_new()
+    intqueue_push(q, 7)
+    intqueue_push(q, 8)
+    test_eq_int(t, "queue", intqueue_pop(q), 7)
+    set = strset_new()
+    test_true(t, "set add", strset_add(set, "a"))
+    test_false(t, "set dup", strset_add(set, "a"))
+    test_eq_int(t, "set len", strset_len(set), 1)
+    test_eq_int(t, "sum", collections.sum_ints([1, 2, 3, 4]), 10)
+    // bits
+    test_eq_int(t, "popcount", bits.popcount(255), 8)
+    test_true(t, "pow2", bits.is_power_of_two(64))
+    test_eq_int(t, "set bit", bits.set(0, 4), 16)
+    test_eq_int(t, "tz", bits.trailing_zeros(8), 3)
+    // stats
+    test_eq_int(t, "median", int_of(stats.median([1, 9, 3, 5, 7]) * 10.0), 50)
+    test_eq_int(t, "mean", int_of(stats.mean([2, 4, 6]) * 10.0), 40)
+    test_eq_int(t, "stddev", int_of(stats.stddev([2, 4, 4, 4, 5, 5, 7, 9]) * 10.0), 20)
+    // hex / base64 / crc32
+    test_eq_str(t, "hex encode", hex.encode("Kite"), "4b697465")
+    test_eq_str(t, "hex decode", hex.decode("4b697465"), "Kite")
+    test_eq_str(t, "b64 encode", base64.encode("Man"), "TWFu")
+    test_eq_str(t, "b64 pad", base64.encode("Ma"), "TWE=")
+    test_eq_str(t, "b64 pad2", base64.encode("M"), "TQ==")
+    test_eq_str(t, "b64 decode", base64.decode("SGVsbG8sIEtpdGUh"), "Hello, Kite!")
+    test_eq_str(t, "crc32", crc32.hex("123456789"), "cbf43926")
+    // url
+    u = "https://user@example.com:8080/a/b?x=1&name=Kite%20Lang#frag"
+    test_eq_str(t, "scheme", url.scheme(u), "https")
+    test_eq_str(t, "host", url.host(u), "example.com")
+    test_eq_int(t, "port", url.port(u, 80), 8080)
+    test_eq_str(t, "path", url.path(u), "/a/b")
+    test_eq_str(t, "query", url.query_get(url.query(u), "name", ""), "Kite Lang")
+    test_eq_str(t, "url encode", url.encode("a b&c"), "a%20b%26c")
+    // csv
+    f = csv.parse_line("a,\"b,c\",\"say \"\"hi\"\"\",d", ",")
+    test_eq_int(t, "csv fields", len(f), 4)
+    test_eq_str(t, "csv quoted", f[1], "b,c")
+    test_eq_str(t, "csv quote escape", f[2], "say \"hi\"")
+    test_eq_str(t, "csv join", csv.join(["x", "y,z"], ","), "x,\"y,z\"")
+    // datetime
+    test_eq_str(t, "iso epoch", datetime.format_iso(0), "1970-01-01T00:00:00Z")
+    test_eq_str(t, "iso 2024", datetime.format_iso(1709210096), "2024-02-29T12:34:56Z")
+    test_eq_int(t, "from civil", datetime.from_civil(2024, 2, 29, 12, 34, 56), 1709210096)
+    test_eq_int(t, "weekday", datetime.weekday(0), 4)
+    test_true(t, "leap", datetime.is_leap(2000))
+    test_false(t, "not leap", datetime.is_leap(1900))
+    test_eq_str(t, "before epoch", datetime.format_iso(-1), "1969-12-31T23:59:59Z")
+    // glob / uuid / utf8
+    test_true(t, "glob star", glob.match("*.ki", "main.ki"))
+    test_false(t, "glob miss", glob.match("*.ki", "main.rs"))
+    test_true(t, "glob ?", glob.match("a?c", "abc"))
+    id = uuid.v4(r)
+    test_true(t, "uuid valid", uuid.is_valid(id))
+    test_eq_int(t, "utf8 len", utf8.len("h\xc3\xa9llo"), 5)
+    test_true(t, "utf8 valid", utf8.valid("h\xc3\xa9llo"))
+    test_false(t, "utf8 invalid", utf8.valid("h\xc3llo"))
+    // community pieces
+    tb = table_new(2)
+    table_add_row(tb, ["name", "qty"])
+    table_add_row(tb, ["apple", "3"])
+    test_eq_str(t, "table", table_render(tb), "name   qty\n-----  ---\napple  3  ")
+    cfg = "[core]\nname = kite\n; comment\n[net]\nport = 80\n"
+    test_eq_str(t, "ini", ini_get(cfg, "net", "port", "?"), "80")
+    test_eq_int(t, "ini sections", len(ini_sections(cfg)), 2)
+    test_eq_str(t, "progress", progress_bar(5, 10, 10), "[#####-----]  50%")
+    d = diff_lines(["a", "b", "c"], ["a", "c", "d"])
+    test_eq_str(t, "diff", join(d, "|"), "  a|- b|  c|+ d")
+    test_true(t, "diff changed", diff_changed(["a"], ["b"]))
+    io.eprintln("(stderr works)")
+    test_eq_int(t, "http unreachable", http.status("http://127.0.0.1:9/"), 0)
+    log.info("done")
+    exit(test_finish(t))

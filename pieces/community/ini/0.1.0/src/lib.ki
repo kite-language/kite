@@ -1,0 +1,44 @@
+// ini -- `[section]` headers, `key = value` lines, `;` and `#` comments.
+
+make ini_strip(line: string) -> string:
+    t = trim(line)
+    if starts_with(t, ";") or starts_with(t, "#"):
+        return ""
+    return t
+
+make ini_get(text: string, section: string, key: string, dflt: string) -> string:
+    cur = ""
+    for raw in split(text, "\n"):
+        line = ini_strip(raw)
+        if len(line) == 0:
+            continue
+        if starts_with(line, "[") and ends_with(line, "]"):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq > 0 and cur == section and trim(substr(line, 0, eq)) == key:
+            return trim(substr(line, eq + 1, len(line)))
+    return dflt
+
+make ini_sections(text: string) -> [string]:
+    out: [string] = []
+    for raw in split(text, "\n"):
+        line = ini_strip(raw)
+        if starts_with(line, "[") and ends_with(line, "]"):
+            append(out, trim(substr(line, 1, len(line) - 1)))
+    return out
+
+make ini_keys(text: string, section: string) -> [string]:
+    out: [string] = []
+    cur = ""
+    for raw in split(text, "\n"):
+        line = ini_strip(raw)
+        if len(line) == 0:
+            continue
+        if starts_with(line, "[") and ends_with(line, "]"):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq > 0 and cur == section:
+            append(out, trim(substr(line, 0, eq)))
+    return out

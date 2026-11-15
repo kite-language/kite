@@ -1,0 +1,43 @@
+// stats -- statistics over lists of ints (results are floats where a fraction is possible).
+
+use std.math
+use std.collections
+
+make stats_sum(xs: [int]) -> int:
+    t = 0
+    for x in xs:
+        t += x
+    return t
+
+make stats_mean(xs: [int]) -> float:
+    if len(xs) == 0:
+        return 0.0
+    return float_of(stats_sum(xs)) / float_of(len(xs))
+
+make stats_median(xs: [int]) -> float:
+    n = len(xs)
+    if n == 0:
+        return 0.0
+    s = collections.sort_ints(xs)
+    if n % 2 == 1:
+        return float_of(s[n / 2])
+    return (float_of(s[n / 2 - 1]) + float_of(s[n / 2])) / 2.0
+
+make stats_variance(xs: [int]) -> float:
+    if len(xs) == 0:
+        return 0.0
+    m = stats_mean(xs)
+    t = 0.0
+    for x in xs:
+        d = float_of(x) - m
+        t = t + d * d
+    return t / float_of(len(xs))
+
+make stats_stddev(xs: [int]) -> float:
+    return math.sqrt(stats_variance(xs))
+
+make stats_min(xs: [int]) -> int:
+    return collections.min_int(xs)
+
+make stats_max(xs: [int]) -> int:
+    return collections.max_int(xs)

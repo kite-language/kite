@@ -1,0 +1,21 @@
+// std.process -- running programs and reading the environment.
+
+use std.sys
+
+// Exit code of the command (run through `sh -c`).
+make process_run(cmd: string) -> int:
+    return sys_sh(cmd)
+
+// Standard output of the command.
+make process_output(cmd: string) -> string:
+    return sys_capture(cmd)
+
+make process_env(name: string) -> string:
+    return sys_capture("printf %s \"$" + name + "\"")
+
+make process_pid() -> int:
+    return sys_pid()
+
+// Whether `program` can be found on PATH.
+make process_which(program: string) -> bool:
+    return sys_sh("command -v " + sys_quote(program) + " > /dev/null 2>&1") == 0

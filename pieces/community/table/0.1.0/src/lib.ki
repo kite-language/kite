@@ -1,0 +1,63 @@
+// table -- collect rows, then render them with padded columns.
+//   t = table_new(3)
+//   table_add_row(t, ["name", "qty", "price"])
+//   print(table_render(t))
+
+class Table:
+    cols: int
+    cells: [string]
+
+make table_new(cols: int) -> Table:
+    t = Table()
+    t.cols = cols
+    return t
+
+make table_add_row(t: Table, row: [string]):
+    i = 0
+    while i < t.cols:
+        if i < len(row):
+            append(t.cells, row[i])
+        else:
+            append(t.cells, "")
+        i += 1
+
+make table_rows(t: Table) -> int:
+    return len(t.cells) / t.cols
+
+make table_widths(t: Table) -> [int]:
+    w: [int] = []
+    c = 0
+    while c < t.cols:
+        m = 0
+        r = 0
+        while r < table_rows(t):
+            n = len(t.cells[r * t.cols + c])
+            if n > m:
+                m = n
+            r += 1
+        append(w, m)
+        c += 1
+    return w
+
+// Rows separated by newlines, columns by two spaces, the first row underlined.
+make table_render(t: Table) -> string:
+    w = table_widths(t)
+    lines: [string] = []
+    r = 0
+    while r < table_rows(t):
+        parts: [string] = []
+        c = 0
+        while c < t.cols:
+            cell = t.cells[r * t.cols + c]
+            append(parts, cell + repeat(" ", w[c] - len(cell)))
+            c += 1
+        append(lines, join(parts, "  "))
+        if r == 0:
+            rule: [string] = []
+            c2 = 0
+            while c2 < t.cols:
+                append(rule, repeat("-", w[c2]))
+                c2 += 1
+            append(lines, join(rule, "  "))
+        r += 1
+    return join(lines, "\n")

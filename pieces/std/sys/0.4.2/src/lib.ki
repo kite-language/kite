@@ -1,0 +1,34 @@
+// std.sys -- the few libc hooks the other std modules are built on. Import this one instead of
+// declaring `extern make system(...)` yourself (an extern may only be declared once per program).
+
+extern make system(cmd: string) -> int
+extern make access(path: string, mode: int) -> int
+extern make isatty(fd: int) -> int
+extern make getpid() -> int
+
+// Runs a shell command and returns its exit code (-1 if it could not be started).
+make sys_sh(cmd: string) -> int:
+    r = system(cmd)
+    if r < 0:
+        return -1
+    return (r / 256) % 256
+
+make sys_quote(s: string) -> string:
+    return "'" + replace_all(s, "'", "'\\''") + "'"
+
+// Standard output of a shell command (stderr is discarded).
+make sys_capture(cmd: string) -> string:
+    tmp = "/tmp/.kite-std-" + str(getpid())
+    system(cmd + " > " + sys_quote(tmp) + " 2>/dev/null")
+    out = read_file(tmp)
+    system("rm -f " + sys_quote(tmp))
+    return out
+
+make sys_path_exists(path: string) -> bool:
+    return access(path, 0) == 0
+
+make sys_is_tty(fd: int) -> bool:
+    return isatty(fd) != 0
+
+make sys_pid() -> int:
+    return getpid()

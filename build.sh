@@ -1,0 +1,109 @@
+#!/bin/bash
+# Kite build + bootstrap.
+#
+#   ./build.sh            build everything that can be built (see stages below)
+#   ./build.sh test       same, then run the differential tests (Kite vs Rust)
+#   ./build.sh status     show which compiler phases are ported to Kite
+#   ./build.sh clean      remove build outputs (see also ./clean.sh)
+#   ./build.sh --fresh    also rebuild the Rust seed from scratch (default: only kitec and the stage dirs are rebuilt)
+#
+# Stages
+#   stage0  the Rust compiler (archive/rust-stage0)          built with cargo + clang
+#   stage1  kitec, the compiler written in Kite (compiler/)   compiled by stage0
+#   stage2  kitec compiled by stage1 itself                   (needs the full port)
+#   stage2 must produce the same LLVM IR as stage1; when it does, compiler/BOOTSTRAPPED
+#   is written and kitec can replace the Rust compiler.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+STAGE0_DIR="$ROOT/archive/rust-stage0"
+STAGE0_TARGET="$STAGE0_DIR/target"   # always ours, whatever CARGO_TARGET_DIR says
+STAGE0="${KITE_STAGE0:-$STAGE0_TARGET/release/kite}"
+KITEC="$ROOT/compiler/target/kitec"
+
+# On Windows the executables carry an .exe suffix: pick whichever exists.
+exe() { if [ -f "$1.exe" ]; then echo "$1.exe"; else echo "$1"; fi; }
+
+bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+
+FRESH=0
+if [ "${1:-}" = "--fresh" ]; then FRESH=1; shift; fi
+
+case "${1:-build}" in
+  clean)  exec "$ROOT/clean.sh" ;;
+  status)
+    [ -x "$KITEC" ] || { echo "kitec not built yet: run ./build.sh"; exit 1; }
+    bold "phases ported to Kite:"; "$KITEC" --capabilities | sed 's/^/  - /'
+    [ -f "$ROOT/compiler/BOOTSTRAPPED" ] && echo "bootstrap: COMPLETE" || echo "bootstrap: in progress"
+    exit 0 ;;
+esac
+
+# The Rust crate keeps its own frozen copy of the prelude (it must be self-contained for
+# `cross`/Docker builds); warn when it drifts from the canonical stdlib/prelude.
+for f in core.ki map.tpl; do
+  cmp -s "$ROOT/stdlib/prelude/$f" "$STAGE0_DIR/src/prelude/$f" || \
+    echo "warning: stdlib/prelude/$f differs from archive/rust-stage0/src/prelude/$f (stage0 uses its own copy)" >&2
+done
+
+# Never trust old outputs: stage1/2/3 and their build caches (target/, .fingerprint) are always rebuilt.
+rm -rf "$ROOT/compiler/target" "$ROOT/stage2" "$ROOT/stage3" "$ROOT/compiler/BOOTSTRAPPED"
+if [ "$FRESH" = 1 ]; then rm -rf "$STAGE0_TARGET"; fi
+
+bold "==> stage0: Rust compiler"
+if [ ! -x "$STAGE0" ]; then
+  (cd "$STAGE0_DIR" && CARGO_TARGET_DIR="$STAGE0_TARGET" cargo build -q --release --bins --examples 2>&1 | grep -v "^warning\|^ *|\|^ *-->\|^ *=\|^$\|^[0-9 ]*|" || true)
+fi
+STAGE0="$(exe "$STAGE0")"
+[ -e "$STAGE0" ] || { echo "error: stage0 binary not found at $STAGE0" >&2; exit 1; }
+
+# kitec embeds the prelude (compiler/src/prelude_data.ki is generated from stdlib/prelude/)
+"$ROOT/scripts/gen-prelude.sh" >/dev/null
+
+bold "==> stage1: kitec (Kite) compiled by stage0"
+(cd "$ROOT/compiler" && "$STAGE0" build --release)
+KITEC="$(exe "$ROOT/compiler/target/kitec")"
+
+PORTED="$("$KITEC" --capabilities | tr '\n' ' ')"
+echo "    ported phases: $PORTED"
+if echo "$PORTED" | grep -qw build; then
+  bold "==> stage2: kitec compiled by kitec (stage1)"
+  for n in stage2 stage3; do rm -rf "$ROOT/$n" && mkdir -p "$ROOT/$n" && cp -r "$ROOT/compiler/." "$ROOT/$n/" && rm -rf "$ROOT/$n/target"; done
+  (cd "$ROOT/stage2" && "$KITEC" build --release)
+  bold "==> stage3: kitec compiled by stage2 (fixed point)"
+  (cd "$ROOT/stage3" && "$(exe "$ROOT/stage2/target/release/kitec")" build --release)
+  # Rust emits string constants in HashMap order: compare stage1 with the constants sorted.
+  n1=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/compiler/target/kitec.ll" | python3 -c 'import sys,hashlib;print(hashlib.md5(sys.stdin.buffer.read()).hexdigest())')
+  n2=$(python3 "$ROOT/scripts/llnorm.py" < "$ROOT/stage2/target/release/kitec.ll" | python3 -c 'import sys,hashlib;print(hashlib.md5(sys.stdin.buffer.read()).hexdigest())')
+  if [ "$n1" = "$n2" ] && cmp -s "$ROOT/stage2/target/release/kitec.ll" "$ROOT/stage3/target/release/kitec.ll"; then
+    echo "    stage1 = stage2 = stage3 (identical LLVM IR): bootstrap complete; shipping stage3"
+    date -u +%FT%TZ > "$ROOT/compiler/BOOTSTRAPPED"
+    mkdir -p "$ROOT/compiler/target" && S3="$(exe "$ROOT/stage3/target/release/kitec")"; case "$S3" in *.exe) cp "$S3" "$ROOT/compiler/target/kite.exe" ;; *) cp "$S3" "$ROOT/compiler/target/kite" ;; esac
+    echo "    self-hosted compiler (stage3): compiler/target/kite (does not need Rust or cargo)"
+  else
+    echo "error: stage2/stage3 differ from stage1" >&2; exit 1
+  fi
+else
+  bold "==> stage2: skipped (the port of the remaining phases is in progress; ./build.sh status)"
+fi
+
+if [ "${1:-}" = "test" ]; then
+  bold "==> differential tests (Kite vs Rust)"
+  cd "$ROOT"
+  FILES=$(ls examples/*.ki examples/*/*.ki stdlib/prelude/core.ki compiler/src/*.ki)
+  export KITE_STAGE0_TARGET="$STAGE0_TARGET"
+  scripts/difftest.sh tokens $FILES
+  scripts/difftest.sh ast $FILES
+  scripts/difftest.sh desugar $FILES
+  scripts/difftest.sh inject $FILES
+  scripts/difftest.sh sema $FILES
+  scripts/llcmp.sh $FILES
+  bold "==> examples with recorded output, built by the self-hosted compiler"
+  [ -e "$(exe "$ROOT/stage2/target/release/kitec")" ] && scripts/runexamples.sh "$(exe "$ROOT/stage2/target/release/kitec")"
+  bold "==> default pieces tests"
+  (cd "$ROOT/stdlib/tests/std_test" && KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" run -q)
+  bold "==> new default and community pieces"
+  (cd "$ROOT/stdlib/tests/pieces2_test" && KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" run -q)
+  bold "==> language feature tests (kite test)"
+  (cd "$ROOT/stdlib/tests/lang_test" && KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" test)
+  bold "==> piece registry verification"
+  KITE="$(exe "$ROOT/stage2/target/release/kitec")" scripts/verify-pieces.sh
+fi

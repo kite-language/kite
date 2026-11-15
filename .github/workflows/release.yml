@@ -1,0 +1,82 @@
+name: release
+# Builds the release files on native runners and attaches them to the GitHub
+# release of a v* tag. Linux archives ship the self-hosted compiler (built by ./build.sh: Rust seed -> stage1 -> stage2
+# -> stage3). Windows/macOS archives are built the same way.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest,    short: linux-x64 }
+          - { os: ubuntu-24.04-arm, short: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y clang rpm pkg-config libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libgl1-mesa-dev
+      - run: sudo apt-get update && sudo apt-get install -y clang
+      - run: ./build.sh
+      - run: scripts/package-release.sh --compiler kite --targets ${{ matrix.short }}
+      - uses: actions/upload-artifact@v4
+        with: { name: "release-${{ matrix.short }}", path: dist/release/*.* }
+
+  # Windows and macOS ship the self-hosted compiler too (stage3 of ./build.sh: Rust seed -> stage1 -> stage2 ->
+  # stage3 with identical IR). The CLI drives clang and a POSIX shell (`sh`): on Windows that is Git for Windows'
+  # (bash.exe/sh.exe on PATH), which the runners have.
+  windows:
+    timeout-minutes: 60
+    continue-on-error: true   # a Windows problem must not block the Linux/macOS release
+    strategy:
+      matrix:
+        include:
+          - { os: windows-latest,  short: windows-x64 }
+          - { os: windows-11-arm,  short: windows-arm64 }
+    runs-on: ${{ matrix.os }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build the self-hosted compiler (stage3)
+        run: ./build.sh
+      - name: package
+        run: |
+          v=$(sed -n 's/^version *= *"\(.*\)"/\1/p' compiler/kite.toml | head -1)
+          d=stage/kite-$v-${{ matrix.short }}; mkdir -p $d dist/release
+          cp "$(ls compiler/target/kite compiler/target/kite.exe 2>/dev/null | head -1)" $d/kite.exe
+          cp -r pieces $d/pieces; cp LICENSE README.md $d/
+          pwsh -c "Compress-Archive -Path stage/kite-$v-${{ matrix.short }} -DestinationPath dist/release/kite-$v-${{ matrix.short }}.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: "release-${{ matrix.short }}", path: dist/release/*.zip }
+
+  # macOS: a single job on the current arm64 runner (`macos-latest`) builds both architectures; the x86_64 archive is
+  # cross-compiled with `--target x86_64-apple-darwin` (the Intel runners are retired/unavailable, so none is used).
+  macos:
+    runs-on: macos-latest      # the current Apple-silicon runner; the Intel build is cross-compiled from it
+    timeout-minutes: 45
+    continue-on-error: true    # runner outages must not block the release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: ./build.sh
+      - run: scripts/package-release.sh --compiler kite --no-deb --no-rpm --targets macos-arm64,macos-x64
+      - uses: actions/upload-artifact@v4
+        with: { name: "release-macos", path: dist/release/*.tar.gz }
+
+  publish:
+    needs: [linux, windows, macos]
+    if: ${{ !cancelled() && needs.linux.result == 'success' && startsWith(github.ref, 'refs/tags/v') }}
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - run: cd out && sha256sum * | grep -v checksums.txt > checksums.txt
+      - uses: softprops/action-gh-release@v2
+        with: { files: out/* }

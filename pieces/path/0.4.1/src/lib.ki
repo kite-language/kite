@@ -1,0 +1,88 @@
+// std.path -- string-based path helpers (`/` separated).
+
+make path_is_absolute(p: string) -> bool:
+    return starts_with(p, "/")
+
+make path_join(a: string, b: string) -> string:
+    if len(a) == 0:
+        return b
+    if starts_with(b, "/"):
+        return b
+    if ends_with(a, "/"):
+        return a + b
+    return a + "/" + b
+
+// Collapses `.`, `..` and repeated separators.
+make path_norm(p: string) -> string:
+    absolute = starts_with(p, "/")
+    parts: [string] = []
+    for seg in split(p, "/"):
+        if seg == "" or seg == ".":
+            continue
+        if seg == "..":
+            if len(parts) > 0 and parts[len(parts) - 1] != "..":
+                pop(parts)
+            orif not absolute:
+                append(parts, seg)
+        else:
+            append(parts, seg)
+    out = join(parts, "/")
+    if absolute:
+        return "/" + out
+    if len(out) == 0:
+        return "."
+    return out
+
+make path_file_name(p: string) -> string:
+    q = p
+    while len(q) > 1 and ends_with(q, "/"):
+        q = substr(q, 0, len(q) - 1)
+    i = len(q) - 1
+    while i >= 0 and char_at(q, i) != 47:
+        i -= 1
+    return substr(q, i + 1, len(q))
+
+make path_parent(p: string) -> string:
+    i = len(p) - 1
+    while i > 0 and char_at(p, i) == 47:
+        i -= 1
+    while i >= 0 and char_at(p, i) != 47:
+        i -= 1
+    if i < 0:
+        return ""
+    if i == 0:
+        return "/"
+    return substr(p, 0, i)
+
+// Extension without the dot ("" when there is none; ".bashrc" has none).
+make path_extension(p: string) -> string:
+    n = path_file_name(p)
+    i = len(n) - 1
+    while i > 0 and char_at(n, i) != 46:
+        i -= 1
+    if i <= 0:
+        return ""
+    return substr(n, i + 1, len(n))
+
+make path_stem(p: string) -> string:
+    n = path_file_name(p)
+    i = len(n) - 1
+    while i > 0 and char_at(n, i) != 46:
+        i -= 1
+    if i <= 0:
+        return n
+    return substr(n, 0, i)
+
+make path_with_extension(p: string, ext: string) -> string:
+    n = path_file_name(p)
+    dir = substr(p, 0, len(p) - len(n))
+    return dir + path_stem(p) + "." + ext
+
+// `p` relative to `root` when it lies below it, else `p`.
+make path_relative(p: string, root: string) -> string:
+    r = root
+    if not ends_with(r, "/"):
+        r = r + "/"
+    if starts_with(p, r):
+        return substr(p, len(r), len(p))
+    return p

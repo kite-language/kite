@@ -1,0 +1,125 @@
+// error -- errors as values. Kite has no generics, so there is one Result record per value type
+// (int, string, bool); all of them carry the same `Error`.
+//
+//   e = error_new(2, "file not found")
+//   e = error_wrap(e, "while loading config")
+//   print(error_describe(e))        // while loading config: file not found
+//
+//   r = parse_port(text)            // returns ResultInt
+//   if result_int_is_ok(r):
+//       use(result_int_value(r))
+//   else:
+//       print(error_describe(result_int_error(r)))
+
+class Error:
+    code: int
+    message: string
+    is_err: bool
+
+make error_none() -> Error:
+    return Error()
+
+make error_new(code: int, message: string) -> Error:
+    e = Error()
+    e.code = code
+    e.message = message
+    e.is_err = true
+    return e
+
+make error_is(e: Error) -> bool:
+    return e.is_err
+
+make error_code(e: Error) -> int:
+    return e.code
+
+make error_message(e: Error) -> string:
+    return e.message
+
+// Adds context in front of the message, keeping the code: "context: message".
+make error_wrap(e: Error, context: string) -> Error:
+    w = Error()
+    w.code = e.code
+    w.is_err = e.is_err
+    w.message = context + ": " + e.message
+    return w
+
+make error_describe(e: Error) -> string:
+    if not e.is_err:
+        return "no error"
+    return e.message + " (code " + str(e.code) + ")"
+
+// Prints the error to stdout and exits with its code (1 when the code is 0).
+make error_fatal(e: Error):
+    print("error: " + error_describe(e))
+    if e.code == 0:
+        exit(1)
+    exit(e.code)
+
+class ResultInt:
+    value: int
+    err: Error
+
+class ResultStr:
+    value: string
+    err: Error
+
+class ResultBool:
+    value: bool
+    err: Error
+
+make result_int_ok(v: int) -> ResultInt:
+    r = ResultInt()
+    r.value = v
+    return r
+
+make result_int_err(e: Error) -> ResultInt:
+    r = ResultInt()
+    r.err = e
+    return r
+
+make result_int_is_ok(r: ResultInt) -> bool:
+    return not r.err.is_err
+
+make result_int_value(r: ResultInt) -> int:
+    return r.value
+
+make result_int_error(r: ResultInt) -> Error:
+    return r.err
+
+make result_str_ok(v: string) -> ResultStr:
+    r = ResultStr()
+    r.value = v
+    return r
+
+make result_str_err(e: Error) -> ResultStr:
+    r = ResultStr()
+    r.err = e
+    return r
+
+make result_str_is_ok(r: ResultStr) -> bool:
+    return not r.err.is_err
+
+make result_str_value(r: ResultStr) -> string:
+    return r.value
+
+make result_str_error(r: ResultStr) -> Error:
+    return r.err
+
+make result_bool_ok(v: bool) -> ResultBool:
+    r = ResultBool()
+    r.value = v
+    return r
+
+make result_bool_err(e: Error) -> ResultBool:
+    r = ResultBool()
+    r.err = e
+    return r
+
+make result_bool_is_ok(r: ResultBool) -> bool:
+    return not r.err.is_err
+
+make result_bool_value(r: ResultBool) -> bool:
+    return r.value
+
+make result_bool_error(r: ResultBool) -> Error:
+    return r.err

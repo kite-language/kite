@@ -1,0 +1,50 @@
+// std.fs -- files and directories (built on std.sys and the shell).
+
+use std.sys
+
+make fs_exists(path: string) -> bool:
+    return sys_path_exists(path)
+
+make fs_is_file(path: string) -> bool:
+    return sys_sh("test -f " + sys_quote(path)) == 0
+
+make fs_is_dir(path: string) -> bool:
+    return sys_sh("test -d " + sys_quote(path)) == 0
+
+make fs_read(path: string) -> string:
+    return read_file(path)
+
+make fs_write(path: string, text: string) -> bool:
+    return write_file(path, text)
+
+make fs_append(path: string, text: string) -> bool:
+    return write_file(path, read_file(path) + text)
+
+make fs_mkdir_all(path: string) -> bool:
+    return sys_sh("mkdir -p " + sys_quote(path)) == 0
+
+make fs_remove(path: string) -> bool:
+    return sys_sh("rm -f " + sys_quote(path)) == 0
+
+make fs_remove_all(path: string) -> bool:
+    return sys_sh("rm -rf " + sys_quote(path)) == 0
+
+make fs_copy(src: string, dst: string) -> bool:
+    return sys_sh("cp -R " + sys_quote(src) + " " + sys_quote(dst)) == 0
+
+make fs_rename(src: string, dst: string) -> bool:
+    return sys_sh("mv " + sys_quote(src) + " " + sys_quote(dst)) == 0
+
+// Entry names of a directory (including hidden ones, sorted).
+make fs_list(dir: string) -> [string]:
+    out: [string] = []
+    for line in split(sys_capture("ls -1A " + sys_quote(dir)), "\n"):
+        if len(line) > 0:
+            append(out, line)
+    return out
+
+make fs_cwd() -> string:
+    return trim(sys_capture("pwd"))
+
+make fs_temp_dir(prefix: string) -> string:
+    return trim(sys_capture("mktemp -d -t " + sys_quote(prefix + ".XXXXXX")))

@@ -1,0 +1,16 @@
+// progress -- `[#####-----]  50%` strings to print from a loop (use "\r" to redraw in place).
+
+make progress_bar(done: int, total: int, width: int) -> string:
+    if total <= 0:
+        return "[" + repeat("-", width) + "]   0%"
+    d = done
+    if d > total:
+        d = total
+    if d < 0:
+        d = 0
+    filled = d * width / total
+    pct = d * 100 / total
+    label = str(pct) + "%"
+    while len(label) < 4:
+        label = " " + label
+    return "[" + repeat("#", filled) + repeat("-", width - filled) + "] " + label

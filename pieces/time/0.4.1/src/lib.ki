@@ -1,0 +1,25 @@
+// std.time -- clock and sleeping (built on the `date` and `sleep` commands).
+
+use std.sys
+
+// Nanoseconds since the Unix epoch.
+make time_now_ns() -> int:
+    return to_int(trim(sys_capture("date +%s%N")))
+
+make time_now_ms() -> int:
+    return time_now_ns() / 1000000
+
+make time_now_secs() -> int:
+    return to_int(trim(sys_capture("date +%s")))
+
+make time_sleep_ms(ms: int) -> int:
+    frac = str(1000 + ms % 1000)
+    return sys_sh("sleep " + str(ms / 1000) + "." + substr(frac, 1, 4))
+
+// `date` format string, e.g. time_format("%Y-%m-%d %H:%M:%S").
+make time_format(fmt: string) -> string:
+    return trim(sys_capture("date +" + sys_quote(fmt)))
+
+// Milliseconds elapsed since `start_ns`.
+make time_elapsed_ms(start_ns: int) -> int:
+    return (time_now_ns() - start_ns) / 1000000
