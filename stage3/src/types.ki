@@ -11,7 +11,7 @@ make ty_list_elem(t: string) -> string:
     return ""
 
 make ty_list_of(t: string) -> string:
-    return "[" + t + "]"
+    return f"[{t}]"
 
 make ty_is_ptr(t: string) -> bool:
     return starts_with(t, "ptr<") and ends_with(t, ">")
@@ -23,7 +23,7 @@ make ty_ptr_inner(t: string) -> string:
     return ""
 
 make ty_ptr_of(t: string) -> string:
-    return "ptr<" + t + ">"
+    return f"ptr<{t}>"
 
 // A user-defined (struct/class/enum) type is a plain identifier that is not a primitive.
 make ty_is_named(t: string) -> bool:

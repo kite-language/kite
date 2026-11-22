@@ -12,6 +12,7 @@ use resolve
 use cheader
 use sysx
 use std.sys
+use std.sha256
 use std.fs
 use std.path
 
@@ -35,12 +36,13 @@ class Ctx:
     fp_file: string
     out_file: string
 
+// Fingerprint of the build inputs: SHA-256 (std.sha256, pure Kite: no shell, works everywhere) of the flags and
+// of every source file's contents.
 make sha256_of_files(flags: string, files: [string]) -> string:
-    cmd = "(printf %s " + sys_quote(flags)
+    parts: [string] = [flags]
     for f in files:
-        cmd = cmd + "; cat " + sys_quote(f)
-    cmd = cmd + ") | (sha256sum 2>/dev/null || shasum -a 256)"
-    return trim(substr(sys_capture(cmd), 0, 64))
+        append(parts, read_file(f))
+    return sha256.hex(join(parts, "\n"))
 
 make check_project(entry_path: string, src_root: string, freestanding: bool, cx: Ctx) -> Checked:
     out = Checked()
@@ -50,7 +52,7 @@ make check_project(entry_path: string, src_root: string, freestanding: bool, cx:
     out.files = m.files_loaded
     if len(cx.fp_file) > 0:
         out.fingerprint = sha256_of_files(cx.flags, m.files_loaded)
-        if sys_path_exists(cx.out_file) and trim(read_file(cx.fp_file)) == out.fingerprint:
+        if sys.path_exists(cx.out_file) and trim(read_file(cx.fp_file)) == out.fingerprint:
             out.fresh = true
             out.ok = true
             return out
@@ -78,48 +80,53 @@ make check_project(entry_path: string, src_root: string, freestanding: bool, cx:
     out.ok = true
     return out
 
+// Windows target; without an explicit target, the host decides.
 make is_windows_target(target: string) -> bool:
     if len(target) > 0:
         return contains_str(target, "windows")
-    return false
+    return sys.is_windows()
 
 make normalized_executable_path(p: string, target: string) -> string:
-    if is_windows_target(target) and not path_has_extension(p):
-        return path_with_extension(p, "exe")
+    if is_windows_target(target) and not path.has_extension(p):
+        return path.with_extension(p, "exe")
     return p
 
 // Writes the LLVM IR next to the output and runs clang. `kind`: "exe", "obj" (hosted lib) or
 // "bare" (freestanding object).
-make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string]) -> string:
+// `meta`: build signature record kept in the binary; `heap`: >0 links the built-in freestanding runtime.
+make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string], meta: string, heap: int) -> string:
     freestanding = kind != "exe"
-    llvm = emit_module(prog, target, freestanding)
+    llvm = emit_module(prog, target, freestanding, meta, heap)
     out_path = output
     if kind == "exe":
         out_path = normalized_executable_path(output, target)
-    parent = path_parent(out_path)
+    parent = path.parent(out_path)
     if len(parent) > 0:
-        fs_mkdir_all(parent)
-    ir_path = path_with_extension(out_path, "ll")
+        fs.mkdir_all(parent)
+    ir_path = path.with_extension(out_path, "ll")
     if not write_file(ir_path, llvm):
         die("failed to write LLVM IR to " + ir_path)
-    cmd = "clang " + sys_quote(ir_path) + " -O" + str(opt_level)
+    cmd = f"clang {sys.quote(ir_path)} -O{str(opt_level)}"
     if kind == "exe":
-        cmd = cmd + " -o " + sys_quote(out_path) + " -Wno-override-module"
+        cmd = cmd + f" -o {sys.quote(out_path)} -Wno-override-module"
         for e in extra:
-            if not fs_is_file(e):
-                die("--link input `" + e + "` does not exist")
-            cmd = cmd + " " + sys_quote(e)
-        if not is_windows_target(target):
+            if not fs.is_file(e):
+                die(f"--link input `{e}` does not exist")
+            cmd = cmd + " " + sys.quote(e)
+        if is_windows_target(target):
+            // printf and friends are inline in the UCRT headers: link the legacy stubs
+            cmd = cmd + " -llegacy_stdio_definitions"
+        else:
             cmd = cmd + " -pthread -lm"
         if static_link:
             cmd = cmd + " -static"
     else:
-        cmd = cmd + " -c -o " + sys_quote(out_path) + " -Wno-override-module"
+        cmd = cmd + f" -c -o {sys.quote(out_path)} -Wno-override-module"
         if kind == "bare":
             cmd = cmd + " -ffreestanding -fno-builtin"
     if len(target) > 0:
-        cmd = cmd + " --target=" + sys_quote(target)
-    code = sys_sh(cmd)
+        cmd = cmd + " --target=" + sys.quote(target)
+    code = sys.sh(cmd)
     if code != 0:
-        die("clang failed to compile the generated LLVM IR (see " + ir_path + " for the generated IR)")
+        die(f"clang failed to compile the generated LLVM IR (see {ir_path} for the generated IR)")
     return out_path

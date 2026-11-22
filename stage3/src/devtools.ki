@@ -13,43 +13,43 @@ use std.path
 
 // Builds and runs every `tests/*.ki` (each a program with `make main()` that exits non-zero on failure).
 make cmd_test(filter: string):
-    p = project_discover(fs_cwd())
+    p = project_discover(fs.cwd())
     r = prepare_deps(p, false)
-    tdir = path_join(p.root, "tests")
-    if not fs_is_dir(tdir):
+    tdir = path.join(p.root, "tests")
+    if not fs.is_dir(tdir):
         die("no `tests/` directory: put test programs in tests/*.ki (each has a `make main()` and exits non-zero on failure)")
     files: [string] = []
-    for n in fs_list(tdir):
+    for n in fs.list(tdir):
         if ends_with(n, ".ki") and (filter == "" or contains_str(n, filter)):
             append(files, n)
     if len(files) == 0:
         die("no tests found in " + tdir)
-    status("Testing", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
+    status("Testing", p.manifest.name + f" v{p.manifest.version} ({p.root})")
     passed = 0
     bad = 0
     no_links: [string] = []
-    outdir = path_join(project_profile_dir(p, false), "tests")
-    fs_mkdir_all(outdir)
+    outdir = path.join(project_profile_dir(p, false), "tests")
+    fs.mkdir_all(outdir)
     for n2 in files:
         stem = substr(n2, 0, len(n2) - 3)
         cx = make_ctx(p, r)
-        c = check_project(path_join(tdir, n2), project_src_dir(p), false, cx)
+        c = check_project(path.join(tdir, n2), project_src_dir(p), false, cx)
         if not c.ok:
             print("test " + n2 + " ... " + red_bold_err("FAILED") + " (does not compile)")
             bad += 1
             continue
-        exe = build_from_ir(c.prog, path_join(outdir, stem), 0, "", "exe", false, no_links)
-        log = path_join(outdir, stem + ".log")
-        code = sys_sh(sys_quote(exe) + " > " + sys_quote(log) + " 2>&1")
+        exe = build_from_ir(c.prog, path.join(outdir, stem), 0, "", "exe", false, no_links, "", 0)
+        log = path.join(outdir, stem + ".log")
+        code = sys.sh(sys.quote(exe) + f" > {sys.quote(log)} 2>&1")
         if code == 0:
             print("test " + n2 + " ... " + green_bold("ok"))
             passed += 1
         else:
-            print("test " + n2 + " ... " + red_bold_err("FAILED") + " (exit code " + str(code) + ")")
+            print("test " + n2 + " ... " + red_bold_err("FAILED") + f" (exit code {str(code)})")
             print(read_file(log))
             bad += 1
     print("")
-    print("test result: " + str(passed) + " passed; " + str(bad) + " failed")
+    print(f"test result: {str(passed)} passed; {str(bad)} failed")
     if bad > 0:
         exit(1)
 
@@ -86,14 +86,14 @@ make fmt_text(text: string) -> string:
 
 make source_files(p: Project) -> [string]:
     out: [string] = []
-    cmd = "find " + sys_quote(project_src_dir(p)) + " " + sys_quote(path_join(p.root, "tests")) + " -name '*.ki' 2>/dev/null | LC_ALL=C sort"
-    for line in split(sys_capture(cmd), "\n"):
+    cmd = "find " + sys.quote(project_src_dir(p)) + " " + sys.quote(path.join(p.root, "tests")) + " -name '*.ki' 2>/dev/null | LC_ALL=C sort"
+    for line in split(sys.capture(cmd), "\n"):
         if len(trim(line)) > 0:
             append(out, trim(line))
     return out
 
 make cmd_fmt(check_only: bool):
-    p = project_discover(fs_cwd())
+    p = project_discover(fs.cwd())
     changed = 0
     for f in source_files(p):
         old = read_file(f)
@@ -101,10 +101,10 @@ make cmd_fmt(check_only: bool):
         if fresh != old:
             changed += 1
             if check_only:
-                print("would reformat " + path_display(f, p.root))
+                print("would reformat " + path.display(f, p.root))
             else:
                 write_file(f, fresh)
-                status("Formatted", path_display(f, p.root))
+                status("Formatted", path.display(f, p.root))
     if check_only and changed > 0:
         die(str(changed) + " file(s) need formatting (run `kite fmt`)")
     if changed == 0:
@@ -123,7 +123,7 @@ make doc_is_item(line: string) -> bool:
 
 // Markdown for one source file: every top-level item with the `//` comment lines right above it.
 make doc_file(text: string, title: string) -> string:
-    out = "## `" + title + "`\n\n"
+    out = f"## `{title}`\n\n"
     pending: [string] = []
     for raw in split(text, "\n"):
         line = raw
@@ -131,7 +131,7 @@ make doc_file(text: string, title: string) -> string:
             c = trim(substr(line, 2, len(line)))
             append(pending, c)
         orif doc_is_item(line):
-            out = out + "### `" + doc_signature(line) + "`\n\n"
+            out = out + f"### `{doc_signature(line)}`\n\n"
             if len(pending) > 0:
                 out = out + join(pending, "\n") + "\n\n"
             clear(pending)
@@ -140,20 +140,20 @@ make doc_file(text: string, title: string) -> string:
     return out
 
 make cmd_doc():
-    p = project_discover(fs_cwd())
+    p = project_discover(fs.cwd())
     m = p.manifest
-    out = "# " + m.name + " " + m.version + "\n\n"
+    out = f"# {m.name} {m.version}\n\n"
     if len(m.description) > 0:
         out = out + m.description + "\n\n"
     if len(m.authors) > 0:
-        out = out + "Authors: " + m.authors + "\n\n"
+        out = out + f"Authors: {m.authors}\n\n"
     if len(m.license) > 0:
-        out = out + "License: " + m.license + "\n\n"
+        out = out + f"License: {m.license}\n\n"
     for f in source_files(p):
         if contains_str(f, "/tests/"):
             continue
-        out = out + doc_file(read_file(f), path_display(f, p.root))
-    dest = path_join(path_join(project_build_dir(p), "doc"), m.name + ".md")
-    fs_mkdir_all(path_parent(dest))
+        out = out + doc_file(read_file(f), path.display(f, p.root))
+    dest = path.join(path.join(project_build_dir(p), "doc"), m.name + ".md")
+    fs.mkdir_all(path.parent(dest))
     write_file(dest, out)
     status("Documented", dest)

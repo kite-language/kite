@@ -1,5 +1,4 @@
 // kitec -- the Kite compiler written in Kite.
-use rt
 use diag
 use lexer
 use ast
@@ -97,7 +96,7 @@ make cmd_sema(path: string):
     if not ok:
         for d in diags.items:
             sp = d.span
-            print("DIAG " + d.code + " @" + str(sp.line) + ":" + str(sp.col) + ":" + str(sp.start) + "-" + str(sp.end) + " " + d.title + " | " + d.label + " | " + d.help)
+            print(f"DIAG {d.code} @{str(sp.line)}:{str(sp.col)}:{str(sp.start)}-{str(sp.end)} {d.title} | {d.label} | {d.help}")
         return
     // the typed program has no imports
     no_imports: [int] = []
@@ -145,7 +144,7 @@ make cmd_ll(path: string):
         emit_diags(diags, path, src)
         exit(1)
     prog = lower_program(ast, root)
-    text = emit_module(prog, "", false)
+    text = emit_module(prog, "", false, "", 0)
     write_file("/dev/stdout", text)
 
 make is_dev_cmd(c: string) -> bool:

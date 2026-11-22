@@ -20,39 +20,41 @@ use std.semver
 // The registry directory: $KITE_PIECES, a `pieces/` folder in a parent of `start` (repository
 // checkout), or an installed copy. "" when none exists.
 make registry_dir(start: string) -> string:
-    env = process_env("KITE_PIECES")
-    if len(env) > 0 and fs_is_dir(env):
+    env = process.env("KITE_PIECES")
+    if len(env) > 0 and fs.is_dir(env):
         return env
     dir = start
     while len(dir) > 0:
-        c = path_join(dir, "pieces")
-        if fs_is_dir(c) and sys_path_exists(path_join(c, "REGISTRY")):
+        c = path.join(dir, "pieces")
+        if fs.is_dir(c) and sys.path_exists(path.join(c, "REGISTRY")):
             return c
-        up = path_parent(dir)
+        up = path.parent(dir)
         if up == dir:
             break
         dir = up
-    home = process_env("HOME")
-    cands: [string] = [path_join(home, ".kite/pieces"), "/usr/local/share/kite/pieces", "/usr/share/kite/pieces"]
+    home = process.env("HOME")
+    if len(home) == 0:
+        home = process.env("USERPROFILE")
+    cands: [string] = [path.join(home, ".kite/pieces"), "/usr/local/share/kite/pieces", "/usr/share/kite/pieces"]
     for c2 in cands:
-        if fs_is_dir(c2):
+        if fs.is_dir(c2):
             return c2
     return ""
 
 // The registry has two tiers: `std/` (default pieces, imported as `std.<name>`, no declaration needed) and
 // `community/` (declared in [dependencies], imported by name).
 make tier_dir(reg: string, tier: string) -> string:
-    return path_join(reg, tier)
+    return path.join(reg, tier)
 
 make registry_versions_in(reg: string, tier: string, name: string) -> [string]:
     out: [string] = []
     if len(reg) == 0:
         return out
-    pdir = path_join(tier_dir(reg, tier), name)
-    if not fs_is_dir(pdir):
+    pdir = path.join(tier_dir(reg, tier), name)
+    if not fs.is_dir(pdir):
         return out
-    for v in fs_list(pdir):
-        if sys_path_exists(path_join(path_join(pdir, v), "kite.toml")):
+    for v in fs.list(pdir):
+        if sys.path_exists(path.join(path.join(pdir, v), "kite.toml")):
             append(out, v)
     return out
 
@@ -64,10 +66,10 @@ make std_versions(reg: string, name: string) -> [string]:
     return registry_versions_in(reg, "std", name)
 
 make registry_piece_root(reg: string, name: string, version: string) -> string:
-    return path_join(path_join(tier_dir(reg, "community"), name), version)
+    return path.join(path.join(tier_dir(reg, "community"), name), version)
 
 make std_piece_root(reg: string, name: string, version: string) -> string:
-    return path_join(path_join(tier_dir(reg, "std"), name), version)
+    return path.join(path.join(tier_dir(reg, "std"), name), version)
 
 make valid_piece_name(n: string) -> bool:
     if len(n) == 0 or len(n) > 64:
@@ -101,37 +103,37 @@ class Resolved:
         return -1
 
 make read_manifest_at(root: string) -> Manifest:
-    return manifest_parse(read_file(path_join(root, "kite.toml")))
+    return manifest_parse(read_file(path.join(root, "kite.toml")))
 
 // Adds the piece `name` (requirement `req`) and, recursively, its own dependencies.
 make resolve_one(r: Resolved, requester: string, name: string, req: string, path_dep: string, base_dir: string, depth: int) -> int:
     if depth > 32:
-        die("dependency cycle or nesting too deep while resolving `" + name + "`")
+        die(f"dependency cycle or nesting too deep while resolving `{name}`")
     append(r.edge_from, requester)
     append(r.edge_to, name)
     root = ""
     version = ""
     source = "registry"
     if len(path_dep) > 0:
-        root = path_norm(path_join(base_dir, path_dep))
-        if not sys_path_exists(path_join(root, "kite.toml")):
-            die("dependency `" + name + "`: no kite.toml in `" + root + "`")
+        root = path.norm(path.join(base_dir, path_dep))
+        if not sys.path_exists(path.join(root, "kite.toml")):
+            die(f"dependency `{name}`: no kite.toml in `{root}`")
         version = read_manifest_at(root).version
         source = "path"
     else:
         vers = registry_versions(r.registry, name)
         if len(vers) == 0:
             if len(std_versions(r.registry, name)) > 0:
-                die("`" + name + "` is a default piece: it needs no dependency, write `use std." + name + "`")
-            die("piece `" + name + "` was not found in the registry" + hint_registry(r.registry))
-        version = semver_best(vers, req)
+                die(f"`{name}` is a default piece: it needs no dependency, write `use std.{name}`")
+            die(f"piece `{name}` was not found in the registry{hint_registry(r.registry)}")
+        version = semver.best(vers, req)
         if len(version) == 0:
             die("no version of piece `" + name + "` satisfies `" + req + "` (available: " + join(vers, ", ") + ")")
         root = registry_piece_root(r.registry, name, version)
     existing = r.index(name)
     if existing >= 0:
-        if len(path_dep) == 0 and r.sources[existing] == "registry" and not semver_satisfies(r.versions[existing], req):
-            die("conflicting requirements for piece `" + name + "`: `" + req + "` is not satisfied by the already selected version " + r.versions[existing])
+        if len(path_dep) == 0 and r.sources[existing] == "registry" and not semver.satisfies(r.versions[existing], req):
+            die(f"conflicting requirements for piece `{name}`: `{req}` is not satisfied by the already selected version {r.versions[existing]}")
         return 0
     append(r.names, name)
     append(r.versions, version)
@@ -147,7 +149,7 @@ make resolve_one(r: Resolved, requester: string, name: string, req: string, path
 make hint_registry(reg: string) -> string:
     if len(reg) == 0:
         return "\n(no registry found: set KITE_PIECES to the `pieces/` directory of the Kite repository)"
-    return " (registry: " + reg + ")"
+    return f" (registry: {reg})"
 
 make resolve_all(p: Project, reg: string) -> Resolved:
     r = Resolved()
@@ -160,14 +162,14 @@ make resolve_all(p: Project, reg: string) -> Resolved:
     return r
 
 make piece_checksum(root: string) -> string:
-    out = sys_capture("cd " + sys_quote(root) + " && find . -type f ! -path './target/*' ! -name kite.lock | LC_ALL=C sort | xargs cat | (sha256sum 2>/dev/null || shasum -a 256)")
+    out = sys.capture(f"cd {sys.quote(root)} && find . -type f ! -path './target/*' ! -name kite.lock | LC_ALL=C sort | xargs cat | (sha256sum 2>/dev/null || shasum -a 256)")
     return trim(substr(out, 0, 64))
 
 make lock_text(r: Resolved) -> string:
     out = "# This file is automatically generated by `kite`.\n# Do not edit it by hand.\n\n"
     i = 0
     while i < len(r.names):
-        out = out + "[[piece]]\nname = " + toml_quote(r.names[i]) + "\nversion = " + toml_quote(r.versions[i]) + "\nsource = " + toml_quote(r.sources[i]) + "\n"
+        out = out + f"[[piece]]\nname = {toml.quote(r.names[i])}\nversion = {toml.quote(r.versions[i])}\nsource = {toml.quote(r.sources[i])}\n"
         if r.sources[i] == "registry":
             out = out + "checksum = \"sha256:" + piece_checksum(r.roots[i]) + "\"\n"
         out = out + "\n"
@@ -176,28 +178,28 @@ make lock_text(r: Resolved) -> string:
 
 // Verifies the checksums recorded in kite.lock against the registry copies.
 make verify_lock(p: Project, r: Resolved):
-    lock = path_join(p.root, "kite.lock")
-    if not sys_path_exists(lock):
+    lock = path.join(p.root, "kite.lock")
+    if not sys.path_exists(lock):
         return
     cur = ""
     curv = ""
     for raw in split(read_file(lock), "\n"):
         line = trim(raw)
         if starts_with(line, "name = "):
-            cur = toml_unquote(substr(line, 7, len(line)))
+            cur = toml.unquote(substr(line, 7, len(line)))
         orif starts_with(line, "version = "):
-            curv = toml_unquote(substr(line, 10, len(line)))
+            curv = toml.unquote(substr(line, 10, len(line)))
         orif starts_with(line, "checksum = "):
-            want = toml_unquote(substr(line, 11, len(line)))
+            want = toml.unquote(substr(line, 11, len(line)))
             idx = r.index(cur)
             if idx >= 0 and r.versions[idx] == curv and r.sources[idx] == "registry":
                 got = "sha256:" + piece_checksum(r.roots[idx])
                 if got != want:
-                    die("checksum mismatch for piece `" + cur + "` " + curv + ": the registry copy changed since kite.lock was written (run `kite update` if that is expected)")
+                    die(f"checksum mismatch for piece `{cur}` {curv}: the registry copy changed since kite.lock was written (run `kite update` if that is expected)")
 
 // Dependency tree, cargo-style.
 make print_tree(p: Project, r: Resolved):
-    print(p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
+    print(p.manifest.name + f" v{p.manifest.version} ({p.root})")
     tree_children(r, p.manifest.name, "", 0)
 
 make tree_children(r: Resolved, parent: string, prefix: string, depth: int) -> int:

@@ -19,6 +19,8 @@ type Manifest:
     keywords: string
     opt_level: int
     target: string
+    heap_size: int
+    runtime: string
     dep_names: [string]
     dep_vers: [string]
     dep_paths: [string]
@@ -45,7 +47,7 @@ make manifest_parse(text: string) -> Manifest:
     m.version = ""
     section = ""
     for raw in split(text, "\n"):
-        line = toml_strip_comment(trim(raw))
+        line = toml.strip_comment(trim(raw))
         if len(line) == 0 or starts_with(line, "#"):
             continue
         if starts_with(line, "["):
@@ -56,7 +58,7 @@ make manifest_parse(text: string) -> Manifest:
             continue
         key = trim(substr(line, 0, eq))
         rawval = trim(substr(line, eq + 1, len(line)))
-        val = toml_array_join(rawval)
+        val = toml.array_join(rawval)
         if section == "package":
             if key == "name":
                 m.name = val
@@ -83,14 +85,18 @@ make manifest_parse(text: string) -> Manifest:
                 m.opt_level = to_int(val)
             orif key == "target":
                 m.target = val
+            orif key == "heap_size":
+                m.heap_size = to_int(val)
+            orif key == "runtime":
+                m.runtime = val
         orif section == "dependencies":
             append(m.dep_names, key)
             if starts_with(rawval, "{"):
-                v2 = toml_inline_get(rawval, "version")
+                v2 = toml.inline_get(rawval, "version")
                 if len(v2) == 0:
                     v2 = "*"
                 append(m.dep_vers, v2)
-                append(m.dep_paths, toml_inline_get(rawval, "path"))
+                append(m.dep_paths, toml.inline_get(rawval, "path"))
             else:
                 append(m.dep_vers, val)
                 append(m.dep_paths, "")
@@ -98,12 +104,12 @@ make manifest_parse(text: string) -> Manifest:
 
 // A fresh manifest for `kite init`.
 make manifest_to_string(m: Manifest) -> string:
-    out = "[package]\nname = " + toml_quote(m.name) + "\nversion = " + toml_quote(m.version) + "\nedition = " + toml_quote(m.edition) + "\n"
-    out = out + "description = " + toml_quote(m.description) + "\n"
-    out = out + "authors = " + toml_quote_list(m.authors) + "\n"
-    out = out + "license = " + toml_quote(m.license) + "\n"
-    out = out + "repository = " + toml_quote(m.repository) + "\n"
-    out = out + "\n[build]\nopt_level = " + str(m.opt_level) + "\n\n[dependencies]\n"
+    out = f"[package]\nname = {toml.quote(m.name)}\nversion = {toml.quote(m.version)}\nedition = {toml.quote(m.edition)}\n"
+    out = out + f"description = {toml.quote(m.description)}\n"
+    out = out + f"authors = {toml.quote_list(m.authors)}\n"
+    out = out + f"license = {toml.quote(m.license)}\n"
+    out = out + f"repository = {toml.quote(m.repository)}\n"
+    out = out + f"\n[build]\nopt_level = {str(m.opt_level)}\n\n[dependencies]\n"
     return out
 
 // ---- text-preserving dependency edits ------------------------------------------------------------
@@ -189,44 +195,44 @@ make project_discover(start: string) -> Project:
     p = Project()
     dir = start
     while true:
-        cand = path_join(dir, "kite.toml")
-        if sys_path_exists(cand):
+        cand = path.join(dir, "kite.toml")
+        if sys.path_exists(cand):
             p.root = dir
             p.text = read_file(cand)
             p.manifest = manifest_parse(p.text)
             return p
-        parent = path_parent(dir)
+        parent = path.parent(dir)
         if parent == "" or parent == dir:
-            die("could not find `kite.toml` in `" + start + "` or any parent directory\n(run `kite init` to create a new project)")
+            die(f"could not find `kite.toml` in `{start}` or any parent directory\n(run `kite init` to create a new project)")
             return p
         dir = parent
     return p
 
 // `src/main.ki`, or `src/lib.ki` for a library piece.
 make project_main_path(p: Project) -> string:
-    m = path_join(path_join(p.root, "src"), "main.ki")
-    if sys_path_exists(m):
+    m = path.join(path.join(p.root, "src"), "main.ki")
+    if sys.path_exists(m):
         return m
-    return path_join(path_join(p.root, "src"), "lib.ki")
+    return path.join(path.join(p.root, "src"), "lib.ki")
 
 make project_is_lib(p: Project) -> bool:
-    return not sys_path_exists(path_join(path_join(p.root, "src"), "main.ki"))
+    return not sys.path_exists(path.join(path.join(p.root, "src"), "main.ki"))
 
 make project_src_dir(p: Project) -> string:
-    return path_join(p.root, "src")
+    return path.join(p.root, "src")
 
 make project_build_dir(p: Project) -> string:
-    return path_join(p.root, "target")
+    return path.join(p.root, "target")
 
 // target/debug/<name> or target/release/<name> (like cargo)
 make project_profile_dir(p: Project, release: bool) -> string:
     if release:
-        return path_join(project_build_dir(p), "release")
-    return path_join(project_build_dir(p), "debug")
+        return path.join(project_build_dir(p), "release")
+    return path.join(project_build_dir(p), "debug")
 
 make project_output_path(p: Project, release: bool) -> string:
-    return path_join(project_profile_dir(p, release), p.manifest.name)
+    return path.join(project_profile_dir(p, release), p.manifest.name)
 
 make project_save_text(p: Project, text: string):
     p.text = text
-    write_file(path_join(p.root, "kite.toml"), text)
+    write_file(path.join(p.root, "kite.toml"), text)

@@ -70,6 +70,27 @@ class Parser:
         self.diags.add("E0013", "expected an identifier, found " + self.found(), self.peek_span())
         return -1
 
+    // Words that are reserved elsewhere (`string`, `match`, `thread`, ...) are fine as member names:
+    // `random.string(r, 8)`, `glob.match(p, t)`, `job.thread`.
+    make is_member_at(self, i: int) -> bool:
+        k = self.token_at(i)
+        if k == "Identifier":
+            return true
+        return len(keyword_word(k)) > 0
+
+    // The name a member token stands for: an identifier's text, or the reserved word of a keyword token.
+    make member_text(self, i: int) -> string:
+        t = self.ttext(i)
+        if len(t) > 0:
+            return t
+        return keyword_word(self.token_at(i))
+
+    make expect_member_name(self) -> int:
+        if self.is_member_at(self.cur()):
+            return self.advance()
+        self.diags.add("E0013", "expected an identifier, found " + self.found(), self.peek_span())
+        return -1
+
     make skip_blank_newlines(self):
         while self.at("Newline"):
             self.advance()
@@ -235,7 +256,7 @@ class Parser:
                 self.ast.nodes[f].text = name + "__" + self.ast.nodes[f].text
                 append(methods, f)
             else:
-                ft = self.expect_identifier()
+                ft = self.expect_member_name()
                 if ft < 0:
                     return -1
                 if self.expect("Colon") < 0:
@@ -245,7 +266,7 @@ class Parser:
                     return -1
                 if self.expect("Newline") < 0:
                     return -1
-                append(fields, self.ast.add1("Field", self.ttext(ft), self.tspan(ft), ty))
+                append(fields, self.ast.add1("Field", self.member_text(ft), self.tspan(ft), ty))
         self.current_class = ""
         et = self.expect("Dedent")
         if et < 0:
@@ -274,7 +295,7 @@ class Parser:
             if self.at("Newline"):
                 self.advance()
                 continue
-            ft = self.expect_identifier()
+            ft = self.expect_member_name()
             if ft < 0:
                 return -1
             if self.expect("Colon") < 0:
@@ -284,7 +305,7 @@ class Parser:
                 return -1
             if self.expect("Newline") < 0:
                 return -1
-            append(fields, self.ast.add1("Field", self.ttext(ft), self.tspan(ft), ty))
+            append(fields, self.ast.add1("Field", self.member_text(ft), self.tspan(ft), ty))
         et = self.expect("Dedent")
         if et < 0:
             return -1
@@ -631,7 +652,7 @@ class Parser:
         while true:
             t = self.token_at(i)
             if t == "Dot":
-                if self.token_at(i + 1) == "Identifier":
+                if self.is_member_at(i + 1):
                     i += 2
                     continue
                 break
@@ -768,11 +789,11 @@ class Parser:
             k = self.peek()
             if k == "Dot":
                 self.advance()
-                ft = self.expect_identifier()
+                ft = self.expect_member_name()
                 if ft < 0:
                     return -1
                 base = self.lvalue_to_expr(lv, tspan)
-                lv = self.ast.add1("LField", self.ttext(ft), self.tspan(ft), base)
+                lv = self.ast.add1("LField", self.member_text(ft), self.tspan(ft), base)
             orif k == "LBracket":
                 self.advance()
                 index = self.parse_expr()
@@ -1281,7 +1302,7 @@ class Parser:
             k = self.peek()
             if k == "Dot":
                 self.advance()
-                ft = self.expect_identifier()
+                ft = self.expect_member_name()
                 if ft < 0:
                     return -1
                 if self.at("LParen"):
@@ -1290,9 +1311,9 @@ class Parser:
                     et = self.parse_call_args(kids)
                     if et < 0:
                         return -1
-                    e = self.ast.addl("MethodCall", self.ttext(ft), span_to(self.ast.span_of(e), self.tspan(et)), kids)
+                    e = self.ast.addl("MethodCall", self.member_text(ft), span_to(self.ast.span_of(e), self.tspan(et)), kids)
                 else:
-                    e = self.ast.add1("Field", self.ttext(ft), span_to(self.ast.span_of(e), self.tspan(ft)), e)
+                    e = self.ast.add1("Field", self.member_text(ft), span_to(self.ast.span_of(e), self.tspan(ft)), e)
             orif k == "LBracket":
                 self.advance()
                 index = self.parse_expr()
