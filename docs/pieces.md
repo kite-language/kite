@@ -12,7 +12,7 @@ The registry is the `pieces/` directory of the Kite repository, in two clearly s
   `[dependencies]` and imported by name. A community piece cannot take the name of a default piece.
 
 Published **community** versions are **immutable**. The default pieces are versioned with the language (each release
-replaces the directory of the previous one: `pieces/std/<name>/0.4.3/`), so they are exempt from the immutability
+replaces the directory of the previous one: `pieces/std/<name>/0.4.4/`), so they are exempt from the immutability
 check. kite finds it through `$KITE_PIECES`, a `pieces/` folder (with a `REGISTRY`
 file) above the project, `~/.kite/pieces`, or `/usr/share/kite/pieces` (installed with the `.deb`/`.rpm`/archive).
 
@@ -20,7 +20,7 @@ file) above the project, `~/.kite/pieces`, or `/usr/share/kite/pieces` (installe
 ```
 kite search json          # search names, descriptions, keywords
 kite info semver          # metadata and versions
-kite add sha256           # writes `sha256 = "0.4.3"` to [dependencies] and updates kite.lock
+kite add sha256           # writes `sha256 = "0.4.4"` to [dependencies] and updates kite.lock
 kite add semver@^0.4      # a requirement: "1.2" / "^1.2" / "~1.2.3" / ">=1.0" / "=1.2.3" / "*"
 kite tree                 # dependency tree (transitive dependencies are detected and resolved)
 kite update               # re-resolve and rewrite kite.lock

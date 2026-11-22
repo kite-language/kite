@@ -1,84 +1,83 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kite — Installation</title>
-<meta name="description" content="Installe Kite en une commande, sur Windows, Linux ou macOS.">
+<title>Introduction — Kite</title>
 <link rel="icon" href="/kite-32.png">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/docs.css">
 </head>
 <body>
-  <main>
-    <header class="hero">
-      <div class="wordmark">
-        <img src="/kite-64.png" alt="" width="40" height="40">
-        <span>kite</span>
-      </div>
-      <p class="tagline">Lisible comme Python, rapide comme C. Une commande, et c'est installé. <span class="badge">v0.4.3</span></p>
-    </header>
-
-    <section class="installer" aria-label="Commande d'installation">
-      <div class="tabs" role="tablist" aria-label="Système d'exploitation">
-        <button class="tab" role="tab" data-os="linux" aria-selected="false">Linux</button>
-        <button class="tab" role="tab" data-os="macos" aria-selected="false">macOS</button>
-        <button class="tab" role="tab" data-os="windows" aria-selected="false">Windows</button>
-      </div>
-
-      <div class="terminal">
-        <div class="terminal-bar">
-          <span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>
-          <span class="terminal-title" id="terminal-title">linux — sh</span>
-        </div>
-        <div class="terminal-body">
-          <code id="command">curl -fsSL https://kite-lang.pages.dev/install.sh | sh</code>
-          <button id="copy-btn" aria-label="Copier la commande">Copier</button>
-        </div>
-      </div>
-
-      <p class="hint" id="hint">
-        Installe dans <code>~/.local/bin</code>. Nécessite <code>curl</code> et <code>tar</code>.
-      </p>
-    </section>
-
-    <section class="alt">
-      <h2>Autres méthodes</h2>
-      <ul>
-        <li><a href="/install.sh">install.sh</a> — script brut, pour Linux</li>
-        <li><a href="/install-macos.sh">install-macos.sh</a> — script brut, pour macOS</li>
-        <li><a href="/install.ps1">install.ps1</a> — script brut, pour Windows</li>
-        <li><a href="https://github.com/kite-language/kite/releases/latest">Releases GitHub</a> — <code>.deb</code> (amd64, arm64), <code>.tar.gz</code> / <code>.zip</code> Linux, macOS, Windows (x64, arm64), <code>checksums.txt</code></li>
-        <li>Debian / Ubuntu : <code>... | sh -s -- --deb</code> · Fedora / RHEL / openSUSE : <code>... | sh -s -- --rpm</code></li>
-      </ul>
-    </section>
-
-    <section class="alt">
-      <h2>Éditeurs</h2>
-      <ul>
-        <li>VS Code — <a href="https://github.com/kite-language/vscode-kite">vscode-kite</a></li>
-        <li>Zed — <a href="https://github.com/kite-language/zed-kite">zed-kite</a> (grammaire <a href="https://github.com/kite-language/tree-sitter-kite">tree-sitter-kite</a>, aussi pour Neovim et Helix)</li>
-        <li>Kate / KWrite / KDevelop et Notepad++ — fichiers dans <a href="https://github.com/kite-language/kite/tree/main/editors">editors/</a></li>
-      </ul>
-    </section>
-
-    <section class="alt">
-      <h2>Premier programme</h2>
-<pre><code>make main():
-    name = "Kite"
-    print(f"Hello, {name}!")</code></pre>
-      <p class="hint">Enregistre ça dans <code>src/main.ki</code>, puis <code>kite run</code>. Kite a besoin de <code>clang</code> pour produire un exécutable natif.</p>
-    </section>
-
-    <section class="alt">
-      <h2>Le compilateur s'écrit lui-même</h2>
-      <p class="hint">Kite est en cours de réécriture en Kite : le lexer et le parser tournent déjà en Kite et produisent des résultats identiques au compilateur Rust d'origine (conservé comme « stage0 »). Voir <a href="https://github.com/kite-language/kite/blob/main/docs/bootstrap.md">docs/bootstrap.md</a>.</p>
-    </section>
-
-    <footer>
-      <a href="https://github.com/kite-language/kite">github.com/kite-language/kite</a>
-    </footer>
-  </main>
-
-  <script src="/script.js"></script>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a class="cur" href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="kite">Kite</h1>
+<p>Kite is a compiled language that reads like Python and runs like C. It has indentation-based blocks, static types
+that are inferred, and no garbage collector pauses: your program is turned into native code by <code>kite build</code>.</p>
+<pre class="code"><code><span class="k">make</span> main():
+    name = <span class="s">&quot;Kite&quot;</span>
+    print(<span class="s">f&quot;Hello from {name}!&quot;</span>)
+</code></pre>
+<p><strong>What you get</strong></p>
+<ul>
+<li>A compiler written in Kite itself (it compiles itself: stage 1 = stage 2 = stage 3).</li>
+<li><strong>Pieces</strong>: Kite's packages. The language ships with 38 default pieces (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) and a
+  community registry that lives in the repository.</li>
+<li>Threads, pointers and manual memory when you need them; strings, lists, tuples and dictionaries when you do not.</li>
+<li><code>kite</code> does everything: <code>init</code>, <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>fmt</code>, <code>doc</code>, <code>add</code>, <code>publish</code>, <code>target</code>, ...</li>
+<li>A freestanding mode with its own tiny runtime, for kernels and microcontrollers.</li>
+</ul>
+<p><strong>Where to start</strong></p>
+<ol>
+<li><a href="/installation/">Install Kite</a> -- one command on Linux and macOS, one on Windows.</li>
+<li><a href="/guide/first-project/">Your first project</a> -- <code>kite init</code>, <code>kite run</code>.</li>
+<li><a href="/guide/variables/">Variables and types</a>, <a href="/guide/control-flow/">control flow</a>, <a href="/guide/functions/">functions</a>.</li>
+<li><a href="/guide/pieces/">Pieces</a> when you want a library, <a href="/reference/std-pieces/">the standard pieces</a> for what is included.</li>
+</ol>
+</article>
+<footer class="pager"><a class="next" href="/installation/">Installation →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
 </body>
 </html>

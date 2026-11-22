@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bootstrap — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a class="cur" href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="bootstrapping-kite-compiled-by-kite">Bootstrapping: Kite compiled by Kite</h1>
+<pre class="code"><code>stage0  archive/rust-stage0   Rust seed compiler (kept forever)
+stage1  compiler/             the compiler written <span class="k">in</span> Kite, built BY stage0
+stage2  stage2/               stage1 compiling itself — must give the same LLVM IR as stage1
+</code></pre>
+<pre class="code"><code>./build.sh          # stage0 → stage1 (→ stage2 when the port is complete)
+./build.sh test     # + differential tests Kite vs Rust
+./build.sh status   # which phases are ported
+</code></pre>
+<h2 id="progress">Progress</h2>
+<table>
+<thead>
+<tr>
+<th>phase</th>
+<th>status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>lexer, parser, diagnostics</td>
+<td>✅ identical to Rust on every sample (tokens, AST, spans)</td>
+</tr>
+<tr>
+<td>desugar (classes, <code>match</code>, data enums, defaults, named args, <code>*args</code>, unpacking)</td>
+<td>✅ identical to Rust on every sample, errors included</td>
+</tr>
+<tr>
+<td>prelude injection (<code>core.ki</code>, <code>StrMap_&lt;T&gt;</code> instances)</td>
+<td>✅ <code>kitec inject FILE</code> identical to Rust on every sample</td>
+</tr>
+<tr>
+<td>prelude injection</td>
+<td>next</td>
+</tr>
+<tr>
+<td>sema, IR, codegen, driver</td>
+<td>todo (target: <strong>0.4.0</strong>)</td>
+</tr>
+</tbody>
+</table>
+<p>When stage1 = stage2, <code>compiler/BOOTSTRAPPED</code> is written and <code>scripts/package-release.sh --compiler auto</code>
+starts shipping <code>kitec</code> instead of the Rust binary.</p>
+<h2 id="how-a-port-is-verified">How a port is verified</h2>
+<p>Each phase is compared with the Rust one on all <code>.ki</code> files of the repository through <em>canonical dumps</em>
+(<code>scripts/difftest.sh</code>). <code>kitec tokens FILE</code>, <code>kitec ast FILE</code>, <code>kitec desugar FILE</code>, <code>kitec inject FILE</code>, <code>kitec --capabilities</code> expose them.</p>
+<h2 id="status-complete-040">Status: complete (0.4.0)</h2>
+<p>Every phase is ported and <code>./build.sh</code> proves the fixed point: stage1 (kitec built by the Rust seed) compiles
+<code>compiler/</code> into stage2, stage2 compiles it into stage3, and the LLVM IR of the three is identical
+(stage1 is compared with its string constants sorted, since Rust emits them in HashMap order).
+<code>compiler/BOOTSTRAPPED</code> records the date. The shipped <code>kite</code> is <code>compiler/target/kite</code> (= stage2); it only needs
+libc and clang. Dev commands for each phase remain: <code>kitec tokens|ast|desugar|inject|sema|ir|ll FILE</code>.</p>
+<p>Pitfalls found on the way (see also the notes in <code>desugar.ki</code>): arena reallocation while a pointer into it is held
+(loops over <code>ast.nodes[i].kids</code>, assignments whose right side creates nodes) and quadratic string building (use
+lists + <code>join</code>).</p>
+<h2 id="042-the-compiler-imports-pieces">0.4.2: the compiler imports pieces</h2>
+<p>The compiler's sources now use the default pieces (<code>use std.path</code>, ...). Stage 1 is still built by the Rust seed, which was
+taught to resolve <code>use std.&lt;piece&gt;</code> from the registry (<code>archive/rust-stage0/src/resolve.rs</code>); stages 2 and 3 use the Kite
+resolver. Keep the pieces the compiler imports compatible with the seed: no <code>piece.function()</code> calls, no <code>\x</code>/<code>\e</code>/<code>\r</code>/<code>\0</code>
+string escapes (the seed's lexer reads them as plain letters; use <code>chr_byte(n)</code>).</p>
+</article>
+<footer class="pager"><a class="prev" href="/project/architecture/">← Architecture</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

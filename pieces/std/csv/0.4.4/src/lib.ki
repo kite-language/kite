@@ -1,0 +1,41 @@
+// csv -- one record per line; quoted fields may contain the separator and doubled quotes.
+
+make csv_parse_line(line: string, sep: string) -> [string]:
+    out: [string] = []
+    cur: [string] = []
+    inq = false
+    i = 0
+    n = len(line)
+    while i < n:
+        ch = substr(line, i, i + 1)
+        if inq:
+            if ch == "\"":
+                if i + 1 < n and substr(line, i + 1, i + 2) == "\"":
+                    append(cur, "\"")
+                    i += 1
+                else:
+                    inq = false
+            else:
+                append(cur, ch)
+        else:
+            if ch == "\"":
+                inq = true
+            orif ch == sep:
+                append(out, join(cur, ""))
+                clear(cur)
+            else:
+                append(cur, ch)
+        i += 1
+    append(out, join(cur, ""))
+    return out
+
+make csv_quote(field: string, sep: string) -> string:
+    if contains_str(field, sep) or contains_str(field, "\"") or contains_str(field, "\n"):
+        return "\"" + replace_all(field, "\"", "\"\"") + "\""
+    return field
+
+make csv_join(fields: [string], sep: string) -> string:
+    out: [string] = []
+    for f in fields:
+        append(out, csv_quote(f, sep))
+    return join(out, sep)

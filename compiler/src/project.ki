@@ -19,6 +19,8 @@ type Manifest:
     keywords: string
     opt_level: int
     target: string
+    heap_size: int
+    runtime: string
     dep_names: [string]
     dep_vers: [string]
     dep_paths: [string]
@@ -83,6 +85,10 @@ make manifest_parse(text: string) -> Manifest:
                 m.opt_level = to_int(val)
             orif key == "target":
                 m.target = val
+            orif key == "heap_size":
+                m.heap_size = to_int(val)
+            orif key == "runtime":
+                m.runtime = val
         orif section == "dependencies":
             append(m.dep_names, key)
             if starts_with(rawval, "{"):
@@ -98,12 +104,12 @@ make manifest_parse(text: string) -> Manifest:
 
 // A fresh manifest for `kite init`.
 make manifest_to_string(m: Manifest) -> string:
-    out = "[package]\nname = " + toml.quote(m.name) + "\nversion = " + toml.quote(m.version) + "\nedition = " + toml.quote(m.edition) + "\n"
-    out = out + "description = " + toml.quote(m.description) + "\n"
-    out = out + "authors = " + toml.quote_list(m.authors) + "\n"
-    out = out + "license = " + toml.quote(m.license) + "\n"
-    out = out + "repository = " + toml.quote(m.repository) + "\n"
-    out = out + "\n[build]\nopt_level = " + str(m.opt_level) + "\n\n[dependencies]\n"
+    out = f"[package]\nname = {toml.quote(m.name)}\nversion = {toml.quote(m.version)}\nedition = {toml.quote(m.edition)}\n"
+    out = out + f"description = {toml.quote(m.description)}\n"
+    out = out + f"authors = {toml.quote_list(m.authors)}\n"
+    out = out + f"license = {toml.quote(m.license)}\n"
+    out = out + f"repository = {toml.quote(m.repository)}\n"
+    out = out + f"\n[build]\nopt_level = {str(m.opt_level)}\n\n[dependencies]\n"
     return out
 
 // ---- text-preserving dependency edits ------------------------------------------------------------
@@ -197,7 +203,7 @@ make project_discover(start: string) -> Project:
             return p
         parent = path.parent(dir)
         if parent == "" or parent == dir:
-            die("could not find `kite.toml` in `" + start + "` or any parent directory\n(run `kite init` to create a new project)")
+            die(f"could not find `kite.toml` in `{start}` or any parent directory\n(run `kite init` to create a new project)")
             return p
         dir = parent
     return p

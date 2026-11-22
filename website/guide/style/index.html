@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Writing readable Kite — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a class="cur" href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="writing-readable-kite">Writing readable Kite</h1>
+<ul>
+<li><strong>4 spaces</strong>, no tabs (<code>kite fmt</code> fixes whitespace).</li>
+<li><strong>f-strings</strong> over <code>+</code> chains: <code>f"{name}: {count}"</code>.</li>
+<li><strong>Chains</strong> over temporaries when each step reads naturally:
+  <code>names = text
+      .trim()
+      .split(",")</code></li>
+<li><code>x.incr()</code> / <code>x.decr()</code> instead of <code>x += 1</code> when the intent is "one more".</li>
+<li>Name functions of a piece <code>&lt;piece&gt;_&lt;function&gt;</code> and call them as <code>piece.function()</code>.</li>
+<li>Put a <code>//</code> comment above every function you want in <code>kite doc</code>.</li>
+<li>Prefer <code>const</code> over magic numbers.</li>
+<li>Keep functions short; return early.</li>
+<li>Names to avoid for variables and functions (reserved): <code>to in from use type class match case enum thread try failed finally
+  int float string bool ptr null</code>. Member names after a dot and record fields may use them.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/guide/memory/">← Memory, pointers and threads</a><a class="next" href="/reference/language/">Language reference →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

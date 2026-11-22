@@ -1,0 +1,103 @@
+// datetime -- civil calendar arithmetic (proleptic Gregorian, UTC) on seconds since 1970-01-01.
+
+make datetime_is_leap(y: int) -> bool:
+    return (y % 4 == 0 and y % 100 != 0) or y % 400 == 0
+
+make datetime_days_in_month(y: int, m: int) -> int:
+    if m == 2:
+        if datetime_is_leap(y):
+            return 29
+        return 28
+    if m == 4 or m == 6 or m == 9 or m == 11:
+        return 30
+    return 31
+
+// Floor division (the C `/` truncates toward zero).
+make datetime_floor_div(a: int, b: int) -> int:
+    q = a / b
+    if a % b != 0 and ((a < 0) != (b < 0)):
+        q -= 1
+    return q
+
+make datetime_days(secs: int) -> int:
+    return datetime_floor_div(secs, 86400)
+
+make datetime_year(secs: int) -> int:
+    z = datetime_days(secs) + 719468
+    era = datetime_floor_div(z, 146097)
+    doe = z - era * 146097
+    yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    y = yoe + era * 400
+    doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    mp = (5 * doy + 2) / 153
+    m = mp + 3
+    if mp >= 10:
+        m = mp - 9
+    if m <= 2:
+        y += 1
+    return y
+
+make datetime_month(secs: int) -> int:
+    z = datetime_days(secs) + 719468
+    era = datetime_floor_div(z, 146097)
+    doe = z - era * 146097
+    yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    mp = (5 * doy + 2) / 153
+    if mp < 10:
+        return mp + 3
+    return mp - 9
+
+make datetime_day(secs: int) -> int:
+    z = datetime_days(secs) + 719468
+    era = datetime_floor_div(z, 146097)
+    doe = z - era * 146097
+    yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    mp = (5 * doy + 2) / 153
+    return doy - (153 * mp + 2) / 5 + 1
+
+make datetime_hour(secs: int) -> int:
+    return (secs - datetime_days(secs) * 86400) / 3600
+
+make datetime_minute(secs: int) -> int:
+    return ((secs - datetime_days(secs) * 86400) % 3600) / 60
+
+make datetime_second(secs: int) -> int:
+    return (secs - datetime_days(secs) * 86400) % 60
+
+// 0 = Sunday ... 6 = Saturday
+make datetime_weekday(secs: int) -> int:
+    d = datetime_days(secs)
+    w = (d + 4) % 7
+    if w < 0:
+        w += 7
+    return w
+
+// Seconds since the epoch of a UTC date and time.
+make datetime_from_civil(y: int, m: int, d: int, hh: int, mm: int, ss: int) -> int:
+    yy = y
+    if m <= 2:
+        yy -= 1
+    era = datetime_floor_div(yy, 400)
+    yoe = yy - era * 400
+    mp = m - 3
+    if m <= 2:
+        mp = m + 9
+    doy = (153 * mp + 2) / 5 + d - 1
+    doe = yoe * 365 + yoe / 4 - yoe / 100 + doy
+    days = era * 146097 + doe - 719468
+    return days * 86400 + hh * 3600 + mm * 60 + ss
+
+make datetime_pad2(n: int) -> string:
+    if n < 10:
+        return "0" + str(n)
+    return str(n)
+
+// "2026-11-14T10:30:00Z"
+make datetime_format_iso(secs: int) -> string:
+    return str(datetime_year(secs)) + "-" + datetime_pad2(datetime_month(secs)) + "-" + datetime_pad2(datetime_day(secs)) + "T" + datetime_pad2(datetime_hour(secs)) + ":" + datetime_pad2(datetime_minute(secs)) + ":" + datetime_pad2(datetime_second(secs)) + "Z"
+
+make datetime_weekday_name(w: int) -> string:
+    names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    return names[w % 7]

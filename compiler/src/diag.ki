@@ -99,17 +99,17 @@ make render_diag(d: Diag, default_file: string, default_source: string) -> strin
         source = d.source
     out = "error"
     if len(d.code) > 0:
-        out = out + "[" + d.code + "]"
-    out = out + ": " + d.title + "\n"
+        out = out + f"[{d.code}]"
+    out = out + f": {d.title}\n"
     line_no = max(d.span.line, 1)
     gutter = gutter_width(line_no)
     pad = repeat(" ", gutter)
-    out = out + pad + "--> " + filename + ":" + str(line_no) + ":" + str(d.span.col) + "\n"
+    out = out + pad + f"--> {filename}:{str(line_no)}:{str(d.span.col)}\n"
     out = out + pad + " |\n"
     src_line = ""
     if line_no - 1 < count_lines(source):
         src_line = nth_line(source, line_no - 1)
-        out = out + str(line_no) + " | " + src_line + "\n"
+        out = out + str(line_no) + f" | {src_line}\n"
         col = max(d.span.col - 1, 0)
         width = max(d.span.end - d.span.start, 1)
         room = max(len(src_line) - col, 1)
@@ -120,7 +120,7 @@ make render_diag(d: Diag, default_file: string, default_source: string) -> strin
         out = out + pointer + "\n"
     out = out + pad + " |\n"
     if len(d.help) > 0:
-        out = out + pad + "= help: " + d.help + "\n"
+        out = out + pad + f"= help: {d.help}\n"
     return out
 
 make count_lines(source: string) -> int:

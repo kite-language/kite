@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Records, classes and enums — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a class="cur" href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="records-classes-and-enums">Records, classes and enums</h1>
+<h2 id="type-a-record">type: a record</h2>
+<pre class="code"><code><span class="k">type</span> Point:
+    x: <span class="t">int</span>
+    y: <span class="t">int</span>
+
+<span class="k">make</span> main():
+    p = Point()          <span class="c">// all fields start at zero / empty</span>
+    p.x = <span class="n">3</span>
+    p.y = <span class="n">4</span>
+    print(p.x + p.y)
+</code></pre>
+<p>Records are copied when assigned (<code>q = p</code> copies). Fields may be ints, floats, bools, strings, lists, pointers and other
+records. Field names may be reserved words (<code>job.thread</code>).</p>
+<h2 id="class-a-record-with-methods">class: a record with methods</h2>
+<pre class="code"><code><span class="k">class</span> Counter:
+    n: <span class="t">int</span>
+    <span class="k">make</span> init(self):             <span class="c">// runs on `Counter()`</span>
+        self.n = <span class="n">0</span>
+    <span class="k">make</span> bump(self):
+        self.n.incr()
+    <span class="k">make</span> value(self) -&gt; <span class="t">int</span>:
+        <span class="k">return</span> self.n
+
+<span class="k">make</span> main():
+    c = Counter()
+    c.bump()
+    c.bump()
+    print(c.value())             <span class="c">// 2</span>
+</code></pre>
+<p>A class may extend another (<code>class Dog(Animal):</code>) and override its methods (dispatch is by the object's real class).
+Classes are passed by reference to functions; records and ints are passed by value.</p>
+<h2 id="enum">enum</h2>
+<pre class="code"><code><span class="k">enum</span> Color:
+    Red
+    Green
+    Blue
+
+<span class="k">make</span> main():
+    c = Color.Green
+    <span class="k">if</span> c == Color.Green:
+        print(<span class="s">&quot;green&quot;</span>)
+</code></pre>
+<p>Enums with data list their fields per variant. Construct a value as <code>Shape.Circle(2)</code> and take it apart with <code>match</code>
+(add <code>else:</code> for the remaining variants, and when every arm returns):</p>
+<pre class="code"><code><span class="k">enum</span> Shape:
+    Circle(r: <span class="t">int</span>)
+    Rect(w: <span class="t">int</span>, h: <span class="t">int</span>)
+
+<span class="k">make</span> area(s: Shape) -&gt; <span class="t">int</span>:
+    <span class="k">match</span> s:
+        <span class="k">case</span> Circle(r):
+            <span class="k">return</span> <span class="n">3</span> * r * r
+        <span class="k">case</span> Rect(w, h):
+            <span class="k">return</span> w * h
+        <span class="k">else</span>:
+            <span class="k">return</span> <span class="n">0</span>
+
+<span class="k">make</span> main():
+    print(area(Shape.Rect(<span class="n">2</span>, <span class="n">5</span>)))
+</code></pre>
+<p>Recursive data holds pointers to itself: <code>Add(l: ptr&lt;Expr&gt;, r: ptr&lt;Expr&gt;)</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/collections/">← Collections</a><a class="next" href="/guide/pieces/">Pieces (packages) →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

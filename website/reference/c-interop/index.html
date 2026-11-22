@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calling C — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a class="cur" href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="calling-c-from-kite-and-kite-from-c">Calling C from Kite, and Kite from C</h1>
+<p>Kite compiles straight to LLVM IR with a plain C ABI: functions get no
+name mangling, and (per <code>docs/architecture.md</code>'s aggregate restrictions)
+every function parameter/return type is a scalar -- exactly the set of
+types C functions traffic in. That makes C interop close to "free" once
+you know the three pieces: <code>extern</code> declarations, <code>kite build --lib</code>, and
+<code>kite build --link</code>.</p>
+<h2 id="kite-calling-c">Kite calling C</h2>
+<p>Declare the C function's signature with <code>extern</code> -- no body, no <code>:</code>:</p>
+<pre class="code"><code><span class="k">extern</span> <span class="k">make</span> c_double(x: <span class="t">int</span>) -&gt; <span class="t">int</span>
+
+<span class="k">make</span> main():
+    print(c_double(<span class="n">21</span>))
+</code></pre>
+<p>Then build, telling <code>kite build</code> where the implementation lives with
+<code>--link</code> (a <code>.c</code> file, a <code>.o</code> object file, or a <code>.a</code> static library --
+anything <code>clang</code> can take as a link input; repeat <code>--link</code> for more than
+one):</p>
+<pre class="code"><code>kite build --link helper.c
+kite run           # or: ./target/&lt;package&gt;
+</code></pre>
+<p><code>kite build --link</code> compiles Kite to LLVM IR as usual and then asks
+<code>clang</code> to link it together with everything you passed to <code>--link</code> in one
+step -- no separate manual link command needed.</p>
+<h2 id="c-calling-kite">C calling Kite</h2>
+<p>Build your Kite code as a <strong>library</strong> instead of a program:</p>
+<pre class="code"><code>kite build --lib
+</code></pre>
+<p>This produces two files instead of an executable:</p>
+<ul>
+<li><code>target/&lt;package&gt;.o</code> -- a relocatable object file with one exported,
+  unmangled symbol per Kite function (skipping <code>extern</code> ones, since those
+  are declarations of <em>other</em> code, not Kite's own).</li>
+<li><code>target/&lt;package&gt;.h</code> -- a matching C header with a prototype for each
+  of those functions, so you don't have to write them by hand.</li>
+</ul>
+<p>No <code>make main():</code> is required for a <code>--lib</code> build -- a library is a set
+of callable functions, not a standalone program. (If one of your
+functions <em>is</em> named <code>main</code>, it's still just an ordinary function in
+<code>--lib</code> mode; it does not become the linked program's C runtime entry
+point. Don't rely on a <code>--lib</code> build's <code>main</code>, if it has one, being what
+actually runs when the final binary starts -- see the mode comparison
+below.)</p>
+<p>Then, from C:</p>
+<pre class="code"><code>#include &quot;mathlib.h&quot;
+
+int main(void) {
+    printf(&quot;%lld\n&quot;, (long long)kite_square(6));
+    return 0;
+}
+</code></pre>
+<pre class="code"><code>clang main.c target/mathlib.o -o program
+./program
+</code></pre>
+<h2 id="type-mapping">Type mapping</h2>
+<table>
+<thead>
+<tr>
+<th>Kite type</th>
+<th>C type</th>
+<th>Header include</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>int64_t</code></td>
+<td><code>&lt;stdint.h&gt;</code></td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>double</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>bool</code></td>
+<td><code>&lt;stdbool.h&gt;</code></td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>const char*</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>enum</code> (any)</td>
+<td><code>int64_t</code> (the variant's declaration-order tag)</td>
+<td></td>
+</tr>
+<tr>
+<td>no return value</td>
+<td><code>void</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Lists, tuples, dicts, and structs can't cross a function boundary in
+Kite at all (see <code>docs/architecture.md</code>) -- including the boundary
+to/from C -- so they never appear in a generated header or in a valid
+<code>extern</code> declaration. <code>kite check</code>/<code>kite build</code> reject them with a clear
+error before you'd ever get to the link step.</p>
+<h2 id="-freestanding-vs-lib-which-one-do-i-want"><code>--freestanding</code> vs <code>--lib</code>: which one do I want?</h2>
+<p>Both produce a <code>.o</code> with no required <code>main</code>. The difference is what
+environment the <em>rest</em> of your final link is allowed to assume:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>--lib</code></th>
+<th><code>--freestanding</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Assumes a hosted libc exists at final link time</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>print</code>, lists (<code>append</code>/<code>len</code>), etc.</td>
+<td>Work normally</td>
+<td>Compile, but need <em>you</em> to supply <code>printf</code>/<code>malloc</code>/etc. at link time (see below)</td>
+</tr>
+<tr>
+<td>Generates a C header</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Intended use</td>
+<td>A Kite library called from a normal C/C++ program</td>
+<td>Embedding Kite code into an OS/kernel/bare-metal build</td>
+</tr>
+</tbody>
+</table>
+<p><code>--freestanding</code> additionally passes <code>-ffreestanding -fno-builtin</code> to
+clang. Kite's runtime support for <code>print</code>/lists/<code>len</code>/etc. is always just
+a handful of <code>declare</code>d external symbols (<code>printf</code>, <code>malloc</code>, <code>free</code>,
+<code>memcpy</code>, <code>strlen</code>, <code>strcmp</code>, <code>exit</code>) -- see <code>docs/architecture.md</code> --
+which is exactly what makes <code>--freestanding</code> safe to link into an
+environment with no libc: those declarations only need to <em>resolve</em> if
+you actually call <code>print</code>/lists/etc., and if you do, your own kernel/OS
+build is expected to provide matching implementations, the same way any
+other freestanding C object file would.</p>
+<h2 id="self-contained-executables-static">Self-contained executables: <code>--static</code></h2>
+<p>A normal <code>kite build</code>/<code>kite run</code> produces a dynamically linked
+executable (the usual default). Add <code>--static</code> for a statically linked
+one with no runtime dependency on shared libraries:</p>
+<pre class="code"><code>kite build --static
+</code></pre>
+<p>This passes <code>-static</code> to clang; it requires a static libc (e.g. glibc's
+<code>libc.a</code>, or musl) to be available on the build machine, same as it
+would for any other language's <code>-static</code> build.</p>
+<h2 id="controlling-build-output">Controlling build output</h2>
+<pre class="code"><code>kite build -o path/to/output          # exact output path/name
+kite build --out-dir dist             # same default name, different directory
+kite build --lib -o dist/mathlib.o    # combine with any build mode
+</code></pre>
+<p><code>-o</code>/<code>--output</code> always wins if both are given. Without either, output
+goes to <code>target/&lt;package-name&gt;</code> (<code>.o</code> appended automatically for
+<code>--lib</code>/<code>--freestanding</code> if you don't give one yourself via <code>-o</code>).</p>
+</article>
+<footer class="pager"><a class="prev" href="/reference/targets/">← Targets, OS and freestanding</a><a class="next" href="/reference/memory/">Memory model →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

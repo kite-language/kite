@@ -2,6 +2,24 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
+## 0.4.4 -- language touches, freestanding runtime, first native back end
+- **Language** (Kite compiler only; the Rust seed cannot parse these): `.incr()` / `.decr()`; method chains continued on lines
+  starting with `.name`; **uniform call syntax** `value.f(args)` = `f(value, args)` when the receiver is not a class instance;
+  reserved words allowed as member and field names; string escapes `\x41 \e \r \0`; `const NAME = expr`; `p[i]` on pointers;
+  `bool == bool` (invalid LLVM before 0.4.3); builtins `float_of`, `int_of`, `spawn`, `thread_join`, `realloc_n`, `copy_n`,
+  `zero_n`, `ptr_to_int`, `int_to_ptr`, `panic`, `assert`; f-strings in both lexers (about 200 compiler messages rewritten).
+- **Freestanding**: only used declarations and globals are emitted; `--runtime core` (default for bare targets) links a libc-free
+  runtime written in LLVM IR (bump allocator, `mem*`/`str*`, no-op `printf`, halting `exit`), `--heap-size N`,
+  `[build] runtime` / `heap_size`. A kernel for `x86_64-unknown-none` links with no undefined symbol (not run in QEMU).
+- **Signature**: every binary carries `KITE-META|language=Kite|compiler=...|package=...|KITE-END`; `kite inspect FILE` prints it.
+- **Native back end (experimental)**: `kite build --backend native`, own x86-64 code generator and ELF writer (no clang, no linker),
+  constant folding; integer, bool and string-literal programs (arithmetic, if/while/for, functions, recursion, print, exit).
+  Unsupported programs are rejected with the reason.
+- **Windows**: `timespec_get` shim, `-llegacy_stdio_definitions`, portable `std.sys/fs/path/process/time` (not run here: CI is the check).
+- **Docs and site**: the guide (`docs/book`), `docs/targets.md`, docs at `/`, install page at `/installation/`.
+- Tests: `stdlib/tests/lang_test/tests/features2.ki`; `build.sh test` no longer compares the non-injected `desugar` dump (the uniform-call
+  rewrite differs from the seed there, `inject` agrees) and checks `kite inspect`, `--runtime core` and `--backend native`.
+
 ## 0.4.3 -- more pieces, repaired workflows
 - **The compiler calls pieces as `piece.function()`** (`fs.is_dir(p)`, `path.join(a, b)`, `sys.quote(s)`, 254 call sites);
   the Rust seed resolves those calls too (desugarer), shadowed names stay prefixed.

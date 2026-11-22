@@ -1,0 +1,629 @@
+// The native back end (experimental): Kite's own x86-64 code generator. It turns the IR into machine code and
+// writes a static Linux ELF executable directly: no LLVM, no clang, no linker. Version 0 handles integer, boolean
+// and string-literal programs (arithmetic, comparisons, if / while / for, functions and recursion, print, exit).
+// Anything else is reported by `native_supported` and builds with the default (LLVM) back end instead.
+//
+// Own optimisation pass: `native_fold` evaluates operations on constants before code generation.
+//
+// Calling convention: arguments are pushed right to left, the caller pops them, the result is in rax.
+// Every local and temporary lives in a stack slot (rbp-relative); the code is a straightforward stack machine.
+
+use irdef
+use std.sys
+use std.fs
+
+// ---- machine code buffer ----------------------------------------------------------------------
+
+class Asm:
+    code: [int]
+    data: [int]
+    labels: StrMap_int
+    jump_pos: [int]
+    jump_name: [string]
+    call_pos: [int]
+    call_name: [string]
+    data_fix_pos: [int]
+    data_fix_off: [int]
+    fn_names: [string]
+    fn_starts: [int]
+
+    make b(self, x: int):
+        append(self.code, x & 255)
+
+    make u32(self, x: int):
+        self.b(x)
+        self.b(x >> 8)
+        self.b(x >> 16)
+        self.b(x >> 24)
+
+    make u64(self, x: int):
+        self.u32(x)
+        self.u32(x >> 32)
+
+    make here(self) -> int:
+        return len(self.code)
+
+    make patch32(self, pos: int, x: int):
+        self.code[pos] = x & 255
+        self.code[pos + 1] = (x >> 8) & 255
+        self.code[pos + 2] = (x >> 16) & 255
+        self.code[pos + 3] = (x >> 24) & 255
+
+    // ---- instructions (all 64-bit) ----
+    make mov_rax_imm(self, v: int):
+        if v >= -2147483648 and v <= 2147483647:
+            self.b(72)
+            self.b(199)
+            self.b(192)
+            self.u32(v)
+        else:
+            self.b(72)
+            self.b(184)
+            self.u64(v)
+
+    make mov_rcx_imm(self, v: int):
+        self.b(72)
+        self.b(185)
+        self.u64(v)
+
+    make load_rax(self, off: int):
+        self.b(72)
+        self.b(139)
+        self.b(133)
+        self.u32(off)
+
+    make load_rcx(self, off: int):
+        self.b(72)
+        self.b(139)
+        self.b(141)
+        self.u32(off)
+
+    make store_rax(self, off: int):
+        self.b(72)
+        self.b(137)
+        self.b(133)
+        self.u32(off)
+
+    make push_rax(self):
+        self.b(80)
+
+    // lea rax, [rip + data]
+    make lea_data(self, data_off: int):
+        self.b(72)
+        self.b(141)
+        self.b(5)
+        append(self.data_fix_pos, self.here())
+        append(self.data_fix_off, data_off)
+        self.u32(0)
+
+    make jmp(self, name: string):
+        self.b(233)
+        append(self.jump_pos, self.here())
+        append(self.jump_name, name)
+        self.u32(0)
+
+    make jnz(self, name: string):
+        self.b(15)
+        self.b(133)
+        append(self.jump_pos, self.here())
+        append(self.jump_name, name)
+        self.u32(0)
+
+    make call(self, name: string):
+        self.b(232)
+        append(self.call_pos, self.here())
+        append(self.call_name, name)
+        self.u32(0)
+
+    make label(self, name: string):
+        self.labels.set(name, self.here() + 1)
+
+    make bytes(self, xs: [int]):
+        for x in xs:
+            self.b(x)
+
+// ---- the runtime routines (hand-assembled) -----------------------------------------------------
+
+// print_int: rax = value; writes it in decimal followed by a newline to stdout.
+make rt_print_int() -> [int]:
+    return [85, 72, 137, 229, 72, 131, 236, 64, 72, 141, 117, 255, 198, 6, 10, 69, 49, 192, 72, 133, 192, 121, 10, 72, 247, 216, 73, 199, 192, 1, 0, 0, 0, 185, 10, 0, 0, 0, 72, 49, 210, 72, 247, 241, 128, 194, 48, 72, 255, 206, 136, 22, 72, 133, 192, 117, 237, 77, 133, 192, 116, 6, 72, 255, 206, 198, 6, 45, 72, 137, 234, 72, 41, 242, 184, 1, 0, 0, 0, 191, 1, 0, 0, 0, 15, 5, 201, 195]
+
+// print_str: rax = address of a NUL-terminated string; writes it followed by a newline.
+make rt_print_str() -> [int]:
+    return [72, 137, 198, 72, 49, 210, 128, 60, 22, 0, 116, 5, 72, 255, 194, 235, 245, 184, 1, 0, 0, 0, 191, 1, 0, 0, 0, 15, 5, 106, 10, 72, 137, 230, 186, 1, 0, 0, 0, 184, 1, 0, 0, 0, 191, 1, 0, 0, 0, 15, 5, 88, 195]
+
+// ---- the supported subset ----------------------------------------------------------------------
+
+make native_scalar(t: string) -> bool:
+    return t == "i64" or t == "bool" or t == "str"
+
+make native_binop_ok(op: string) -> bool:
+    return op == "AddI" or op == "SubI" or op == "MulI" or op == "DivI" or op == "RemI" or op == "EqI" or op == "NeI" or op == "LtI" or op == "GtI" or op == "LeI" or op == "GeI" or op == "AndI" or op == "OrI" or op == "XorI" or op == "ShlI" or op == "ShrI" or op == "EqB" or op == "NeB"
+
+// "" when the native back end can compile the program, else the reason it cannot.
+make native_supported(prog: IrProg) -> string:
+    if len(prog.ex_names) > 0:
+        return "extern functions"
+    if len(prog.st_names) > 0:
+        return "records and classes"
+    has_main = false
+    for f in prog.fns:
+        if f.name == "main":
+            has_main = true
+        if f.has_sret:
+            return f"function `{f.name}` returns an aggregate"
+        for pt in f.ptys:
+            if not native_scalar(pt):
+                return f"function `{f.name}` takes a `{pt}`"
+        for i in f.body:
+            op = i.op
+            if op == "BinOp":
+                if not native_binop_ok(i.name):
+                    return f"operator `{i.name}` in `{f.name}`"
+            orif op == "Alloca":
+                if not native_scalar(i.ty):
+                    return f"a `{i.ty}` variable in `{f.name}`"
+            orif op == "Print":
+                if not native_scalar(i.ty):
+                    return f"print of a `{i.ty}` in `{f.name}`"
+            orif op == "Call":
+                for at in i.argtys:
+                    if not native_scalar(at):
+                        return f"a call with a `{at}` argument in `{f.name}`"
+                if not (native_scalar(i.ty) or i.ty == "void"):
+                    return f"a call returning `{i.ty}` in `{f.name}`"
+            orif op == "Store" or op == "Load" or op == "Neg" or op == "Not" or op == "Label" or op == "Jump" or op == "Branch" or op == "Return" or op == "Unreachable" or op == "Exit":
+                if op == "Neg" and i.ty != "i64":
+                    return f"negation of a `{i.ty}`"
+            else:
+                return f"the `{op}` operation in `{f.name}`"
+    if not has_main:
+        return "no main function"
+    return ""
+
+// ---- the optimisation pass: constant folding ---------------------------------------------------
+
+make is_const(v: V) -> bool:
+    return v.k == "I" or v.k == "B"
+
+make fold_value(v: V, cm: StrMap_int, cvals: [V]) -> V:
+    if v.k == "T" and cm.has(str(v.i)):
+        return cvals[cm.get(str(v.i)) - 1]
+    return v
+
+// Result of `a op b` on constants.
+make fold_binop(op: string, a: V, b: V) -> V:
+    r = v_int(0)
+    x = a.i
+    y = b.i
+    if op == "AddI":
+        r = v_int(x + y)
+    orif op == "SubI":
+        r = v_int(x - y)
+    orif op == "MulI":
+        r = v_int(x * y)
+    orif op == "DivI":
+        if y != 0:
+            r = v_int(x / y)
+    orif op == "RemI":
+        if y != 0:
+            r = v_int(x % y)
+    orif op == "AndI":
+        r = v_int(x & y)
+    orif op == "OrI":
+        r = v_int(x | y)
+    orif op == "XorI":
+        r = v_int(x ^ y)
+    orif op == "ShlI":
+        r = v_int(x << y)
+    orif op == "ShrI":
+        r = v_int(x >> y)
+    orif op == "EqI" or op == "EqB":
+        r = v_bool(x == y)
+    orif op == "NeI" or op == "NeB":
+        r = v_bool(x != y)
+    orif op == "LtI":
+        r = v_bool(x < y)
+    orif op == "GtI":
+        r = v_bool(x > y)
+    orif op == "LeI":
+        r = v_bool(x <= y)
+    orif op == "GeI":
+        r = v_bool(x >= y)
+    return r
+
+// Evaluates operations whose operands are constants (temporaries are assigned once, so the result can be
+// substituted into every later use) and drops them from the instruction list. Only the operand fields an
+// operation really uses are looked at (unused ones are empty).
+make native_fold(body: [Ins]) -> [Ins]:
+    out: [Ins] = []
+    cm = StrMap_int()
+    cvals: [V] = []
+    for ins in body:
+        i = ins
+        op = i.op
+        if op == "BinOp":
+            i.v1 = fold_value(i.v1, cm, cvals)
+            i.v2 = fold_value(i.v2, cm, cvals)
+        orif op == "Neg" or op == "Not" or op == "Store" or op == "Print" or op == "Branch" or op == "Exit":
+            i.v1 = fold_value(i.v1, cm, cvals)
+        orif op == "Return":
+            if i.flag:
+                i.v1 = fold_value(i.v1, cm, cvals)
+        orif op == "Call":
+            nv: [V] = []
+            for x in i.vals:
+                append(nv, fold_value(x, cm, cvals))
+            i.vals = nv
+        did = false
+        folded = v_int(0)
+        if op == "BinOp" and is_const(i.v1) and is_const(i.v2):
+            folded = fold_binop(i.name, i.v1, i.v2)
+            did = fold_ok(i.name, i.v2)
+        orif op == "Neg" and is_const(i.v1):
+            folded = v_int(0 - i.v1.i)
+            did = true
+        orif op == "Not" and is_const(i.v1):
+            folded = v_bool(i.v1.i == 0)
+            did = true
+        if did and i.dest >= 0:
+            append(cvals, folded)
+            cm.set(str(i.dest), len(cvals))
+        else:
+            append(out, i)
+    return out
+
+// A division or remainder by zero is left for the machine to trap.
+make fold_ok(op: string, b: V) -> bool:
+    if op == "DivI" or op == "RemI":
+        return b.i != 0
+    return true
+
+// ---- code generation --------------------------------------------------------------------------
+
+class Gen:
+    a: Asm
+    slots: StrMap_int
+    nslots: int
+    pnames: [string]
+    strs: StrMap_int
+    fname: string
+    uniq: int
+
+    make slot_off(self, key: string) -> int:
+        if not self.slots.has(key):
+            self.nslots += 1
+            self.slots.set(key, self.nslots)
+        return 0 - 8 * self.slots.get(key)
+
+    make str_off(self, text: string) -> int:
+        if not self.strs.has(text):
+            off = len(self.a.data)
+            i = 0
+            while i < len(text):
+                append(self.a.data, char_at(text, i))
+                i += 1
+            append(self.a.data, 0)
+            self.strs.set(text, off + 1)
+        return self.strs.get(text) - 1
+
+    make load(self, v: V, reg: int):
+        k = v.k
+        if k == "I" or k == "B" or k == "N":
+            if reg == 0:
+                self.a.mov_rax_imm(v.i)
+            else:
+                self.a.mov_rcx_imm(v.i)
+        orif k == "S":
+            self.a.lea_data(self.str_off(v.s))
+            if reg == 1:
+                self.a.bytes([72, 137, 193])
+        orif k == "L":
+            if reg == 0:
+                self.a.load_rax(self.slot_off("v:" + v.s))
+            else:
+                self.a.load_rcx(self.slot_off("v:" + v.s))
+        orif k == "T":
+            if reg == 0:
+                self.a.load_rax(self.slot_off("t:" + str(v.i)))
+            else:
+                self.a.load_rcx(self.slot_off("t:" + str(v.i)))
+        else:
+            // a parameter: pushed by the caller, above the saved rbp and the return address
+            idx = 0
+            j = 0
+            while j < len(self.pnames):
+                if self.pnames[j] == v.s:
+                    idx = j
+                j += 1
+            if reg == 0:
+                self.a.load_rax(16 + 8 * idx)
+            else:
+                self.a.load_rcx(16 + 8 * idx)
+
+    make put_temp(self, dest: int):
+        if dest >= 0:
+            self.a.store_rax(self.slot_off("t:" + str(dest)))
+
+    make key(self, name: string) -> string:
+        return self.fname + ":" + name
+
+    make binop(self, op: string):
+        if op == "AddI":
+            self.a.bytes([72, 1, 200])
+        orif op == "SubI":
+            self.a.bytes([72, 41, 200])
+        orif op == "MulI":
+            self.a.bytes([72, 15, 175, 193])
+        orif op == "DivI":
+            self.a.bytes([72, 153, 72, 247, 249])
+        orif op == "RemI":
+            self.a.bytes([72, 153, 72, 247, 249, 72, 137, 208])
+        orif op == "AndI":
+            self.a.bytes([72, 33, 200])
+        orif op == "OrI":
+            self.a.bytes([72, 9, 200])
+        orif op == "XorI":
+            self.a.bytes([72, 49, 200])
+        orif op == "ShlI":
+            self.a.bytes([72, 211, 224])
+        orif op == "ShrI":
+            self.a.bytes([72, 211, 248])
+        else:
+            cc = 148
+            if op == "NeI" or op == "NeB":
+                cc = 149
+            orif op == "LtI":
+                cc = 156
+            orif op == "GtI":
+                cc = 159
+            orif op == "LeI":
+                cc = 158
+            orif op == "GeI":
+                cc = 157
+            self.a.bytes([72, 57, 200, 15, cc, 192, 72, 15, 182, 192])
+
+    make instr(self, i: Ins):
+        op = i.op
+        if op == "Alloca":
+            self.slot_off("v:" + i.name)
+        orif op == "Store":
+            self.load(i.v1, 0)
+            self.a.store_rax(self.slot_off("v:" + i.name))
+        orif op == "Load":
+            self.a.load_rax(self.slot_off("v:" + i.name))
+            self.put_temp(i.dest)
+        orif op == "BinOp":
+            self.load(i.v1, 0)
+            self.load(i.v2, 1)
+            self.binop(i.name)
+            self.put_temp(i.dest)
+        orif op == "Neg":
+            self.load(i.v1, 0)
+            self.a.bytes([72, 247, 216])
+            self.put_temp(i.dest)
+        orif op == "Not":
+            self.load(i.v1, 0)
+            self.a.bytes([72, 131, 240, 1])
+            self.put_temp(i.dest)
+        orif op == "Call":
+            k = len(i.vals) - 1
+            while k >= 0:
+                self.load(i.vals[k], 0)
+                self.a.push_rax()
+                k -= 1
+            self.a.call(i.name)
+            if len(i.vals) > 0:
+                self.a.bytes([72, 129, 196])
+                self.a.u32(8 * len(i.vals))
+            self.put_temp(i.dest)
+        orif op == "Print":
+            self.load(i.v1, 0)
+            if i.ty == "i64":
+                self.a.call("__print_int")
+            orif i.ty == "str":
+                self.a.call("__print_str")
+            else:
+                self.uniq += 1
+                lt = self.key("pb.t." + str(self.uniq))
+                le = self.key("pb.e." + str(self.uniq))
+                self.a.bytes([72, 133, 192])
+                self.a.jnz(lt)
+                self.a.lea_data(self.str_off("false"))
+                self.a.jmp(le)
+                self.a.label(lt)
+                self.a.lea_data(self.str_off("true"))
+                self.a.label(le)
+                self.a.call("__print_str")
+        orif op == "Label":
+            self.a.label(self.key(i.name))
+        orif op == "Jump":
+            self.a.jmp(self.key(i.name))
+        orif op == "Branch":
+            self.load(i.v1, 0)
+            self.a.bytes([72, 133, 192])
+            self.a.jnz(self.key(i.name))
+            self.a.jmp(self.key(i.n2))
+        orif op == "Return":
+            if i.flag:
+                self.load(i.v1, 0)
+            else:
+                self.a.bytes([49, 192])
+            self.a.bytes([201, 195])
+        orif op == "Unreachable":
+            self.a.bytes([15, 11])
+        orif op == "Exit":
+            self.load(i.v1, 0)
+            self.a.bytes([72, 137, 199, 184, 60, 0, 0, 0, 15, 5])
+
+make native_emit_fn(g: Gen, f: IrFn):
+    g.slots = StrMap_int()
+    g.nslots = 0
+    g.pnames = f.pnames
+    g.fname = f.name
+    append(g.a.fn_names, f.name)
+    append(g.a.fn_starts, g.a.here())
+    // push rbp; mov rbp, rsp; sub rsp, <frame> (patched below)
+    g.a.bytes([85, 72, 137, 229, 72, 129, 236])
+    frame_pos = g.a.here()
+    g.a.u32(0)
+    body = native_fold(f.body)
+    for i in body:
+        g.instr(i)
+    g.a.bytes([49, 192, 201, 195])
+    size = 8 * g.nslots
+    size = (size + 15) / 16 * 16
+    g.a.patch32(frame_pos, size)
+
+// ---- ELF output --------------------------------------------------------------------------------
+
+make b64_of_bytes(xs: [int]) -> string:
+    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    parts: [string] = []
+    i = 0
+    n = len(xs)
+    while i < n:
+        b0 = xs[i]
+        b1 = 0
+        b2 = 0
+        if i + 1 < n:
+            b1 = xs[i + 1]
+        if i + 2 < n:
+            b2 = xs[i + 2]
+        v = (b0 << 16) | (b1 << 8) | b2
+        append(parts, substr(alphabet, (v >> 18) & 63, ((v >> 18) & 63) + 1))
+        append(parts, substr(alphabet, (v >> 12) & 63, ((v >> 12) & 63) + 1))
+        if i + 1 < n:
+            append(parts, substr(alphabet, (v >> 6) & 63, ((v >> 6) & 63) + 1))
+        else:
+            append(parts, "=")
+        if i + 2 < n:
+            append(parts, substr(alphabet, v & 63, (v & 63) + 1))
+        else:
+            append(parts, "=")
+        i += 3
+    return join(parts, "")
+
+make le_bytes(v: int, n: int) -> [int]:
+    out: [int] = []
+    i = 0
+    while i < n:
+        append(out, (v >> (8 * i)) & 255)
+        i += 1
+    return out
+
+make elf_image(a: Asm, meta: string) -> [int]:
+    base = 4194304
+    hdr = 120
+    // the signature record goes after the data (found again by `kite inspect`)
+    i = 0
+    while i < len(meta):
+        append(a.data, char_at(meta, i))
+        i += 1
+    if len(meta) > 0:
+        append(a.data, 0)
+    total = hdr + len(a.code) + len(a.data)
+    out: [int] = [127, 69, 76, 70, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for x in le_bytes(2, 2):
+        append(out, x)
+    for x2 in le_bytes(62, 2):
+        append(out, x2)
+    for x3 in le_bytes(1, 4):
+        append(out, x3)
+    for x4 in le_bytes(base + hdr, 8):
+        append(out, x4)
+    for x5 in le_bytes(64, 8):
+        append(out, x5)
+    for x6 in le_bytes(0, 8):
+        append(out, x6)
+    for x7 in le_bytes(0, 4):
+        append(out, x7)
+    for x8 in le_bytes(64, 2):
+        append(out, x8)
+    for x9 in le_bytes(56, 2):
+        append(out, x9)
+    for x10 in le_bytes(1, 2):
+        append(out, x10)
+    for x11 in le_bytes(0, 6):
+        append(out, x11)
+    // program header: one RWX segment holding the whole file
+    for p1 in le_bytes(1, 4):
+        append(out, p1)
+    for p2 in le_bytes(7, 4):
+        append(out, p2)
+    for p3 in le_bytes(0, 8):
+        append(out, p3)
+    for p4 in le_bytes(base, 8):
+        append(out, p4)
+    for p5 in le_bytes(base, 8):
+        append(out, p5)
+    for p6 in le_bytes(total, 8):
+        append(out, p6)
+    for p7 in le_bytes(total, 8):
+        append(out, p7)
+    for p8 in le_bytes(4096, 8):
+        append(out, p8)
+    for c in a.code:
+        append(out, c)
+    for d in a.data:
+        append(out, d)
+    return out
+
+// Compiles `prog` to a static Linux x86-64 executable at `out_path`. `meta`: the signature record.
+make native_build(prog: IrProg, out_path: string, meta: string) -> bool:
+    g = Gen()
+    g.a = Asm()
+    g.a.labels = StrMap_int()
+    g.strs = StrMap_int()
+    main_returns = false
+    for f in prog.fns:
+        if f.name == "main" and f.ret != "void":
+            main_returns = true
+    // entry point: _start
+    g.a.call("main")
+    if main_returns:
+        g.a.bytes([72, 137, 199])
+    else:
+        g.a.bytes([49, 255])
+    g.a.bytes([184, 60, 0, 0, 0, 15, 5])
+    append(g.a.fn_names, "__print_int")
+    append(g.a.fn_starts, g.a.here())
+    g.a.bytes(rt_print_int())
+    append(g.a.fn_names, "__print_str")
+    append(g.a.fn_starts, g.a.here())
+    g.a.bytes(rt_print_str())
+    for f2 in prog.fns:
+        native_emit_fn(g, f2)
+    // resolve jumps, calls and data references
+    k = 0
+    while k < len(g.a.jump_pos):
+        name = g.a.jump_name[k]
+        if not g.a.labels.has(name):
+            return false
+        g.a.patch32(g.a.jump_pos[k], (g.a.labels.get(name) - 1) - (g.a.jump_pos[k] + 4))
+        k += 1
+    k = 0
+    while k < len(g.a.call_pos):
+        target = -1
+        j = 0
+        while j < len(g.a.fn_names):
+            if g.a.fn_names[j] == g.a.call_name[k]:
+                target = g.a.fn_starts[j]
+            j += 1
+        if target < 0:
+            return false
+        g.a.patch32(g.a.call_pos[k], target - (g.a.call_pos[k] + 4))
+        k += 1
+    k = 0
+    while k < len(g.a.data_fix_pos):
+        g.a.patch32(g.a.data_fix_pos[k], len(g.a.code) + g.a.data_fix_off[k] - g.a.data_fix_pos[k] - 4)
+        k += 1
+    image = elf_image(g.a, meta)
+    tmp = out_path + ".b64"
+    if not write_file(tmp, b64_of_bytes(image)):
+        return false
+    ok = sys.sh("base64 -d < " + sys.quote(tmp) + " > " + sys.quote(out_path)) == 0
+    sys.sh("rm -f " + sys.quote(tmp))
+    if ok:
+        sys.sh("chmod +x " + sys.quote(out_path))
+    return ok

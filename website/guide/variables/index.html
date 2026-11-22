@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variables and types — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a class="cur" href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="variables-types-and-conversions">Variables, types and conversions</h1>
+<p>A variable is created by assigning to it. Its type is inferred and <strong>cannot change</strong>; names live in the function that
+creates them.</p>
+<pre class="code"><code>count = <span class="n">0</span>            <span class="c">// int</span>
+price = <span class="n">9.5</span>          <span class="c">// float</span>
+ready = <span class="k">true</span>         <span class="c">// bool</span>
+name = <span class="s">&quot;Kite&quot;</span>        <span class="c">// string</span>
+</code></pre>
+<p>Annotate when you want to be explicit (or for <code>null</code>):</p>
+<pre class="code"><code>total: <span class="t">int</span> = <span class="n">0</span>
+p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k">null</span>
+</code></pre>
+<h2 id="the-types">The types</h2>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>examples</th>
+<th>notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>42</code>, <code>-7</code>, <code>0</code></td>
+<td>64-bit signed</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>3.14</code>, <code>0.5</code></td>
+<td>64-bit</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>"hi"</code>, <code>"line\n"</code></td>
+<td>bytes; <code>\n \t \r \0 \e \\ \" \x41</code> escapes</td>
+</tr>
+<tr>
+<td><code>[T]</code></td>
+<td><code>[1, 2, 3]</code></td>
+<td>list, see <a href="/guide/collections/">Collections</a></td>
+</tr>
+<tr>
+<td><code>(A, B)</code></td>
+<td><code>(1, "a")</code></td>
+<td>tuple of scalars</td>
+</tr>
+<tr>
+<td><code>{"k": T}</code></td>
+<td><code>{"a": 1}</code></td>
+<td>dictionary with literal keys</td>
+</tr>
+<tr>
+<td><code>ptr&lt;T&gt;</code></td>
+<td><code>alloc(int)</code></td>
+<td>pointer, see <a href="/guide/memory/">Memory</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="operators">Operators</h2>
+<p><code>+ - * / %</code> on numbers (<code>+</code> also joins strings), <code>== != &lt; &gt; &lt;= &gt;=</code>, <code>and or not</code>, bit operators <code>&amp; | ^ ~ &lt;&lt; &gt;&gt;</code>.
+Compound assignment: <code>x += 1</code>, <code>x -= 1</code>, ... and the readable <code>x.incr()</code> / <code>x.decr()</code> for <code>+1</code> / <code>-1</code>
+(also on fields and list items: <code>self.count.incr()</code>, <code>items[2].decr()</code>).</p>
+<h2 id="converting">Converting</h2>
+<table>
+<thead>
+<tr>
+<th>from</th>
+<th>to</th>
+<th>how</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>anything printable</td>
+<td><code>string</code></td>
+<td><code>str(x)</code> or an f-string</td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>int</code></td>
+<td><code>to_int("42")</code></td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td><code>float</code></td>
+<td><code>float_of(3)</code></td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>int</code></td>
+<td><code>int_of(2.9)</code> (truncates)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="building-strings">Building strings</h2>
+<p>Use <strong>f-strings</strong> instead of long <code>+</code> chains:</p>
+<pre class="code"><code>name = <span class="s">&quot;Kite&quot;</span>
+n = len(name)
+print(<span class="s">f&quot;{name} has {n} letters&quot;</span>)      <span class="c">// Kite has 4 letters</span>
+</code></pre>
+<p>Any expression without quotes fits in <code>{ }</code>; for anything else compute it first.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/first-project/">← Your first project</a><a class="next" href="/guide/control-flow/">Control flow →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

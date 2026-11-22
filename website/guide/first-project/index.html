@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your first project — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a class="cur" href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="your-first-project">Your first project</h1>
+<pre class="code"><code>kite init hello
+cd hello
+kite run
+</code></pre>
+<p><code>kite init</code> creates:</p>
+<table>
+<thead>
+<tr>
+<th>file</th>
+<th>purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kite.toml</code></td>
+<td>the manifest: name, version, description, authors, license, dependencies</td>
+</tr>
+<tr>
+<td><code>src/main.ki</code></td>
+<td>the program: a <code>make main():</code> function</td>
+</tr>
+<tr>
+<td><code>.gitignore</code></td>
+<td>ignores <code>target/</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>src/main.ki</code>:</p>
+<pre class="code"><code><span class="k">make</span> main():
+    print(<span class="s">&quot;Hello, Kite!&quot;</span>)
+</code></pre>
+<h2 id="the-commands-you-will-use-every-day">The commands you will use every day</h2>
+<table>
+<thead>
+<tr>
+<th>command</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kite run</code></td>
+<td>build (if needed) and run</td>
+</tr>
+<tr>
+<td><code>kite build [--release]</code></td>
+<td>compile to <code>target/debug/&lt;name&gt;</code> or <code>target/release/&lt;name&gt;</code> (<code>--release</code> optimises)</td>
+</tr>
+<tr>
+<td><code>kite check</code></td>
+<td>type-check only (fast)</td>
+</tr>
+<tr>
+<td><code>kite test</code></td>
+<td>build and run every <code>tests/*.ki</code></td>
+</tr>
+<tr>
+<td><code>kite fmt [--check]</code></td>
+<td>normalise whitespace</td>
+</tr>
+<tr>
+<td><code>kite doc</code></td>
+<td>write <code>target/doc/&lt;name&gt;.md</code> from your <code>//</code> comments</td>
+</tr>
+<tr>
+<td><code>kite clean</code></td>
+<td>remove <code>target/</code></td>
+</tr>
+</tbody>
+</table>
+<p>When nothing changed kite prints <code>Fresh</code> and skips the compiler: the build is cached by a fingerprint of your sources,
+your pieces and the compiler version.</p>
+<h2 id="package-metadata-in-your-program">Package metadata in your program</h2>
+<p><code>kite.toml</code> can describe the package, and the program can read it:</p>
+<pre class="code"><code>[package]
+name = <span class="s">&quot;hello&quot;</span>
+version = <span class="s">&quot;0.1.0&quot;</span>
+description = <span class="s">&quot;My first Kite program&quot;</span>
+authors = [<span class="s">&quot;Ada &lt;ada@example.com&gt;&quot;</span>]
+license = <span class="s">&quot;MIT&quot;</span>
+</code></pre>
+<pre class="code"><code><span class="k">make</span> main():
+    print(<span class="s">f&quot;{pkg_name()} {pkg_version()} by {pkg_authors()}&quot;</span>)
+</code></pre>
+<p>Every binary also carries a signature (<code>kite inspect target/debug/hello</code> shows the package, the compiler and the build).</p>
+</article>
+<footer class="pager"><a class="prev" href="/installation/">← Installation</a><a class="next" href="/guide/variables/">Variables and types →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory model — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a class="cur" href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="memory">Memory</h1>
+<p><strong>The short version, for everyday code:</strong> you don't manage memory in
+Kite. There's no <code>malloc</code>/<code>free</code>, no <code>new</code>/<code>delete</code>, no manual
+lifetimes to think about. Write your program, and values live exactly
+as long as they need to:</p>
+<pre class="code"><code><span class="k">make</span> main():
+    name = <span class="s">&quot;Kite&quot;</span>
+    greeting = <span class="s">&quot;Hello, &quot;</span> + name + <span class="s">&quot;!&quot;</span>
+    print(greeting)
+</code></pre>
+<p>Nothing here needs cleanup code. That's true for numbers, strings,
+lists, and structs alike -- if you're new to programming, or coming
+from a language that made you think about this constantly, you can
+stop reading here and go write Kite code.</p>
+<p>The rest of this document is for people who want to know what's
+actually happening underneath -- either out of curiosity, or because
+they're writing something performance-sensitive or are working on the
+compiler itself.</p>
+<h2 id="what-you-dont-manage-it-actually-means-today">What "you don't manage it" actually means today</h2>
+<p>Kite 0.3 does <strong>not</strong> have a garbage collector. What it has instead
+is simpler and worth understanding honestly:</p>
+<ul>
+<li>Numbers (<code>int</code>, <code>float</code>), <code>bool</code>, and struct instances live on the
+  <strong>stack</strong> -- ordinary local variables, freed automatically the
+  moment the function they belong to returns. This is the fastest
+  possible case and it's what most of a typical program's data uses.</li>
+<li>Strings and lists live on the <strong>heap</strong> (<code>malloc</code>'d), because their
+  size isn't known until runtime and/or they need to outlive the exact
+  statement that created them (e.g. <code>substr(...)</code>, <code>a + b</code> on two
+  strings, <code>append(list, x)</code> growing past its capacity).</li>
+<li>Heap memory from strings/lists is <strong>not automatically freed</strong>. A
+  Kite program leaks every string and list it ever allocates, for the
+  process's entire lifetime, with one narrow exception: when a list
+  outgrows its current buffer and gets reallocated, the <em>old</em> buffer
+  is <code>free</code>'d right after copying (see <code>emit_list_append</code> in
+  <code>archive/rust-stage0/src/codegen.rs</code>) -- otherwise nothing is ever freed.</li>
+</ul>
+<p>For a short-lived CLI tool, script, or anything that processes a
+bounded amount of data and exits, this genuinely doesn't matter -- the
+OS reclaims everything when the process ends, same as it would after
+an explicit <code>free</code> right before <code>exit</code>. It matters for a long-running
+program (a server, a daemon) that keeps allocating in a loop forever:
+that will keep growing its memory usage without bound. If you're
+writing something like that today, that's the one thing to be aware
+of. A real garbage collector (or some other reclamation strategy) is
+future work, not something Kite has yet.</p>
+<h2 id="why-this-is-a-reasonable-place-to-start">Why this is a reasonable place to start</h2>
+<p>Manual <code>free</code>-every-allocation is exactly the class of bug (double
+free, use-after-free, forgetting to free) that trips up beginners in
+languages that require it, and a full tracing garbage collector or a
+borrow-checker-style ownership system are both substantial compiler
+features on their own. "Allocate, never free" is the simplest
+correct-for-short-programs starting point -- it can never crash from a
+memory bug, it just isn't suitable yet for something that needs to run
+forever. Kite chose to ship that honestly rather than pretend a real
+GC already exists.</p>
+<h2 id="the-low-level-view-for-advanced-use">The low-level view, for advanced use</h2>
+<p>Everything above describes memory Kite manages <em>for</em> you (strings,
+lists, structs). For memory you manage yourself -- real addresses,
+<code>alloc</code>/<code>free</code>, pointer arithmetic -- see
+<a href="pointers.md"><code>docs/pointers.md</code></a>; this section is about how Kite's
+own automatic allocations work under the hood, not about that layer.</p>
+<p>If you want to see exactly what a piece of Kite code turns into: <code>kite
+build</code> always writes the generated LLVM IR to a <code>.ll</code> file next to
+your output (see the message <code>kite build</code> prints on failure, or just
+look at <code>target/</code> after a successful build) -- reading that is the
+most precise answer to "what does this actually do in memory" for any
+specific program.</p>
+<p>A few concrete facts, if you'd rather not read IR:</p>
+<ul>
+<li><strong>Layout.</strong> A list is a 3-word header -- <code>{ i64 length, i64
+  capacity, T* data }</code> -- plus a separately-<code>malloc</code>'d buffer of <code>T</code>
+  for the elements. A struct is a plain LLVM struct type with one
+  field per declared field, in declaration order, with no hidden
+  padding logic beyond what LLVM's default struct layout already does
+  for the target.</li>
+<li><strong>Strings are <code>i8*</code></strong> -- a plain null-terminated C string pointer,
+  the same representation C uses. This is exactly why Kite can hand a
+  <code>string</code> straight to an <code>extern</code> C function (see
+  <code>docs/c-interop.md</code>) with no conversion step.</li>
+<li><strong>0-based indexing, everywhere</strong> -- lists, <code>char_at</code>, <code>substr</code>
+  (<code>substr(s, start, end)</code> is half-open). Every access is bounds-checked.</li>
+<li><strong>Lists of structs and struct fields that are lists</strong> are stored inline;
+  element size comes from LLVM's <code>sizeof</code>, so any element type works.</li>
+<li><strong>List growth doubles capacity</strong> once the current buffer is full
+  (see <code>emit_list_append</code> in <code>archive/rust-stage0/src/codegen.rs</code> for the exact growth
+  check and the <code>realloc</code>-by-hand-via-<code>malloc</code>+copy+<code>free</code> sequence).</li>
+<li><strong>Every heap allocation goes through plain <code>malloc</code>/<code>free</code></strong> (<code>i8*
+  @malloc(i64)</code> / <code>void @free(i8*)</code>, declared at the top of every
+  generated <code>.ll</code> file) -- there's no custom allocator, arena, or
+  bump-allocator underneath it in Kite 0.3.</li>
+<li><strong><code>--freestanding</code> builds</strong> (see <code>docs/architecture.md</code>) still emit
+  the same <code>malloc</code>/<code>free</code> calls for strings/lists -- they're your
+  responsibility to provide symbols for, exactly like every other
+  libc function a freestanding build references, since there's no
+  hosted C runtime to supply them.</li>
+</ul>
+<p>None of this is something you need to hold in your head to write
+ordinary Kite programs -- it's here for the moment you do need it.</p>
+</article>
+<footer class="pager"><a class="prev" href="/reference/c-interop/">← Calling C</a><a class="next" href="/reference/editors/">Editors →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

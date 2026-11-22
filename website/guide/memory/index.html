@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory, pointers and threads — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a class="cur" href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="memory-pointers-and-threads">Memory, pointers and threads</h1>
+<h2 id="pointers">Pointers</h2>
+<pre class="code"><code>p = <span class="k">alloc</span>(<span class="t">int</span>)            <span class="c">// one int on the heap, zeroed</span>
+*p = <span class="n">42</span>                   <span class="c">// write through the pointer</span>
+print(*p)
+<span class="k">free</span>(p)
+
+buf = <span class="k">alloc_n</span>(<span class="t">int</span>, <span class="n">8</span>)     <span class="c">// eight ints</span>
+buf[<span class="n">0</span>] = <span class="n">7</span>                <span class="c">// p[i] ...</span>
+*(buf + <span class="n">1</span>) = <span class="n">8</span>            <span class="c">// ... or pointer arithmetic</span>
+buf = realloc_n(buf, <span class="n">16</span>)  <span class="c">// resize (keeps the contents)</span>
+zero_n(buf, <span class="n">16</span>)           <span class="c">// clear</span>
+copy_n(dst, src, <span class="n">8</span>)       <span class="c">// copy 8 elements</span>
+<span class="k">free</span>(buf)
+</code></pre>
+<p><code>&amp;x</code> takes the address of a local scalar. <code>null</code> is the empty pointer (<code>p == null</code>). <code>ptr_to_int(p)</code> and <code>int_to_ptr(n)</code>
+convert between a pointer and its address.</p>
+<h2 id="threads">Threads</h2>
+<pre class="code"><code><span class="k">make</span> worker(id: <span class="t">int</span>):
+    print(<span class="s">f&quot;worker {id}&quot;</span>)
+
+<span class="k">make</span> main():
+    h = spawn(worker, <span class="n">1</span>)      <span class="c">// runs worker(1) on a new thread</span>
+    thread_join(h)
+</code></pre>
+<p>Share data by passing <code>ptr_to_int(block)</code> and rebuilding the pointer in the thread; protect it with the <code>threads</code> piece
+(<code>mutex_new</code>, <code>mutex_lock</code>, <code>atomic_add</code>, ...).</p>
+<h2 id="talking-to-c">Talking to C</h2>
+<p>Declare a C function and call it:</p>
+<pre class="code"><code><span class="k">extern</span> <span class="k">make</span> abs(n: <span class="t">int</span>) -&gt; <span class="t">int</span>
+</code></pre>
+<p>Parameters and results may be <code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code> and <code>ptr&lt;T&gt;</code>. Build with <code>--link lib.a</code> to add objects.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/pieces/">← Pieces (packages)</a><a class="next" href="/guide/style/">Writing readable Kite →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

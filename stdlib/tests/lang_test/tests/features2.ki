@@ -1,0 +1,53 @@
+use std.test
+
+type Job:
+    thread: int
+    to: int
+
+class Counter:
+    n: int
+    make init(self, n: int):
+        self.n = n
+    make bump(self):
+        self.n += 1
+
+make double(x: int) -> int:
+    return x * 2
+
+make add(x: int, y: int) -> int:
+    return x + y
+
+make main():
+    t = test_new("language features 2")
+    // .incr() / .decr()
+    i = 5
+    i.incr()
+    i.incr()
+    i.decr()
+    test_eq_int(t, "incr/decr", i, 6)
+    // uniform call syntax: value.f(args) == f(value, args)
+    n = 7
+    test_eq_int(t, "ufcs", n.double(), 14)
+    test_eq_int(t, "ufcs args", n.add(3), 10)
+    // method chains on continuation lines
+    r = n
+        .double()
+        .double()
+        .add(1)
+    test_eq_int(t, "chain", r, 29)
+    // a class method is still a method call
+    c = Counter(1)
+    c.bump()
+    test_eq_int(t, "class method", c.n, 2)
+    // f-strings
+    name = "kite"
+    test_eq_str(t, "fstring", f"{name}-{n + 1}", "kite-8")
+    // reserved words as field names
+    j = Job()
+    j.thread = 9
+    j.to = 2
+    test_eq_int(t, "keyword fields", j.thread + j.to, 11)
+    // escapes
+    test_eq_int(t, "cr escape", char_at("\r", 0), 13)
+    test_eq_int(t, "nul escape", char_at("\0", 0), 0)
+    exit(test_finish(t))

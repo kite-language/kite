@@ -281,7 +281,7 @@ fn find_registry(src_root: &Path) -> Option<PathBuf> {
 }
 
 fn version_key(v: &str) -> Vec<u64> {
-    v.split(|c| c == '.' || c == '-')
+    v.split(['.', '-'])
         .map(|p| p.parse().unwrap_or(0))
         .collect()
 }
@@ -301,7 +301,11 @@ fn std_piece_file(src_root: &Path, module: &str) -> Option<PathBuf> {
             continue;
         }
         let key = version_key(&e.file_name().to_string_lossy());
-        if best.as_ref().map_or(true, |(b, _)| key > *b) {
+        let better = match &best {
+            None => true,
+            Some((b, _)) => key > *b,
+        };
+        if better {
             best = Some((key, e.path()));
         }
     }

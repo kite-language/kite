@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language reference — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a class="cur" href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="kite-language-reference-03">Kite language reference (0.3)</h1>
+<p>Kite reads like Python, compiles through LLVM to C-class machine code and
+keeps a minimum of Rust-style safety (bounds-checked lists, typed pointers).</p>
+<h2 id="basics">Basics</h2>
+<ul>
+<li>Blocks are indented. Comments start with <code>//</code>.</li>
+<li>Everything is 0-based: lists, <code>char_at</code>, <code>substr(s, start, end)</code> (end exclusive),
+  <code>arg(0)</code> is the first command-line argument.</li>
+<li>Loops: <code>while cond:</code> / <code>until cond:</code> (stop when true) / <code>for x in xs:</code> /
+  <code>for i = a to b:</code> (end exclusive) / <code>infinit:</code>.</li>
+<li>Operators: <code>+ - * / %</code>, comparisons (also on strings), <code>and or not</code>,
+  bit ops <code>&amp; | ^ &lt;&lt; &gt;&gt; ~</code>, and <strong>every compound form</strong>: <code>+= -= *= /= %= &amp;= |= ^= &lt;&lt;= &gt;&gt;=</code>.</li>
+</ul>
+<h2 id="strings">Strings</h2>
+<ul>
+<li>f-strings: <code>f"hello {name}, {n + 1} {{literal braces}}"</code>.</li>
+<li><code>str(x)</code> converts <code>int</code>/<code>float</code>/<code>bool</code>; <code>+</code> concatenates.</li>
+<li>Prelude helpers (compiled in only when used): <code>split join find trim
+  starts_with ends_with contains_str replace_all repeat chr to_int is_space
+  is_alpha is_digit is_alnum min max abs</code>.</li>
+</ul>
+<h2 id="functions">Functions</h2>
+<ul>
+<li>Defaults, named arguments, variadics:
+  <code>make f(a: int, b: int = 2, *rest: int)</code>, <code>f(1, b=5)</code>.</li>
+<li>Any value can be passed and returned: lists, tuples, structs, classes.
+  Aggregates are passed by reference (callee mutations are visible), unless
+  the callee reassigns the parameter name (then it works on a copy).</li>
+<li>Types in signatures: <code>int float bool string [T] (A, B) ptr&lt;T&gt; StructName</code>.</li>
+<li>Tuple unpacking: <code>a, b = pair()</code>.</li>
+</ul>
+<h2 id="collections">Collections</h2>
+<ul>
+<li>Lists of scalars, strings, structs: <code>append pop remove(xs, i) insert(xs, i, v) clear len</code>.</li>
+<li>Typed empty list: <code>xs: [Tok] = []</code>.</li>
+<li>Structs can hold lists and other structs; <code>obj.items</code> aliases the real field,
+  <code>append(obj.items, x)</code> mutates it.</li>
+<li>Hash maps: <code>m = StrMap_int()</code> (string keys; <code>StrMap_string</code>, <code>StrMap_float</code>,
+  <code>StrMap_bool</code>, or <code>StrMap_&lt;YourStruct&gt;</code>): <code>m.set(k, v)</code>, <code>m.get(k)</code>, <code>m.has(k)</code>,
+  <code>m.size()</code>, <code>m.keys</code> (insertion order).</li>
+</ul>
+<h2 id="classes">Classes</h2>
+<pre class="code"><code><span class="k">class</span> Animal:
+    name: <span class="t">string</span>
+    <span class="k">make</span> init(self, name: <span class="t">string</span>):
+        self.name = name
+    <span class="k">make</span> speak(self) -&gt; <span class="t">string</span>:
+        <span class="k">return</span> <span class="s">&quot;...&quot;</span>
+
+<span class="k">class</span> Dog(Animal):
+    <span class="k">make</span> speak(self) -&gt; <span class="t">string</span>:
+        <span class="k">return</span> <span class="s">&quot;woof&quot;</span>
+</code></pre>
+<ul>
+<li><code>Dog("Rex")</code> calls <code>init</code>; <code>Animal.init(self, name)</code> calls the base version.</li>
+<li>Single inheritance; methods overridden in subclasses are dispatched
+  dynamically (hidden class tag), so <code>a.speak()</code> on an <code>Animal</code> parameter that
+  holds a <code>Dog</code> calls <code>Dog.speak</code>. A <code>Dog</code> can be passed where an <code>Animal</code> is expected.</li>
+<li>The receiver's class is inferred from assignments, annotated parameters and
+  function return types.</li>
+</ul>
+<h2 id="data-enums-and-match">Data enums and <code>match</code></h2>
+<pre class="code"><code><span class="k">enum</span> Expr:
+    Num(v: <span class="t">int</span>)
+    Add(l: <span class="t">ptr</span>&lt;Expr&gt;, r: <span class="t">ptr</span>&lt;Expr&gt;)
+    Nil
+
+<span class="k">match</span> x:
+    <span class="k">case</span> Num(v):
+        ...
+    <span class="k">case</span> Add(l, r):
+        ...
+    <span class="k">else</span>:
+        ...
+</code></pre>
+<p>Construct with <code>Expr.Num(3)</code>. Plain enums (<code>enum Color: Red, Green</code>) stay integer tags.</p>
+<h2 id="pointers-and-null">Pointers and <code>null</code></h2>
+<ul>
+<li><code>p = alloc(T)</code>, <code>*p = value</code>, <code>v = *p</code>, <code>p.field</code> / <code>p.field = x</code> (auto-deref).</li>
+<li><code>null</code> takes its type from context (assignment target, argument, return type).</li>
+<li>Recursive data = data enums / structs holding <code>ptr&lt;Self&gt;</code>.</li>
+</ul>
+<h2 id="not-in-02">Not in 0.2</h2>
+<p><code>**kwargs</code>, generic user types, struct value-copy-vs-alias parity with Python for <code>b = a</code>,
+dict literals with keys added at run time (use <code>StrMap_T</code>), map key deletion.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/style/">← Writing readable Kite</a><a class="next" href="/reference/builtins/">Built-in functions →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

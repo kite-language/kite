@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Functions and constants — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a class="cur" href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="functions-and-constants">Functions and constants</h1>
+<pre class="code"><code><span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> w * h
+
+<span class="k">make</span> greet(name: <span class="t">string</span>):          <span class="c">// no `-&gt;`: returns nothing</span>
+    print(<span class="s">f&quot;Hello, {name}!&quot;</span>)
+</code></pre>
+<ul>
+<li>Parameters are typed; the return type may be omitted and is then inferred from the first <code>return</code>.</li>
+<li>Recursive and mutually recursive functions need an explicit <code>-&gt; Type</code>.</li>
+<li>Defaults and named arguments: <code>make connect(host: string, port: int = 80)</code> is called as <code>connect("a")</code> or
+  <code>connect("a", port = 8080)</code>.</li>
+<li><code>*items: int</code> collects extra arguments into a list <code>items</code> of that element type (<code>total(1, 2, 3)</code>).</li>
+<li>Return several values with a tuple: <code>return (1, "one")</code>, receive them with <code>n, word = pair()</code>.</li>
+</ul>
+<h2 id="constants">Constants</h2>
+<pre class="code"><code><span class="k">const</span> LIMIT = <span class="n">100</span>
+<span class="k">const</span> GREETING: <span class="t">string</span> = <span class="s">&quot;hello&quot;</span>
+</code></pre>
+<p>A constant is read like a variable and cannot be assigned. (Internally it is a zero-argument function, so it can be any
+expression.)</p>
+<h2 id="calling-functions">Calling functions</h2>
+<p>Three equivalent spellings; use whichever reads best:</p>
+<pre class="code"><code>len(text)           <span class="c">// plain call</span>
+text.len()          <span class="c">// uniform call syntax: value.f(args) is f(value, args)</span>
+</code></pre>
+<p>Uniform call syntax makes chains read left to right, and chains may continue on the next line:</p>
+<pre class="code"><code>words = <span class="s">&quot;  one, two ,three  &quot;</span>
+    .trim()
+    .split(<span class="s">&quot;,&quot;</span>)
+</code></pre>
+<p>It applies to any value that is not a class instance (class methods keep their own meaning).</p>
+<h2 id="documentation-comments">Documentation comments</h2>
+<p><code>//</code> comments directly above a function, type or class are collected by <code>kite doc</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/control-flow/">← Control flow</a><a class="next" href="/guide/collections/">Collections →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

@@ -25,3 +25,40 @@ make _start():
 ```
 Memory primitives (`alloc`, strings, lists) need a libc: in a kernel provide `malloc`, `free`, `memcpy`, `memmove`,
 `strlen`, `strcmp`, `snprintf`, `realloc` yourself (extern C or Kite), or stay with integers and pointer arithmetic.
+
+## Freestanding builds and the built-in runtime (0.4.4)
+
+`kite build --freestanding` (an object file) and every bare-metal target produce a module that declares and defines
+**only what the program uses**: no `argc`/`argv`, no format strings, no libc declarations.
+
+Generated code still needs `malloc`, `memcpy`, `strlen`... for lists, strings and structs. For code with no libc at all,
+add the **core runtime**: `--runtime core` (the default for bare-metal targets) or `[build] runtime = "core"`:
+
+| function | behaviour |
+|----------|-----------|
+| `malloc`, `realloc` | bump allocator over a static heap (`--heap-size`, default 1 MiB); returns `null` when full |
+| `free` | does nothing (the heap is never reused) |
+| `memcpy`, `memmove`, `memset`, `memcmp`, `strlen`, `strcmp` | plain loops |
+| `printf` | does nothing (a kernel prints through its own device code) |
+| `exit` | halts in a loop (also what a failed list bounds check ends in) |
+
+```
+// kernel: no libc, entry point _start, writes "kite-boot" to the VGA text buffer
+make _start():
+    vga = int_to_ptr(753664)                 // 0xB8000
+    names = ["kite", "os"]
+    append(names, "boot")
+    msg = names[0] + "-" + names[2]
+    i = 0
+    while i < len(msg):
+        cell = vga + i
+        *cell = char_at(msg, i) + 3840
+        i.incr()
+```
+
+```
+kite target add x86_64-unknown-none
+kite build --target x86_64-unknown-none      # target/x86_64-unknown-none/debug/<name>.elf, no undefined symbols
+```
+
+To provide your own allocator instead, build with `--runtime none` and define `malloc`, `free`, ... as C functions.

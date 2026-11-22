@@ -468,11 +468,20 @@ class Lexer:
                     tk.span = span_new(start_pos, self.pos, start_line, start_col)
                     append(tokens, tk)
             if len(tokens) > 0:
-                rl = RawLine()
-                rl.indent = indent
-                rl.indent_chars = indent_chars
-                rl.tokens = tokens
-                append(self.lines, rl)
+                // A line that starts with `.name` continues the previous line (method chains):
+                //     text
+                //         .trim()
+                //         .split(",")
+                if tokens[0].kind == "Dot" and len(tokens) >= 2 and len(self.lines) > 0:
+                    last = len(self.lines) - 1
+                    for ct in tokens:
+                        append(self.lines[last].tokens, ct)
+                else:
+                    rl = RawLine()
+                    rl.indent = indent
+                    rl.indent_chars = indent_chars
+                    rl.tokens = tokens
+                    append(self.lines, rl)
 
     make apply_layout(self) -> [Token]:
         out: [Token] = []

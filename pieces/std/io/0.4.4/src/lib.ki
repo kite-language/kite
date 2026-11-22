@@ -1,0 +1,30 @@
+// io -- reading standard input (all at once) and printing helpers.
+
+use std.sys
+
+make io_println(s: string):
+    print(s)
+
+make io_eprintln(s: string):
+    sys_eprint_line(s)
+
+// Everything on standard input.
+make io_read_all() -> string:
+    return read_file("/dev/stdin")
+
+make io_read_lines() -> [string]:
+    out: [string] = []
+    for l in split(io_read_all(), "\n"):
+        t = l
+        if ends_with(t, chr(13)):
+            t = substr(t, 0, len(t) - 1)
+        append(out, t)
+    if len(out) > 0 and len(out[len(out) - 1]) == 0:
+        pop(out)
+    return out
+
+make io_read_line() -> string:
+    lines = io_read_lines()
+    if len(lines) == 0:
+        return ""
+    return lines[0]

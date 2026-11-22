@@ -93,9 +93,10 @@ make normalized_executable_path(p: string, target: string) -> string:
 
 // Writes the LLVM IR next to the output and runs clang. `kind`: "exe", "obj" (hosted lib) or
 // "bare" (freestanding object).
-make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string]) -> string:
+// `meta`: build signature record kept in the binary; `heap`: >0 links the built-in freestanding runtime.
+make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string], meta: string, heap: int) -> string:
     freestanding = kind != "exe"
-    llvm = emit_module(prog, target, freestanding)
+    llvm = emit_module(prog, target, freestanding, meta, heap)
     out_path = output
     if kind == "exe":
         out_path = normalized_executable_path(output, target)
@@ -105,12 +106,12 @@ make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string,
     ir_path = path.with_extension(out_path, "ll")
     if not write_file(ir_path, llvm):
         die("failed to write LLVM IR to " + ir_path)
-    cmd = "clang " + sys.quote(ir_path) + " -O" + str(opt_level)
+    cmd = f"clang {sys.quote(ir_path)} -O{str(opt_level)}"
     if kind == "exe":
-        cmd = cmd + " -o " + sys.quote(out_path) + " -Wno-override-module"
+        cmd = cmd + f" -o {sys.quote(out_path)} -Wno-override-module"
         for e in extra:
             if not fs.is_file(e):
-                die("--link input `" + e + "` does not exist")
+                die(f"--link input `{e}` does not exist")
             cmd = cmd + " " + sys.quote(e)
         if is_windows_target(target):
             // printf and friends are inline in the UCRT headers: link the legacy stubs
@@ -120,12 +121,12 @@ make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string,
         if static_link:
             cmd = cmd + " -static"
     else:
-        cmd = cmd + " -c -o " + sys.quote(out_path) + " -Wno-override-module"
+        cmd = cmd + f" -c -o {sys.quote(out_path)} -Wno-override-module"
         if kind == "bare":
             cmd = cmd + " -ffreestanding -fno-builtin"
     if len(target) > 0:
         cmd = cmd + " --target=" + sys.quote(target)
     code = sys.sh(cmd)
     if code != 0:
-        die("clang failed to compile the generated LLVM IR (see " + ir_path + " for the generated IR)")
+        die(f"clang failed to compile the generated LLVM IR (see {ir_path} for the generated IR)")
     return out_path

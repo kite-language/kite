@@ -122,8 +122,37 @@ pub fn emit_module(program: &IrProgram, options: &CodegenOptions) -> String {
         out.push('\n');
     }
 
+    // On Windows `timespec_get` is an inline function of the UCRT headers, not a library symbol: provide it
+    // (through kernel32) for programs that declare it, e.g. through `std.time`.
+    let windows = options
+        .target_triple
+        .as_deref()
+        .map_or(cfg!(windows), |t| t.contains("windows"));
+    if windows && program.externs.iter().any(|e| e.name == "timespec_get") {
+        out.push_str(WINDOWS_TIMESPEC_SHIM);
+    }
+
     out
 }
+
+/// LLVM IR for `int timespec_get(struct timespec *ts, int base)` on Windows (UTC wall clock, nanoseconds).
+const WINDOWS_TIMESPEC_SHIM: &str = "declare void @GetSystemTimePreciseAsFileTime(i64*)
+
+define i32 @timespec_get(i64* %ts, i32 %base) {
+entry:
+  %ft = alloca i64
+  call void @GetSystemTimePreciseAsFileTime(i64* %ft)
+  %t = load i64, i64* %ft
+  %unix100 = sub i64 %t, 116444736000000000
+  %sec = sdiv i64 %unix100, 10000000
+  %rem = srem i64 %unix100, 10000000
+  %nsec = mul i64 %rem, 100
+  store i64 %sec, i64* %ts
+  %p = getelementptr i64, i64* %ts, i64 1
+  store i64 %nsec, i64* %p
+  ret i32 1
+}
+";
 
 #[derive(Default)]
 struct ModuleCtx {

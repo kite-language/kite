@@ -16,7 +16,7 @@ make status(label: string, rest: string):
     print(status_label(label, "green") + " " + rest)
 
 make die(msg: string):
-    sys.eprint(term.paint_if("1;31", "error:", term.is_tty_fd(2)) + " " + msg + "\n")
+    sys.eprint(term.paint_if("1;31", "error:", term.is_tty_fd(2)) + f" {msg}\n")
     exit(1)
 
 make green_bold(s: string) -> string:

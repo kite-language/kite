@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Built-in functions — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a class="cur" href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="built-in-functions">Built-in functions</h1>
+<p>Always available, no import. Indexes are <strong>0-based</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>print(x)</code></td>
+<td>prints one value and a newline (<code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>)</td>
+</tr>
+<tr>
+<td><code>str(x)</code></td>
+<td><code>int</code>/<code>float</code>/<code>bool</code> → <code>string</code> (f-strings use it: <code>f"n={n}"</code>)</td>
+</tr>
+<tr>
+<td><code>len(x)</code></td>
+<td>length of a <code>string</code> or a list</td>
+</tr>
+<tr>
+<td><code>append(xs, v)</code></td>
+<td>adds <code>v</code> at the end of list <code>xs</code></td>
+</tr>
+<tr>
+<td><code>pop(xs)</code></td>
+<td>removes and returns the last element</td>
+</tr>
+<tr>
+<td><code>remove(xs, i)</code></td>
+<td>removes and returns element <code>i</code></td>
+</tr>
+<tr>
+<td><code>insert(xs, i, v)</code></td>
+<td>inserts <code>v</code> at index <code>i</code></td>
+</tr>
+<tr>
+<td><code>clear(xs)</code></td>
+<td>empties the list</td>
+</tr>
+<tr>
+<td><code>char_at(s, i)</code></td>
+<td>byte value of the character at <code>i</code></td>
+</tr>
+<tr>
+<td><code>substr(s, start, end)</code></td>
+<td>characters <code>start</code> … <code>end-1</code></td>
+</tr>
+<tr>
+<td><code>read_file(path)</code> / <code>write_file(path, text)</code></td>
+<td>whole-file I/O</td>
+</tr>
+<tr>
+<td><code>arg(i)</code> / <code>arg_count()</code></td>
+<td>command-line arguments (<code>arg(0)</code> is the first one after the program)</td>
+</tr>
+<tr>
+<td><code>alloc(T)</code> / <code>alloc_n(T, n)</code> / <code>free(p)</code></td>
+<td>heap memory, see <code>pointers.md</code></td>
+</tr>
+<tr>
+<td><code>exit(code)</code></td>
+<td>ends the program</td>
+</tr>
+</tbody>
+</table>
+<p>Out-of-range indexes stop the program with a message (no undefined behaviour).</p>
+<h2 id="prelude-written-in-kite-compiled-in-only-when-used">Prelude (written in Kite, compiled in only when used)</h2>
+<p><code>split</code>, <code>join</code>, <code>find</code>, <code>trim</code>, <code>starts_with</code>, <code>ends_with</code>, <code>contains_str</code>, <code>replace_all</code>, <code>repeat</code>, <code>chr</code>,
+<code>to_int</code>, <code>is_space</code>, <code>is_alpha</code>, <code>is_digit</code>, <code>is_alnum</code>, <code>min</code>, <code>max</code>, <code>abs</code> and the hash maps
+<code>StrMap_int</code>, <code>StrMap_string</code>, <code>StrMap_float</code>, <code>StrMap_bool</code>, <code>StrMap_&lt;YourStruct&gt;</code>
+(<code>m.set(k, v)</code>, <code>m.get(k)</code>, <code>m.has(k)</code>, <code>m.size()</code>, <code>m.keys</code>). Sources: <code>stdlib/prelude/</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/reference/language/">← Language reference</a><a class="next" href="/reference/std-pieces/">Standard pieces →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

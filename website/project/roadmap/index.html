@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap — Kite</title>
+<link rel="icon" href="/kite-32.png">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.4</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
+<h4>Getting started</h4><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul>
+<h4>Guide</h4><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul>
+<h4>Project</h4><ul>
+<li><a class="cur" href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul>
+</aside>
+<main>
+<article>
+<h1 id="kite-roadmap">Kite roadmap</h1>
+<p>Versions are <code>0.x</code> until 1.0.0. The compiler is written in Kite and compiles itself since 0.4.0.
+"Planned" means decided but not started; dates are deliberately left open.</p>
+<h2 id="done">Done</h2>
+<table>
+<thead>
+<tr>
+<th>version</th>
+<th>what</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.4.0</td>
+<td>self-hosted compiler (stage1 = stage2 = stage3), <code>std.*</code> libraries</td>
+</tr>
+<tr>
+<td>0.4.1</td>
+<td>pieces (packages) with a <code>std/</code> and a <code>community/</code> registry, <code>piece.function()</code> calls, threads (<code>spawn</code>), memory builtins, <code>kite.toml</code> metadata (<code>pkg_*()</code>), cargo-like <code>target/</code>, <code>kite target</code> for bare-metal OS builds, <code>kite test</code> / <code>fmt</code> / <code>doc</code>, <code>const</code>, <code>bool == bool</code>, <code>p[i]</code> on pointers, <code>float_of</code> / <code>int_of</code> + <code>std.math</code>, string escapes, <code>panic</code> / <code>assert</code></td>
+</tr>
+<tr>
+<td>0.4.2</td>
+<td>the compiler's own source uses the default pieces instead of private copies; the Rust seed resolves <code>use std.&lt;piece&gt;</code>; default pieces are versioned with the language</td>
+</tr>
+<tr>
+<td>0.4.3</td>
+<td>the compiler calls pieces as <code>piece.function()</code> itself; 17 new default pieces (<code>random strings collections bits stats hex base64 crc32 url csv datetime log io glob http uuid utf8</code>) and 4 community pieces (<code>table ini progress diff</code>); reserved words allowed as member names (<code>random.string</code>, <code>glob.match</code>); portable low-level layer (no shell for environment, cwd, mkdir, clock, file tests; Windows-aware quoting); <code>build.sh</code> always rebuilds from clean caches; CI repaired (rustfmt, clippy, Windows link, macOS on the current runner)</td>
+</tr>
+<tr>
+<td>0.4.4</td>
+<td><code>.incr()</code>/<code>.decr()</code>, multi-line method chains, uniform call syntax, keyword member names, string escapes; freestanding <code>--runtime core</code> (libc-free); binary signature and <code>kite inspect</code>; experimental native x86-64 back end (<code>--backend native</code>, integer subset); Windows link and portability fixes; the guide and the new site</td>
+</tr>
+</tbody>
+</table>
+<h2 id="road-to-100">Road to 1.0.0</h2>
+<p>Each stage is ordered by how much it unlocks; version numbers are indicative. <strong>1.0.0 is declared when every
+box up to 0.9 is ticked, the whole test suite passes on Linux, macOS (Apple silicon) and Windows from the stage-3
+compiler, and the syntax and the default pieces' API are frozen.</strong></p>
+<h3 id="05-language-foundations">0.5 -- language foundations</h3>
+<ul>
+<li>[ ] <strong>Real namespaces</strong>: functions of a piece live in <code>piece::function</code>, no global prefixes, <code>use piece.{a, b}</code></li>
+<li>[ ] <strong>Generics</strong>: <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>, <code>Map&lt;K, V&gt;</code> as ordinary library code (replaces the internal <code>StrMap_&lt;T&gt;</code> template)</li>
+<li>[ ] <strong>Nested collections</strong>: lists of lists, dictionaries of lists, structs holding collections</li>
+<li>[ ] <strong>Free the reserved words</strong> for variable and function names too (member names are already free)</li>
+<li>[ ] <code>const</code> for any expression, evaluated once; compile-time constants in types (<code>[int; 8]</code>)</li>
+</ul>
+<h3 id="06-functions-and-concurrency">0.6 -- functions and concurrency</h3>
+<ul>
+<li>[ ] <strong>Function values and closures</strong>: callbacks, <code>spawn(|| ...)</code> capturing variables, iterators with <code>map</code> / <code>filter</code></li>
+<li>[ ] Real <code>thread:</code> blocks capturing locals; channels, condition variables, thread pools, thread-safe collections as pieces</li>
+<li>[ ] <code>async</code> / <code>await</code> on top of the thread pool</li>
+</ul>
+<h3 id="07-safety">0.7 -- safety</h3>
+<ul>
+<li>[ ] <strong>Error propagation</strong>: <code>?</code> on <code>Result</code>, <code>try</code>/<code>catch</code> mapped onto it, <code>panic</code> with source location and backtrace</li>
+<li>[ ] <strong>Nullable types</strong> checked by the compiler (<code>T?</code>), no implicit null</li>
+<li>[ ] <strong>Traits / interfaces</strong> for shared behaviour without inheritance, operator overloading</li>
+<li>[ ] Overflow checks in debug builds, bounds-check elimination in release</li>
+</ul>
+<h3 id="08-systems-and-portability">0.8 -- systems and portability</h3>
+<ul>
+<li>[ ] <code>unsafe</code> blocks, <code>volatile</code>, packed structs, <code>@section</code> / <code>@no_mangle</code> attributes, inline assembly</li>
+<li>[ ] A libc-free <code>core</code> piece (own allocator, string and list runtime) so kernels need no C</li>
+<li>[ ] Debug information (lines and variables visible in gdb / lldb)</li>
+<li>[ ] A shell-free runtime on every OS (the remaining shell uses in <code>std.fs</code>, <code>std.process</code>, <code>std.git</code> replaced by system calls)</li>
+<li>[ ] First-class Windows and macOS: all releases built and tested from the stage-3 compiler</li>
+</ul>
+<h3 id="09-ecosystem-and-tooling">0.9 -- ecosystem and tooling</h3>
+<ul>
+<li>[ ] Language server (diagnostics, go to definition, completion), AST-based <code>kite fmt</code>, <code>kite doc</code> as HTML, <code>kite bench</code> with comparison</li>
+<li>[ ] Remote registry mirror, signed pieces, <code>kite audit</code>, reproducible builds</li>
+<li>[ ] More pieces: <code>regex</code>, <code>json</code> with a value tree, <code>net</code> (sockets), <code>crypto</code> (hashes, HMAC, AES), <code>compress</code>, <code>sqlite</code>, <code>tui</code></li>
+<li>[ ] The language book and the migration guide</li>
+</ul>
+<h3 id="100-stability">1.0.0 -- stability</h3>
+<ul>
+<li>[ ] Syntax frozen; a documented edition mechanism for later changes</li>
+<li>[ ] The API of the default pieces frozen (additions only), with a deprecation policy</li>
+<li>[ ] <code>kite migrate</code> for edition changes; a conformance test-suite that other implementations can run</li>
+</ul>
+<h3 id="small-finishing-touches-before-100-10-polish">Small finishing touches before 1.0.0 (1.0 polish)</h3>
+<ul>
+<li>[ ] <code>print(float)</code> uses <code>%f</code> while <code>str(float)</code> uses <code>%g</code>: make them agree</li>
+<li>[ ] String <code>+</code> is O(n) (use <code>join</code>): a string builder or rope</li>
+<li>[ ] <code>StrMap</code> has no <code>remove</code></li>
+<li>[ ] <code>read_file</code> returns "" on error: give it a failure channel</li>
+<li>[ ] <code>try</code> / <code>failed</code> blocks are parsed but <code>failed</code> never runs</li>
+<li>[ ] Variables are function-scoped and keep one type; empty list literals need a type</li>
+<li>[ ] Diagnostics are plain text: add colour and underlined spans</li>
+<li>[ ] <code>kite fmt</code> only fixes whitespace; <code>kite doc</code> is markdown only; <code>kite bench</code> uses integer microseconds</li>
+</ul>
+<h2 id="not-scheduled-no-date-no-stage">Not scheduled (no date, no stage)</h2>
+<ul>
+<li>[ ] <strong>Remove LLVM IR for a custom optimisation and compilation multi arch like rust</strong>: replace the LLVM IR text
+  back end with Kite's own mid-level IR, its own optimisation passes and its own code generators for several
+  architectures (x86-64, AArch64, RISC-V, ...), so a Kite toolchain needs neither clang nor LLVM to produce a binary.
+  <strong>Status (0.4.4)</strong>: started. <code>kite build --backend native</code> has an x86-64 Linux generator and ELF writer for the integer subset.
+  Next: lists, strings and structs (reuse the core runtime), floats (SSE), AArch64 and RISC-V encoders, Mach-O and PE writers,
+  register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/reference/editors/">← Editors</a><a class="next" href="/project/changelog/">Changelog →</a></footer>
+</main>
+</div>
+<script src="/docs.js"></script>
+</body>
+</html>

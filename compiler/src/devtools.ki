@@ -24,7 +24,7 @@ make cmd_test(filter: string):
             append(files, n)
     if len(files) == 0:
         die("no tests found in " + tdir)
-    status("Testing", p.manifest.name + " v" + p.manifest.version + " (" + p.root + ")")
+    status("Testing", p.manifest.name + f" v{p.manifest.version} ({p.root})")
     passed = 0
     bad = 0
     no_links: [string] = []
@@ -38,18 +38,18 @@ make cmd_test(filter: string):
             print("test " + n2 + " ... " + red_bold_err("FAILED") + " (does not compile)")
             bad += 1
             continue
-        exe = build_from_ir(c.prog, path.join(outdir, stem), 0, "", "exe", false, no_links)
+        exe = build_from_ir(c.prog, path.join(outdir, stem), 0, "", "exe", false, no_links, "", 0)
         log = path.join(outdir, stem + ".log")
-        code = sys.sh(sys.quote(exe) + " > " + sys.quote(log) + " 2>&1")
+        code = sys.sh(sys.quote(exe) + f" > {sys.quote(log)} 2>&1")
         if code == 0:
             print("test " + n2 + " ... " + green_bold("ok"))
             passed += 1
         else:
-            print("test " + n2 + " ... " + red_bold_err("FAILED") + " (exit code " + str(code) + ")")
+            print("test " + n2 + " ... " + red_bold_err("FAILED") + f" (exit code {str(code)})")
             print(read_file(log))
             bad += 1
     print("")
-    print("test result: " + str(passed) + " passed; " + str(bad) + " failed")
+    print(f"test result: {str(passed)} passed; {str(bad)} failed")
     if bad > 0:
         exit(1)
 
@@ -123,7 +123,7 @@ make doc_is_item(line: string) -> bool:
 
 // Markdown for one source file: every top-level item with the `//` comment lines right above it.
 make doc_file(text: string, title: string) -> string:
-    out = "## `" + title + "`\n\n"
+    out = f"## `{title}`\n\n"
     pending: [string] = []
     for raw in split(text, "\n"):
         line = raw
@@ -131,7 +131,7 @@ make doc_file(text: string, title: string) -> string:
             c = trim(substr(line, 2, len(line)))
             append(pending, c)
         orif doc_is_item(line):
-            out = out + "### `" + doc_signature(line) + "`\n\n"
+            out = out + f"### `{doc_signature(line)}`\n\n"
             if len(pending) > 0:
                 out = out + join(pending, "\n") + "\n\n"
             clear(pending)
@@ -142,13 +142,13 @@ make doc_file(text: string, title: string) -> string:
 make cmd_doc():
     p = project_discover(fs.cwd())
     m = p.manifest
-    out = "# " + m.name + " " + m.version + "\n\n"
+    out = f"# {m.name} {m.version}\n\n"
     if len(m.description) > 0:
         out = out + m.description + "\n\n"
     if len(m.authors) > 0:
-        out = out + "Authors: " + m.authors + "\n\n"
+        out = out + f"Authors: {m.authors}\n\n"
     if len(m.license) > 0:
-        out = out + "License: " + m.license + "\n\n"
+        out = out + f"License: {m.license}\n\n"
     for f in source_files(p):
         if contains_str(f, "/tests/"):
             continue

@@ -136,6 +136,14 @@ class Desugarer:
     env: StrMap_string
     tenv: StrMap_string
 
+    // Whether any class defines a method called `m`.
+    make class_defines_method(self, m: string) -> bool:
+        iter_ml = self.method_lists
+        for ml in iter_ml:
+            if index_of(ml.items, m) >= 0:
+                return true
+        return false
+
     // ---- node constructors (spans follow the Rust sources) ----------------------
     make mk_ident(self, name: string, span: Span) -> int:
         return self.ast.add0("Ident", name, span)
@@ -279,7 +287,7 @@ class Desugarer:
             vname = self.ast.nodes[arm].text
             aspan = self.ast.nodes[arm].span
             if not self.variant_idx.has(vname):
-                self.err("E0108", "`" + vname + "` is not a variant of any data enum", aspan)
+                self.err("E0108", f"`{vname}` is not a variant of any data enum", aspan)
                 continue
             vr = self.variant_refs[self.variant_idx.get(vname) - 1]
             info = self.enum_infos[self.enum_idx.get(vr.enum_name) - 1]
@@ -288,7 +296,7 @@ class Desugarer:
             akids = self.ast.nodes[arm].kids
             nbinds = len(akids) - 1
             if len(vfields) != nbinds:
-                self.err("E0109", "variant `" + vname + "` has " + str(len(vfields)) + " field(s), but the pattern binds " + str(nbinds), aspan)
+                self.err("E0109", f"variant `{vname}` has {str(len(vfields))} field(s), but the pattern binds {str(nbinds)}", aspan)
                 continue
             cond = self.mk_binary("Eq", self.mk_field(self.mk_ident(tmp, span), "tag", span), self.mk_int(vr.idx, span), span)
             stmts: [int] = []
@@ -499,10 +507,10 @@ class Desugarer:
             guard = 0
             while len(cur) > 0:
                 if cur == sname or guard > 64:
-                    self.err("E0104", "class `" + sname + "` inherits from itself", sspan)
+                    self.err("E0104", f"class `{sname}` inherits from itself", sspan)
                     break
                 if not orig_idx.has(cur):
-                    self.err("E0105", "unknown base class `" + cur + "`", sspan)
+                    self.err("E0105", f"unknown base class `{cur}`", sspan)
                     break
                 append(chain, cur)
                 cur = self.bases.get(cur)
@@ -617,7 +625,7 @@ class Desugarer:
                 orif not returns_value:
                     vret = self.mk_type("()", span)
                 body = self.mk_block(stmts, span)
-                append(extra, self.mk_function(c + "__" + m + "__vcall", vparams, vret, "", body, span))
+                append(extra, self.mk_function(c + f"__{m}__vcall", vparams, vret, "", body, span))
                 self.vcalls.set(c + "\t" + m, 1)
         return extra
 
@@ -716,6 +724,31 @@ class Desugarer:
         orif k == "Unpack":
             self.walk_expr(kids[1])
         orif k == "ExprStmt":
+            // `n.incr()` / `n.decr()` are `n += 1` / `n -= 1` (unless a class defines a method of that name)
+            ex = kids[0]
+            if self.ast.nodes[ex].kind == "MethodCall" and len(self.ast.nodes[ex].kids) == 1 and (self.ast.nodes[ex].text == "incr" or self.ast.nodes[ex].text == "decr") and not self.class_defines_method(self.ast.nodes[ex].text):
+                recv = self.ast.nodes[ex].kids[0]
+                rk = self.ast.nodes[recv].kind
+                sp = self.ast.nodes[st].span
+                lv = -1
+                if rk == "Ident":
+                    lv = self.ast.add0("LIdent", self.ast.nodes[recv].text, span_dummy())
+                orif rk == "Field":
+                    lv = self.ast.add1("LField", self.ast.nodes[recv].text, self.ast.nodes[recv].span, clone_node(self.ast, self.ast.nodes[recv].kids[0]))
+                orif rk == "Index":
+                    lv = self.ast.add2("LIndex", "", self.ast.nodes[recv].span, clone_node(self.ast, self.ast.nodes[recv].kids[0]), clone_node(self.ast, self.ast.nodes[recv].kids[1]))
+                if lv >= 0:
+                    texpr = clone_node(self.ast, recv)
+                    one = self.mk_int(1, sp)
+                    op = "Add"
+                    if self.ast.nodes[ex].text == "decr":
+                        op = "Sub"
+                    val = self.ast.add2("Binary", op, sp, texpr, one)
+                    new_kids: [int] = [lv, -1, val]
+                    self.ast.nodes[st].kind = "Assign"
+                    self.ast.nodes[st].kids = new_kids
+                    self.walk_stmt(st)
+                    return
             self.walk_expr(kids[0])
         orif k == "Return":
             if kids[0] >= 0:
@@ -833,10 +866,19 @@ class Desugarer:
             return
         cls = self.class_of(recv)
         if len(cls) == 0:
+            // Uniform call syntax: `value.f(args)` is `f(value, args)` when `value` is not a class instance
+            // (`text.trim().split(",")`, `xs.len()`, `xs.append(3)`).
+            ufcs: [int] = [recv]
+            for ua in args:
+                append(ufcs, ua)
+            self.become_call(e, name, ufcs)
+            if self.sig_idx.has(name):
+                utaken = self.ast.nodes[e].kids
+                self.ast.nodes[e].kids = self.normalize_call(name, self.sig_idx.get(name) - 1, utaken, span)
             return
         owner = self.owner_of(cls, name)
         if len(owner) == 0:
-            self.err("E0106", "class `" + cls + "` has no method `" + name + "`", span)
+            self.err("E0106", f"class `{cls}` has no method `{name}`", span)
             return
         recv_arg = recv
         if ty_is_ptr(self.type_of(recv)):
@@ -848,7 +890,7 @@ class Desugarer:
             append(full, a)
         target = owner + "__" + name
         if self.vcalls.has(owner + "\t" + name):
-            target = owner + "__" + name + "__vcall"
+            target = owner + f"__{name}__vcall"
         self.become_call(e, target, full)
         if self.sig_idx.has(target):
             taken = self.ast.nodes[e].kids
@@ -866,7 +908,7 @@ class Desugarer:
                 nname = self.ast.nodes[a].text
                 nspan = self.ast.nodes[a].span
                 if index_of(named_names, nname) >= 0:
-                    self.err("E0095", "argument `" + nname + "` given twice in call to `" + fname + "`", nspan)
+                    self.err("E0095", f"argument `{nname}` given twice in call to `{fname}`", nspan)
                 else:
                     append(named_names, nname)
                     append(named_vals, self.ast.nodes[a].kids[0])
@@ -894,7 +936,7 @@ class Desugarer:
             ni = index_of(named_names, pname)
             if pos < len(positional):
                 if ni >= 0:
-                    self.err("E0095", "argument `" + pname + "` given twice in call to `" + fname + "`", span)
+                    self.err("E0095", f"argument `{pname}` given twice in call to `{fname}`", span)
                 append(out, positional[pos])
                 pos += 1
             orif ni >= 0:
@@ -905,14 +947,14 @@ class Desugarer:
             orif info.defaults[pi] >= 0:
                 append(out, clone_node(self.ast, info.defaults[pi]))
             else:
-                self.err("E0097", "missing argument `" + pname + "` in call to `" + fname + "`", span)
+                self.err("E0097", f"missing argument `{pname}` in call to `{fname}`", span)
             pi += 1
         leftover = len(positional) - pos
         if leftover > 0:
             self.err("E0099", "`" + fname + "` takes " + str(len(info.names)) + " argument(s), but " + str(len(info.names) + leftover) + " were given", self.ast.nodes[positional[pos]].span)
         ri = 0
         while ri < len(named_names):
-            self.err("E0100", "`" + fname + "` has no parameter named `" + named_names[ri] + "`", named_spans[ri])
+            self.err("E0100", f"`{fname}` has no parameter named `{named_names[ri]}`", named_spans[ri])
             ri += 1
         return out
 

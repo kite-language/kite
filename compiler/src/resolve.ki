@@ -65,6 +65,13 @@ make rewrite_consts(ast: Ast, root: int) -> int:
             cwalk(ast, f2, active)
     return 0
 
+// Help texts of the import diagnostics.
+make help_piece_calls() -> string:
+    return "call a function of a piece as `piece.function(...)`; pieces name their functions `<piece>_<function>`"
+
+make help_module_paths() -> string:
+    return "module paths are resolved from `src/` with `.` as a directory separator (`use shapes.circle` -> `src/shapes/circle.ki`); pieces are imported by name (`use mypiece`) once listed in [dependencies], the default pieces as `use std.<piece>`"
+
 class Loader:
     ast: Ast
     src_root: string
@@ -173,7 +180,9 @@ class Loader:
                 if pi >= 0:
                     target = self.pick_piece_fn(recv, fa.nodes[id].text, roots[pi])
                     if len(target) == 0:
-                        self.error("E0072", "piece `" + recv + "` has no function `" + fa.nodes[id].text + "` (looked for `" + replace_all(recv, "-", "_") + "_" + fa.nodes[id].text + "` and `" + fa.nodes[id].text + "`)", fa.nodes[id].span, display, source, "call a function of a piece as `piece.function(...)`; pieces name their functions `<piece>_<function>`")
+                        method = fa.nodes[id].text
+                        prefixed = replace_all(recv, "-", "_") + "_" + method
+                        self.error("E0072", f"piece `{recv}` has no function `{method}` (looked for `{prefixed}` and `{method}`)", fa.nodes[id].span, display, source, help_piece_calls())
                         ok = false
                     else:
                         args: [int] = []
@@ -215,7 +224,7 @@ class Loader:
         self.visited.set(canonical, 1)
         display = path_display(path, self.src_root)
         if not sys.path_exists(path):
-            self.error("E0070", "could not read `" + display + "`: No such file or directory (os error 2)", span_dummy(), display, "", "")
+            self.error("E0070", f"could not read `{display}`: No such file or directory (os error 2)", span_dummy(), display, "", "")
             return false
         source = read_file(path)
         ld = Diags()
@@ -247,7 +256,8 @@ class Loader:
             resolved = self.find_module(mod_path, cur_root)
             if len(resolved) == 0:
                 looked = path_join(cur_root, replace_all(mod_path, ".", "/") + ".ki")
-                self.error("E0071", "cannot find module `" + mod_path + "` (looked for `" + path_display(looked, self.src_root) + "`)", ispan, display, source, "module paths are resolved from `src/`, with `.` as a directory separator (e.g. `use shapes.circle` -> `src/shapes/circle.ki`); pieces are imported by name (`use mypiece`, `use mypiece.sub`) once listed in [dependencies], and the default pieces as `use std.<piece>`")
+                looked_for = path_display(looked, self.src_root)
+                self.error("E0071", f"cannot find module `{mod_path}` (looked for `{looked_for}`)", ispan, display, source, help_module_paths())
                 all_ok = false
                 continue
             module_root = self.found_root
@@ -276,7 +286,7 @@ class Loader:
         for f in fl:
             name = fa.nodes[f].text
             if self.org_idx.has(name):
-                self.error("E0036", "function `" + name + "` is defined multiple times across the project", fa.nodes[f].span, display, source, "")
+                self.error("E0036", f"function `{name}` is defined multiple times across the project", fa.nodes[f].span, display, source, "")
                 all_ok = false
                 continue
             self.add_origin(name, display, source)
@@ -285,7 +295,7 @@ class Loader:
         for s in sl:
             sname = fa.nodes[s].text
             if self.org_idx.has(sname):
-                self.error("E0061", "struct `" + sname + "` is defined multiple times across the project", fa.nodes[s].span, display, source, "")
+                self.error("E0061", f"struct `{sname}` is defined multiple times across the project", fa.nodes[s].span, display, source, "")
                 all_ok = false
                 continue
             self.add_origin(sname, display, source)
@@ -294,7 +304,7 @@ class Loader:
         for e in el:
             ename = fa.nodes[e].text
             if self.org_idx.has(ename):
-                self.error("E0069", "enum `" + ename + "` is defined multiple times across the project", fa.nodes[e].span, display, source, "")
+                self.error("E0069", f"enum `{ename}` is defined multiple times across the project", fa.nodes[e].span, display, source, "")
                 all_ok = false
                 continue
             self.add_origin(ename, display, source)

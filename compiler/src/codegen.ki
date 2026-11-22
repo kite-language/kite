@@ -3,6 +3,7 @@
 
 use irdef
 use types
+use std.sys
 
 class Out:
     lines: [string]
@@ -1061,7 +1062,8 @@ make emit_function(cg: Cg, f: IrFn, freestanding: bool, mod: Out) -> int:
     return 0
 
 // Emits the whole module; `triple` is "" when no target triple is requested.
-make emit_module(prog: IrProg, triple: string, freestanding: bool) -> string:
+make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
+    freestanding = false
     cg = Cg()
     cg.st_idx = StrMap_int()
     cg.str_idx = StrMap_int()
@@ -1142,6 +1144,28 @@ make emit_module(prog: IrProg, triple: string, freestanding: bool) -> string:
     for f2 in prog.fns:
         emit_function(cg, f2, freestanding, mod)
         mod.w("")
+    // Windows: `timespec_get` is an inline function of the UCRT headers, not a library symbol; provide it (through
+    // kernel32) for programs that declare it, e.g. through `std.time`. Same text as the Rust backend.
+    win = contains_str(triple, "windows")
+    if len(triple) == 0:
+        win = sys.is_windows()
+    if win and index_of_name_ex(prog.ex_names, "timespec_get") >= 0:
+        mod.w("declare void @GetSystemTimePreciseAsFileTime(i64*)")
+        mod.w("")
+        mod.w("define i32 @timespec_get(i64* %ts, i32 %base) {")
+        mod.w("entry:")
+        mod.w("  %ft = alloca i64")
+        mod.w("  call void @GetSystemTimePreciseAsFileTime(i64* %ft)")
+        mod.w("  %t = load i64, i64* %ft")
+        mod.w("  %unix100 = sub i64 %t, 116444736000000000")
+        mod.w("  %sec = sdiv i64 %unix100, 10000000")
+        mod.w("  %rem = srem i64 %unix100, 10000000")
+        mod.w("  %nsec = mul i64 %rem, 100")
+        mod.w("  store i64 %sec, i64* %ts")
+        mod.w("  %p = getelementptr i64, i64* %ts, i64 1")
+        mod.w("  store i64 %nsec, i64* %p")
+        mod.w("  ret i32 1")
+        mod.w("}")
     // declarations and entry wrappers that only some programs need (kept out of the common header so
     // programs that do not use them are byte-identical to the Rust backend's output)
     if cg.used_realloc:
@@ -1163,4 +1187,352 @@ make emit_module(prog: IrProg, triple: string, freestanding: bool) -> string:
             mod.w("  ret i8* null")
             mod.w("}")
             mod.w("")
+    for ml in meta_lines(meta):
+        mod.w(ml)
     return join(mod.lines, "\n") + "\n"
+
+make index_of_name_ex(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+
+// ---- build signature ---------------------------------------------------------------------------
+// A printable one-line record kept in the binary (`strings app | grep KITE-META`, or `kite info app`).
+
+make meta_clean(v: string) -> string:
+    out = ""
+    i = 0
+    while i < len(v):
+        c = char_at(v, i)
+        if c >= 32 and c <= 126 and c != 124:
+            out = out + substr(v, i, i + 1)
+        else:
+            out = out + " "
+        i += 1
+    return out
+
+make meta_lines(meta: string) -> [string]:
+    out: [string] = []
+    if len(meta) == 0:
+        return out
+    body = escape_llvm_string(meta)
+    n = llvm_string_byte_len(body)
+    append(out, "")
+    append(out, "@.kite.meta = private unnamed_addr constant [" + str(n) + " x i8] c\"" + body + "\", align 1")
+    append(out, "@llvm.used = appending global [1 x i8*] [i8* getelementptr inbounds ([" + str(n) + " x i8], [" + str(n) + " x i8]* @.kite.meta, i64 0, i64 0)], section \"llvm.metadata\"")
+    return out
+
+// ---- entry point -------------------------------------------------------------------------------
+// `meta`: the signature record ("" for none). `heap`: bytes of the built-in freestanding runtime heap
+// (0 = no runtime: the program is linked against a libc or provides the C functions itself).
+
+make emit_module(prog: IrProg, triple: string, freestanding: bool, meta: string, heap: int) -> string:
+    if freestanding:
+        return emit_module_free(prog, triple, meta, heap)
+    return emit_module_hosted(prog, triple, meta)
+
+make std_decl_table() -> [string]:
+    // "symbol|declaration"
+    return ["printf|declare i32 @printf(i8*, ...)", "malloc|declare i8* @malloc(i64)", "free|declare void @free(i8*)", "memcpy|declare i8* @memcpy(i8*, i8*, i64)", "strlen|declare i64 @strlen(i8*)", "memmove|declare i8* @memmove(i8*, i8*, i64)", "snprintf|declare i32 @snprintf(i8*, i64, i8*, ...)", "strcmp|declare i32 @strcmp(i8*, i8*)", "exit|declare void @exit(i32)", "fopen|declare i8* @fopen(i8*, i8*)", "fread|declare i64 @fread(i8*, i64, i64, i8*)", "fwrite|declare i64 @fwrite(i8*, i64, i64, i8*)", "fclose|declare i32 @fclose(i8*)", "fseek|declare i32 @fseek(i8*, i64, i32)", "ftell|declare i64 @ftell(i8*)", "llvm.memset.p0i8.i64|declare void @llvm.memset.p0i8.i64(i8*, i8, i64, i1)", "realloc|declare i8* @realloc(i8*, i64)"]
+
+make std_global_table() -> [string]:
+    // "name|body" (referenced as `@name,` in the function bodies)
+    return [".fmt.int|%lld\\0A\\00", ".fmt.float|%f\\0A\\00", ".fmt.str|%s\\0A\\00", ".fmt.int.raw|%lld\\00", ".fmt.float.raw|%g\\00", ".str.true|true\\00", ".str.false|false\\00", ".err.bounds|kite: index %lld out of range for a list of length %lld (lists are 0-indexed)\\0A\\00", ".err.arg|kite: index %lld out of range for %lld command-line argument(s) (arg() is 0-indexed)\\0A\\00", ".str.mode.rb|rb\\00", ".str.mode.wb|wb\\00", ".str.empty|\\00"]
+
+// Freestanding module: only what the program really uses is declared or defined (no argc/argv, no format
+// strings, no libc declarations), plus, with `heap > 0`, a small libc-free runtime written in LLVM IR.
+make emit_module_free(prog: IrProg, triple: string, meta: string, heap: int) -> string:
+    cg = Cg()
+    cg.st_idx = StrMap_int()
+    cg.str_idx = StrMap_int()
+    cg.alloca_set = StrMap_int()
+    cg.locals = StrMap_string()
+    cg.spawn_set = StrMap_int()
+    cg.out = Out()
+    cg.allocas = Out()
+    k = 0
+    while k < len(prog.st_names):
+        cg.st_idx.set(prog.st_names[k], k + 1)
+        append(cg.st_ftys, prog.st_ftys[k])
+        k += 1
+    for f in prog.fns:
+        collect_string_constants(cg, f)
+    fbody = Out()
+    for f2 in prog.fns:
+        emit_function(cg, f2, true, fbody)
+        fbody.w("")
+    text = join(fbody.lines, "\n")
+    defined = StrMap_int()
+    for f3 in prog.fns:
+        defined.set(f3.name, 1)
+    for e in prog.ex_names:
+        defined.set(e, 1)
+    mod = Out()
+    if len(triple) > 0:
+        mod.w("target triple = \"" + triple + "\"")
+        mod.w("")
+    k = 0
+    while k < len(prog.st_names):
+        fields: [string] = []
+        for t in prog.st_ftys[k].items:
+            append(fields, llvm_type(t))
+        mod.w("%" + prog.st_names[k] + " = type { " + join(fields, ", ") + " }")
+        k += 1
+    if len(prog.st_names) > 0:
+        mod.w("")
+    // runtime symbols (defined below when `heap > 0`) are not declared
+    rt_defs = ["malloc", "free", "realloc", "memcpy", "memmove", "memset", "memcmp", "strlen", "strcmp", "printf", "exit"]
+    wrote = 0
+    for entry in std_decl_table():
+        bar = find(entry, "|")
+        sym = substr(entry, 0, bar)
+        decl = substr(entry, bar + 1, len(entry))
+        needle = "@" + sym + "("
+        if contains_str(text, needle) and not defined.has(sym):
+            if heap > 0 and str_index_ex(rt_defs, sym) >= 0:
+                continue
+            mod.w(decl)
+            wrote += 1
+    if wrote > 0:
+        mod.w("")
+    for ex in std_global_table():
+        bar2 = find(ex, "|")
+        gname = substr(ex, 0, bar2)
+        gbody = substr(ex, bar2 + 1, len(ex))
+        if contains_str(text, "@" + gname + ","):
+            mod.w(global_string("@" + gname, gbody))
+    if len(prog.ex_names) > 0:
+        k = 0
+        while k < len(prog.ex_names):
+            ps: [string] = []
+            for t2 in prog.ex_ptys[k].items:
+                append(ps, llvm_type(t2))
+            mod.w("declare " + llvm_type(prog.ex_rets[k]) + " @" + prog.ex_names[k] + "(" + join(ps, ", ") + ")")
+            k += 1
+        mod.w("")
+    k = 0
+    while k < len(cg.str_texts):
+        mod.w(global_string("@.str." + str(k), escape_llvm_string(cg.str_texts[k])))
+        k += 1
+    if len(cg.str_texts) > 0:
+        mod.w("")
+    for l in fbody.lines:
+        mod.w(l)
+    if cg.used_realloc and heap == 0:
+        mod.w("declare i8* @realloc(i8*, i64)")
+        mod.w("")
+    if heap > 0:
+        for rl in core_runtime(heap):
+            mod.w(rl)
+    for ml in meta_lines(meta):
+        mod.w(ml)
+    return join(mod.lines, "\n") + "\n"
+
+make str_index_ex(xs: [string], name: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == name:
+            return i
+        i += 1
+    return -1
+
+// The libc-free runtime for kernels and other bare-metal code: a bump allocator over a static heap
+// (`free` is a no-op; `realloc` copies), the memory and string functions the generated code calls, and a
+// `printf` that does nothing (a kernel prints through its own device code).
+make core_runtime(heap: int) -> [string]:
+    h = str(heap)
+    out: [string] = []
+    append(out, "; ---- Kite freestanding runtime (heap " + h + " bytes) ----")
+    append(out, "@.kite.heap = internal global [" + h + " x i8] zeroinitializer, align 16")
+    append(out, "@.kite.heap_top = internal global i64 0")
+    append(out, "")
+    append(out, "define i8* @malloc(i64 %n) {")
+    append(out, "entry:")
+    append(out, "  %top = load i64, i64* @.kite.heap_top")
+    append(out, "  %start = add i64 %top, 16")
+    append(out, "  %raw = add i64 %start, %n")
+    append(out, "  %up = add i64 %raw, 15")
+    append(out, "  %end = and i64 %up, -16")
+    append(out, "  %over = icmp ugt i64 %end, " + h)
+    append(out, "  br i1 %over, label %fail, label %ok")
+    append(out, "ok:")
+    append(out, "  store i64 %end, i64* @.kite.heap_top")
+    append(out, "  %base = getelementptr inbounds [" + h + " x i8], [" + h + " x i8]* @.kite.heap, i64 0, i64 %top")
+    append(out, "  %hdr = bitcast i8* %base to i64*")
+    append(out, "  store i64 %n, i64* %hdr")
+    append(out, "  %p = getelementptr inbounds i8, i8* %base, i64 16")
+    append(out, "  ret i8* %p")
+    append(out, "fail:")
+    append(out, "  ret i8* null")
+    append(out, "}")
+    append(out, "")
+    append(out, "define void @free(i8* %p) {")
+    append(out, "entry:")
+    append(out, "  ret void")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i8* @memcpy(i8* %d, i8* %s, i64 %n) {")
+    append(out, "entry:")
+    append(out, "  br label %cond")
+    append(out, "cond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %next, %body ]")
+    append(out, "  %more = icmp ult i64 %i, %n")
+    append(out, "  br i1 %more, label %body, label %done")
+    append(out, "body:")
+    append(out, "  %sp = getelementptr i8, i8* %s, i64 %i")
+    append(out, "  %dp = getelementptr i8, i8* %d, i64 %i")
+    append(out, "  %b = load volatile i8, i8* %sp")
+    append(out, "  store volatile i8 %b, i8* %dp")
+    append(out, "  %next = add i64 %i, 1")
+    append(out, "  br label %cond")
+    append(out, "done:")
+    append(out, "  ret i8* %d")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i8* @memmove(i8* %d, i8* %s, i64 %n) {")
+    append(out, "entry:")
+    append(out, "  %dl = ptrtoint i8* %d to i64")
+    append(out, "  %sl = ptrtoint i8* %s to i64")
+    append(out, "  %fwd = icmp ule i64 %dl, %sl")
+    append(out, "  br i1 %fwd, label %fcond, label %bcond")
+    append(out, "fcond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %inext, %fbody ]")
+    append(out, "  %fmore = icmp ult i64 %i, %n")
+    append(out, "  br i1 %fmore, label %fbody, label %done")
+    append(out, "fbody:")
+    append(out, "  %fs = getelementptr i8, i8* %s, i64 %i")
+    append(out, "  %fd = getelementptr i8, i8* %d, i64 %i")
+    append(out, "  %fb = load volatile i8, i8* %fs")
+    append(out, "  store volatile i8 %fb, i8* %fd")
+    append(out, "  %inext = add i64 %i, 1")
+    append(out, "  br label %fcond")
+    append(out, "bcond:")
+    append(out, "  %j = phi i64 [ %n, %entry ], [ %jprev, %bbody ]")
+    append(out, "  %bmore = icmp ugt i64 %j, 0")
+    append(out, "  br i1 %bmore, label %bbody, label %done")
+    append(out, "bbody:")
+    append(out, "  %jprev = sub i64 %j, 1")
+    append(out, "  %bs = getelementptr i8, i8* %s, i64 %jprev")
+    append(out, "  %bd = getelementptr i8, i8* %d, i64 %jprev")
+    append(out, "  %bb = load volatile i8, i8* %bs")
+    append(out, "  store volatile i8 %bb, i8* %bd")
+    append(out, "  br label %bcond")
+    append(out, "done:")
+    append(out, "  ret i8* %d")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i8* @memset(i8* %d, i32 %c, i64 %n) {")
+    append(out, "entry:")
+    append(out, "  %byte = trunc i32 %c to i8")
+    append(out, "  br label %cond")
+    append(out, "cond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %next, %body ]")
+    append(out, "  %more = icmp ult i64 %i, %n")
+    append(out, "  br i1 %more, label %body, label %done")
+    append(out, "body:")
+    append(out, "  %dp = getelementptr i8, i8* %d, i64 %i")
+    append(out, "  store volatile i8 %byte, i8* %dp")
+    append(out, "  %next = add i64 %i, 1")
+    append(out, "  br label %cond")
+    append(out, "done:")
+    append(out, "  ret i8* %d")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i32 @memcmp(i8* %a, i8* %b, i64 %n) {")
+    append(out, "entry:")
+    append(out, "  br label %cond")
+    append(out, "cond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %next, %body ]")
+    append(out, "  %more = icmp ult i64 %i, %n")
+    append(out, "  br i1 %more, label %body, label %same")
+    append(out, "body:")
+    append(out, "  %ap = getelementptr i8, i8* %a, i64 %i")
+    append(out, "  %bp = getelementptr i8, i8* %b, i64 %i")
+    append(out, "  %x = load i8, i8* %ap")
+    append(out, "  %y = load i8, i8* %bp")
+    append(out, "  %next = add i64 %i, 1")
+    append(out, "  %eq = icmp eq i8 %x, %y")
+    append(out, "  br i1 %eq, label %cond, label %diff")
+    append(out, "diff:")
+    append(out, "  %xi = zext i8 %x to i32")
+    append(out, "  %yi = zext i8 %y to i32")
+    append(out, "  %d = sub i32 %xi, %yi")
+    append(out, "  ret i32 %d")
+    append(out, "same:")
+    append(out, "  ret i32 0")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i64 @strlen(i8* %s) {")
+    append(out, "entry:")
+    append(out, "  br label %cond")
+    append(out, "cond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %next, %body ]")
+    append(out, "  %p = getelementptr i8, i8* %s, i64 %i")
+    append(out, "  %c = load i8, i8* %p")
+    append(out, "  %end = icmp eq i8 %c, 0")
+    append(out, "  br i1 %end, label %done, label %body")
+    append(out, "body:")
+    append(out, "  %next = add i64 %i, 1")
+    append(out, "  br label %cond")
+    append(out, "done:")
+    append(out, "  ret i64 %i")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i32 @strcmp(i8* %a, i8* %b) {")
+    append(out, "entry:")
+    append(out, "  br label %cond")
+    append(out, "cond:")
+    append(out, "  %i = phi i64 [ 0, %entry ], [ %next, %body ]")
+    append(out, "  %ap = getelementptr i8, i8* %a, i64 %i")
+    append(out, "  %bp = getelementptr i8, i8* %b, i64 %i")
+    append(out, "  %x = load i8, i8* %ap")
+    append(out, "  %y = load i8, i8* %bp")
+    append(out, "  %ne = icmp ne i8 %x, %y")
+    append(out, "  %zero = icmp eq i8 %x, 0")
+    append(out, "  %stop = or i1 %ne, %zero")
+    append(out, "  br i1 %stop, label %done, label %body")
+    append(out, "body:")
+    append(out, "  %next = add i64 %i, 1")
+    append(out, "  br label %cond")
+    append(out, "done:")
+    append(out, "  %xi = zext i8 %x to i32")
+    append(out, "  %yi = zext i8 %y to i32")
+    append(out, "  %d = sub i32 %xi, %yi")
+    append(out, "  ret i32 %d")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i8* @realloc(i8* %p, i64 %n) {")
+    append(out, "entry:")
+    append(out, "  %isnull = icmp eq i8* %p, null")
+    append(out, "  br i1 %isnull, label %fresh, label %grow")
+    append(out, "fresh:")
+    append(out, "  %a = call i8* @malloc(i64 %n)")
+    append(out, "  ret i8* %a")
+    append(out, "grow:")
+    append(out, "  %hp = getelementptr i8, i8* %p, i64 -16")
+    append(out, "  %hdr = bitcast i8* %hp to i64*")
+    append(out, "  %old = load i64, i64* %hdr")
+    append(out, "  %q = call i8* @malloc(i64 %n)")
+    append(out, "  %small = icmp ult i64 %old, %n")
+    append(out, "  %m = select i1 %small, i64 %old, i64 %n")
+    append(out, "  call i8* @memcpy(i8* %q, i8* %p, i64 %m)")
+    append(out, "  ret i8* %q")
+    append(out, "}")
+    append(out, "")
+    append(out, "define void @exit(i32 %code) {")
+    append(out, "entry:")
+    append(out, "  br label %halt")
+    append(out, "halt:")
+    append(out, "  br label %halt")
+    append(out, "}")
+    append(out, "")
+    append(out, "define i32 @printf(i8* %fmt, ...) {")
+    append(out, "entry:")
+    append(out, "  ret i32 0")
+    append(out, "}")
+    append(out, "")
+    return out
