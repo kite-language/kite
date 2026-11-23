@@ -1,0 +1,45 @@
+// hex -- bytes <-> lowercase hexadecimal text.
+
+make hex_digit_value(c: int) -> int:
+    if c >= 48 and c <= 57:
+        return c - 48
+    if c >= 97 and c <= 102:
+        return c - 87
+    if c >= 65 and c <= 70:
+        return c - 55
+    return -1
+
+make hex_encode(s: string) -> string:
+    digits = "0123456789abcdef"
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        b = char_at(s, i)
+        append(parts, substr(digits, b / 16, b / 16 + 1) + substr(digits, b % 16, b % 16 + 1))
+        i += 1
+    return join(parts, "")
+
+// "" when the text is not valid hex (odd length or a bad digit).
+make hex_decode(s: string) -> string:
+    if len(s) % 2 != 0:
+        return ""
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        h = hex_digit_value(char_at(s, i))
+        l = hex_digit_value(char_at(s, i + 1))
+        if h < 0 or l < 0:
+            return ""
+        append(parts, chr_byte(h * 16 + l))
+        i += 2
+    return join(parts, "")
+
+make hex_is_valid(s: string) -> bool:
+    if len(s) % 2 != 0:
+        return false
+    i = 0
+    while i < len(s):
+        if hex_digit_value(char_at(s, i)) < 0:
+            return false
+        i += 1
+    return true

@@ -12,10 +12,10 @@
 //   Enum           name    [List variants]
 //   Variant        name    [Field...]
 //   Function       name    [List params, Type ret | -1, Flags, Block body | -1]
-//   Flags          "extern"/"async"/"extern async"/""   []
+//   Flags          "extern"/"async"/"extern async"/""  (+ "generic:T,U" for `make f<T, U>`)   []
 //   Param          name    [Type, default expr | -1, Flags("variadic" or "")]
 //   Block          ""      [stmt...]
-//   Assign         ""      [lvalue, Type | -1, value]
+//   Assign         ""/"const"  [lvalue, Type | -1, value]   ("const": a local `const NAME = expr`)
 //   LIdent name [] | LField field [base] | LIndex "" [base, index] | LDeref "" [target]
 //   ExprStmt       ""      [expr]
 //   Match          ""      [subject, List arms, Block else | -1]
@@ -46,6 +46,7 @@ type Node:
 
 class Ast:
     nodes: [Node]
+    pubs: [string]          // names of the top-level items marked `pub` in this file
 
     make addl(self, kind: string, text: string, span: Span, kids: [int]) -> int:
         n = Node()

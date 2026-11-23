@@ -77,9 +77,18 @@ pub fn emit_module(program: &IrProgram, options: &CodegenOptions) -> String {
     out.push_str("@.kite.argc = global i32 0\n");
     out.push_str("@.kite.argv = global i8** null\n\n");
 
+    // On Windows `timespec_get` is an inline function of the UCRT headers, not a library symbol: it is defined
+    // below by `WINDOWS_TIMESPEC_SHIM`, so its extern declaration must not be emitted (a function cannot be both).
+    let windows = options
+        .target_triple
+        .as_deref()
+        .map_or(cfg!(windows), |t| t.contains("windows"));
     if !program.externs.is_empty() {
         out.push_str("; extern declarations (implemented outside Kite, e.g. in C)\n");
         for e in &program.externs {
+            if windows && e.name == "timespec_get" {
+                continue;
+            }
             let ret = llvm_type(&e.return_type);
             let params: Vec<String> = e.params.iter().map(llvm_type).collect();
             let _ = writeln!(out, "declare {ret} @{}({})", e.name, params.join(", "));
@@ -122,12 +131,7 @@ pub fn emit_module(program: &IrProgram, options: &CodegenOptions) -> String {
         out.push('\n');
     }
 
-    // On Windows `timespec_get` is an inline function of the UCRT headers, not a library symbol: provide it
-    // (through kernel32) for programs that declare it, e.g. through `std.time`.
-    let windows = options
-        .target_triple
-        .as_deref()
-        .map_or(cfg!(windows), |t| t.contains("windows"));
+    // Provide the shim (through kernel32) for programs that declare it, e.g. through `std.time`.
     if windows && program.externs.iter().any(|e| e.name == "timespec_get") {
         out.push_str(WINDOWS_TIMESPEC_SHIM);
     }
@@ -138,7 +142,7 @@ pub fn emit_module(program: &IrProgram, options: &CodegenOptions) -> String {
 /// LLVM IR for `int timespec_get(struct timespec *ts, int base)` on Windows (UTC wall clock, nanoseconds).
 const WINDOWS_TIMESPEC_SHIM: &str = "declare void @GetSystemTimePreciseAsFileTime(i64*)
 
-define i32 @timespec_get(i64* %ts, i32 %base) {
+define i64 @timespec_get(i64* %ts, i64 %base) {
 entry:
   %ft = alloca i64
   call void @GetSystemTimePreciseAsFileTime(i64* %ft)
@@ -150,7 +154,7 @@ entry:
   store i64 %sec, i64* %ts
   %p = getelementptr i64, i64* %ts, i64 1
   store i64 %nsec, i64* %p
-  ret i32 1
+  ret i64 1
 }
 ";
 

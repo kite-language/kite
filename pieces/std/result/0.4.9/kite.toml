@@ -1,0 +1,14 @@
+[package]
+name = "result"
+version = "0.4.9"
+edition = "2026"
+description = "Result<T, E>: a value or an error, for any types T and E"
+authors = ["The Kite developers"]
+license = "MIT"
+repository = "https://github.com/kite-language/kite"
+keywords = ["std", "generic", "errors"]
+
+[build]
+opt_level = 0
+
+[dependencies]

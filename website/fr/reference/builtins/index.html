@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fonctions intégrées — Kite</title>
+<meta name="description" content="Always available, no import. Indexes are 0-based.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/reference/builtins/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/builtins/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/builtins/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/builtins/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/builtins/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/reference/builtins/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/builtins/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/builtins/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a class="cur" aria-current="page" href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Référence › Fonctions intégrées</div>
+<div class="callout note notice">Cette page n'est pas encore traduite ; la version anglaise est affichée.</div>
+<article>
+<h1 id="built-in-functions">Built-in functions</h1>
+<p>Always available, no import. Indexes are <strong>0-based</strong>.</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>print(x)</code></td>
+<td>prints one value and a newline (<code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>)</td>
+</tr>
+<tr>
+<td><code>str(x)</code></td>
+<td><code>int</code>/<code>float</code>/<code>bool</code> → <code>string</code> (f-strings use it: <code>f"n={n}"</code>)</td>
+</tr>
+<tr>
+<td><code>len(x)</code></td>
+<td>length of a <code>string</code> or a list</td>
+</tr>
+<tr>
+<td><code>append(xs, v)</code></td>
+<td>adds <code>v</code> at the end of list <code>xs</code></td>
+</tr>
+<tr>
+<td><code>pop(xs)</code></td>
+<td>removes and returns the last element</td>
+</tr>
+<tr>
+<td><code>remove(xs, i)</code></td>
+<td>removes and returns element <code>i</code></td>
+</tr>
+<tr>
+<td><code>insert(xs, i, v)</code></td>
+<td>inserts <code>v</code> at index <code>i</code></td>
+</tr>
+<tr>
+<td><code>clear(xs)</code></td>
+<td>empties the list</td>
+</tr>
+<tr>
+<td><code>char_at(s, i)</code></td>
+<td>byte value of the character at <code>i</code></td>
+</tr>
+<tr>
+<td><code>substr(s, start, end)</code></td>
+<td>characters <code>start</code> … <code>end-1</code></td>
+</tr>
+<tr>
+<td><code>read_file(path)</code> / <code>write_file(path, text)</code></td>
+<td>whole-file I/O</td>
+</tr>
+<tr>
+<td><code>arg(i)</code> / <code>arg_count()</code></td>
+<td>command-line arguments (<code>arg(0)</code> is the first one after the program)</td>
+</tr>
+<tr>
+<td><code>alloc(T)</code> / <code>alloc_n(T, n)</code> / <code>free(p)</code></td>
+<td>heap memory, see <code>pointers.md</code></td>
+</tr>
+<tr>
+<td><code>exit(code)</code></td>
+<td>ends the program</td>
+</tr>
+</tbody>
+</table>
+<p>Out-of-range indexes stop the program with a message (no undefined behaviour).</p>
+<h2 id="prelude-written-in-kite-compiled-in-only-when-used">Prelude (written in Kite, compiled in only when used)</h2>
+<p><code>split</code>, <code>join</code>, <code>find</code>, <code>trim</code>, <code>starts_with</code>, <code>ends_with</code>, <code>contains_str</code>, <code>replace_all</code>, <code>repeat</code>, <code>chr</code>,
+<code>to_int</code>, <code>is_space</code>, <code>is_alpha</code>, <code>is_digit</code>, <code>is_alnum</code>, <code>min</code>, <code>max</code>, <code>abs</code> and the hash maps
+<code>StrMap_int</code>, <code>StrMap_string</code>, <code>StrMap_float</code>, <code>StrMap_bool</code>, <code>StrMap_&lt;YourStruct&gt;</code>
+(<code>m.set(k, v)</code>, <code>m.get(k)</code>, <code>m.has(k)</code>, <code>m.size()</code>, <code>m.keys</code>). Sources: <code>stdlib/prelude/</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/reference/language/"><small>Précédent</small>← Référence du langage</a><a class="next" href="/fr/reference/std-pieces/"><small>Suivant</small>Pièces standard →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/builtins.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#prelude-written-in-kite-compiled-in-only-when-used">Prelude (written in Kite, compiled in only when used)</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

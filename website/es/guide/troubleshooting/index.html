@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solución de problemas — Kite</title>
+<meta name="description" content="Kite escribe IR de LLVM y le pide a clang que lo compile. El mensaje de error nombra el archivo .ll en target/: ábrelo en la línea indicada. Si el programa es Kite normal, es un er">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/troubleshooting/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/troubleshooting/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/troubleshooting/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/troubleshooting/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/troubleshooting/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/troubleshooting/" hreflang="en" lang="en">EN</a><a href="/fr/guide/troubleshooting/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/troubleshooting/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Solución de problemas</div>
+<article>
+<h1 id="solucion-de-problemas">Solución de problemas</h1>
+<h2 id="clang-failed-to-compile-the-generated-llvm-ir"><code>clang failed to compile the generated LLVM IR</code></h2>
+<p>Kite escribe IR de LLVM y le pide a <code>clang</code> que lo compile. El mensaje de error nombra el archivo <code>.ll</code> en <code>target/</code>: ábrelo en la línea indicada.
+Si el programa es Kite normal, es un error del compilador: infórmalo adjuntando el archivo <code>.ll</code>.</p>
+<h2 id="clang-command-not-found"><code>clang: command not found</code></h2>
+<p>Instala clang (<code>sudo apt install clang</code>, <code>xcode-select --install</code> o <code>winget install LLVM.LLVM</code>).</p>
+<h2 id="e0080-is-private-to-the-piece-that-defines-it"><code>E0080: ... is private to the piece that defines it</code></h2>
+<p>La pieza marca algunos elementos como <code>pub</code>, así que los demás son privados. Pide al autor de la pieza que marque el elemento como <code>pub</code>, o usa una función pública.
+En tu propio proyecto no existe esa restricción mientras tu archivo no use <code>pub</code>.</p>
+<h2 id="e0072-piece-has-no-function"><code>E0072: piece ... has no function ...</code></h2>
+<p>Las funciones de una pieza se llaman <code>piece.function(...)</code>. La pieza debe estar importada (<code>use std.fs</code>, o <code>use nombre</code> tras <code>kite add nombre</code>).
+Consulta la lista de funciones en las <a href="/es/reference/std-pieces/">piezas estándar</a>.</p>
+<h2 id="una-variable-no-puede-usar-ese-nombre">Una variable no puede usar ese nombre</h2>
+<p>Unas pocas palabras están reservadas (<code>to in int float string bool ptr null</code>),
+y los nombres integrados <code>str len print append pop remove insert clear free arg</code> están ocupados. Elige otro nombre.
+Palabras como <code>from</code>, <code>type</code>, <code>use</code>, <code>match</code>, <code>case</code>, <code>class</code>, <code>thread</code> o <code>try</code> valen como nombres (<code>from = 3</code>, <code>make f(case: int)</code>);
+después de un <code>.</code> se acepta cualquier palabra: <code>job.thread</code> es válido.</p>
+<h2 id="fallo-de-segmentacion-con-listas-dentro-de-clases">Fallo de segmentación con listas dentro de clases</h2>
+<p>Asignar una clase copia su cabecera, así que dos nombres pueden compartir un mismo búfer. Usa <code>self.items.append(x)</code>, no una copia como <code>items = self.items</code>.</p>
+<h2 id="un-campo-string-hace-fallar-len">Un campo <code>string</code> hace fallar <code>len()</code></h2>
+<p>Un campo <code>string</code> de un registro recién creado es un puntero nulo hasta que lo asignas. Asigna el campo antes de leerlo.</p>
+<h2 id="windows-errores-de-enlazado-con-printf-o-timespec_get">Windows: errores de enlazado con <code>printf</code> o <code>timespec_get</code></h2>
+<p>Actualiza a la última versión (esos símbolos los proporcionan los shims de Kite). Vuelve a ejecutar <code>kite build</code> e informa de toda la salida si sigue fallando.</p>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/cheatsheet/"><small>Anterior</small>← Hoja de referencia rápida</a><a class="next" href="/es/reference/language/"><small>Siguiente</small>Referencia del lenguaje →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/12-troubleshooting.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#una-variable-no-puede-usar-ese-nombre">Una variable no puede usar ese nombre</a></li><li class="l2"><a href="#fallo-de-segmentacion-con-listas-dentro-de-clases">Fallo de segmentación con listas dentro de clases</a></li><li class="l2"><a href="#un-campo-string-hace-fallar-len">Un campo string hace fallar len()</a></li><li class="l2"><a href="#windows-errores-de-enlazado-con-printf-o-timespec_get">Windows: errores de enlazado con printf o timespec_get</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

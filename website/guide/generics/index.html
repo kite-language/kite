@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Generics — Kite</title>
+<meta name="description" content="Generics let one definition work for many types. Kite has generic functions and generic records; both are specialised at compile time (one copy per combination of types), so they c">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/generics/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/generics/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/generics/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/generics/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/generics/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/generics/" hreflang="en" lang="en">EN</a><a href="/fr/guide/generics/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/generics/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a class="cur" aria-current="page" href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Generics</div>
+<article>
+<h1 id="generics">Generics</h1>
+<p>Generics let one definition work for many types. Kite has <strong>generic functions</strong> and <strong>generic records</strong>; both are
+specialised at compile time (one copy per combination of types), so they cost nothing at run time.</p>
+<h2 id="generic-functions">Generic functions</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+<span class="k">make</span> main():
+    print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))        <span class="c">// T = int</span>
+    print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))       <span class="c">// T = string</span>
+</code></pre></div>
+<p>The compiler infers the type parameters from the arguments. A type parameter can appear as <code>T</code>, <code>[T]</code>, <code>ptr&lt;T&gt;</code> or inside a
+generic record such as <code>Box&lt;T&gt;</code>. If it cannot be deduced, the call is error <code>E0123</code>.</p>
+<h2 id="generic-records">Generic records</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Box&lt;T&gt;:
+    value: T
+    count: <span class="t">int</span>
+
+<span class="k">type</span> Pair&lt;A, B&gt;:
+    first: A
+    second: B
+
+<span class="k">make</span> main():
+    b = Box&lt;<span class="t">int</span>&gt;()                 <span class="c">// type arguments in angle brackets</span>
+    b.value = <span class="n">41</span>
+    p = Pair&lt;<span class="t">string</span>, <span class="t">int</span>&gt;()
+    p.first = <span class="s">&quot;k&quot;</span>
+    p.second = <span class="n">7</span>
+
+    boxes: [Box&lt;<span class="t">int</span>&gt;] = []         <span class="c">// also in types</span>
+    append(boxes, b)
+    nested = Box&lt;Box&lt;<span class="t">int</span>&gt;&gt;()       <span class="c">// and nested</span>
+</code></pre></div>
+<p><code>Box&lt;int&gt;</code> and <code>Box&lt;string&gt;</code> are two different types made from the same definition. Generic functions can take and return
+them: <code>make wrap&lt;T&gt;(x: T) -&gt; Box&lt;T&gt;:</code> and <code>make unwrap&lt;T&gt;(b: Box&lt;T&gt;) -&gt; T:</code>.
+Generic records are plain <code>type</code> records (no generic classes or enums yet).</p>
+<h2 id="option-and-result">Option and Result</h2>
+<p>Two generic records are ready to use:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.option
+<span class="k">use</span> std.result
+
+<span class="k">make</span> find(xs: [<span class="t">int</span>], x: <span class="t">int</span>) -&gt; Option&lt;<span class="t">int</span>&gt;:
+    i = <span class="n">0</span>
+    <span class="k">for</span> v <span class="k">in</span> xs:
+        <span class="k">if</span> v == x:
+            <span class="k">return</span> option.some(i)
+        i.incr()
+    <span class="k">return</span> Option&lt;<span class="t">int</span>&gt;()                    <span class="c">// an empty Option is &quot;none&quot;</span>
+
+<span class="k">make</span> digit(c: <span class="t">string</span>) -&gt; Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;:
+    r = Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;()               <span class="c">// an empty Result to fill in</span>
+    <span class="k">if</span> c &gt;= <span class="s">&quot;0&quot;</span> <span class="k">and</span> c &lt;= <span class="s">&quot;9&quot;</span>:
+        <span class="k">return</span> result.ok(r, to_int(c))
+    <span class="k">return</span> result.err(r, <span class="s">f&quot;not a digit: {c}&quot;</span>)
+
+<span class="k">make</span> main():
+    print(option.unwrap_or(find([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>], <span class="n">9</span>), -<span class="n">1</span>))     <span class="c">// -1</span>
+    r = digit(<span class="s">&quot;x&quot;</span>)
+    <span class="k">if</span> result.is_err(r):
+        print(result.error(r))                           <span class="c">// not a digit: x</span>
+</code></pre></div>
+<blockquote class="callout note"><p><strong>Note:</strong> <code>Option</code> and <code>Result</code> are ordinary generic records, so you can read their fields (<code>o.has</code>, <code>o.value</code>, <code>r.is_ok</code>).</p>
+</blockquote>
+</article>
+<footer class="pager"><a class="prev" href="/guide/records/"><small>Previous</small>← Records, classes and enums</a><a class="next" href="/guide/pieces/"><small>Next</small>Pieces (packages) →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/13-generics.md">Edit this page on GitHub</a></p>
+</main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#generic-functions">Generic functions</a></li><li class="l2"><a href="#generic-records">Generic records</a></li><li class="l2"><a href="#option-and-result">Option and Result</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

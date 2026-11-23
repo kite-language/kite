@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Structures de contrôle — Kite</title>
+<meta name="description" content="break quitte la boucle la plus proche, continue passe au tour suivant. Les variables de boucle appartiennent à la fonction.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/guide/control-flow/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/control-flow/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/control-flow/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/control-flow/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/control-flow/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/guide/control-flow/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/control-flow/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/control-flow/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a class="cur" aria-current="page" href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Structures de contrôle</div>
+<article>
+<h1 id="structures-de-controle">Structures de contrôle</h1>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">if</span> score &gt;= <span class="n">90</span>:
+    print(<span class="s">&quot;A&quot;</span>)
+<span class="k">orif</span> score &gt;= <span class="n">80</span>:          <span class="c">// `orif` signifie « sinon si »</span>
+    print(<span class="s">&quot;B&quot;</span>)
+<span class="k">else</span>:
+    print(<span class="s">&quot;C&quot;</span>)
+</code></pre></div>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">while</span> i &lt; <span class="n">10</span>:
+    i.incr()
+
+<span class="k">until</span> done:                <span class="c">// boucle jusqu&#x27;à ce que la condition soit vraie</span>
+    step()
+
+<span class="k">for</span> i = <span class="n">0</span> <span class="k">to</span> <span class="n">5</span>:            <span class="c">// 0, 1, 2, 3, 4  (la fin est exclue)</span>
+    print(i)
+
+<span class="k">for</span> item <span class="k">in</span> items:         <span class="c">// chaque élément d&#x27;une liste</span>
+    print(item)
+
+<span class="k">infinit</span>:                   <span class="c">// boucle sans fin, on en sort avec `break`</span>
+    <span class="k">if</span> finished():
+        <span class="k">break</span>
+</code></pre></div>
+<p><code>break</code> quitte la boucle la plus proche, <code>continue</code> passe au tour suivant. Les variables de boucle appartiennent à la fonction.</p>
+<h2 id="try-finally">try / finally</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> load(path: <span class="t">string</span>) -&gt; <span class="t">string</span>:
+    text = <span class="s">&quot;&quot;</span>
+    <span class="k">try</span>:
+        text = read_file(path)
+        <span class="k">return</span> text
+    <span class="k">finally</span>:
+        print(<span class="s">&quot;done reading&quot;</span>)        <span class="c">// s&#x27;exécute avant que le `return` ne quitte le bloc</span>
+</code></pre></div>
+<p><code>finally</code> s'exécute toujours après le bloc, y compris avant un <code>return</code>, un <code>break</code> ou un <code>continue</code> qui le quitte. Kite n'a pas encore
+d'exceptions : un bloc <code>failed:</code> est accepté par le parseur mais ne s'exécute jamais (il est réservé au travail de propagation
+d'erreurs de la <a href="/fr/project/roadmap/">feuille de route</a>). Signalez les problèmes avec des valeurs de retour (<code>std.error</code>) ou <code>panic</code>.</p>
+<h2 id="arreter-le-programme">Arrêter le programme</h2>
+<p><code>exit(code)</code> termine le processus ; <code>panic("message")</code> affiche <code>panic: message</code> et sort avec le code 101 ;
+<code>assert(condition, "pourquoi")</code> déclenche un panic quand la condition est fausse.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/variables/"><small>Précédent</small>← Variables et types</a><a class="next" href="/fr/guide/functions/"><small>Suivant</small>Fonctions et constantes →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/03-control-flow.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#try-finally">try / finally</a></li><li class="l2"><a href="#arreter-le-programme">Arrêter le programme</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

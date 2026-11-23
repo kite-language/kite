@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Control flow — Kite</title>
+<meta name="description" content="break leaves the nearest loop, continue jumps to its next turn. Loop variables belong to the function.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/control-flow/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/control-flow/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/control-flow/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/control-flow/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/control-flow/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/control-flow/" hreflang="en" lang="en">EN</a><a href="/fr/guide/control-flow/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/control-flow/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
-<li><a class="cur" href="/guide/control-flow/">Control flow</a></li>
+<li><a class="cur" aria-current="page" href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,25 +52,26 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Guide › Control flow</div>
 <article>
 <h1 id="control-flow">Control flow</h1>
-<pre class="code"><code><span class="k">if</span> score &gt;= <span class="n">90</span>:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">if</span> score &gt;= <span class="n">90</span>:
     print(<span class="s">&quot;A&quot;</span>)
 <span class="k">orif</span> score &gt;= <span class="n">80</span>:          <span class="c">// `orif` is `else if`</span>
     print(<span class="s">&quot;B&quot;</span>)
 <span class="k">else</span>:
     print(<span class="s">&quot;C&quot;</span>)
-</code></pre>
-<pre class="code"><code><span class="k">while</span> i &lt; <span class="n">10</span>:
+</code></pre></div>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">while</span> i &lt; <span class="n">10</span>:
     i.incr()
 
 <span class="k">until</span> done:                <span class="c">// loops until the condition is true</span>
@@ -74,17 +86,17 @@
 <span class="k">infinit</span>:                   <span class="c">// loop forever, leave with `break`</span>
     <span class="k">if</span> finished():
         <span class="k">break</span>
-</code></pre>
+</code></pre></div>
 <p><code>break</code> leaves the nearest loop, <code>continue</code> jumps to its next turn. Loop variables belong to the function.</p>
 <h2 id="try-finally">try / finally</h2>
-<pre class="code"><code><span class="k">make</span> load(path: <span class="t">string</span>) -&gt; <span class="t">string</span>:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> load(path: <span class="t">string</span>) -&gt; <span class="t">string</span>:
     text = <span class="s">&quot;&quot;</span>
     <span class="k">try</span>:
         text = read_file(path)
         <span class="k">return</span> text
     <span class="k">finally</span>:
         print(<span class="s">&quot;done reading&quot;</span>)        <span class="c">// runs before the `return` leaves the block</span>
-</code></pre>
+</code></pre></div>
 <p><code>finally</code> always runs after the block, including before a <code>return</code>, <code>break</code> or <code>continue</code> that leaves it. Kite has no
 exceptions yet: a <code>failed:</code> block is accepted by the parser but never runs (it is reserved for the error-propagation
 work on the <a href="/project/roadmap/">roadmap</a>). Report problems with return values (<code>std.error</code>) or <code>panic</code>.</p>
@@ -92,9 +104,12 @@ work on the <a href="/project/roadmap/">roadmap</a>). Report problems with retur
 <p><code>exit(code)</code> ends the process; <code>panic("message")</code> prints <code>panic: message</code> and exits with code 101;
 <code>assert(condition, "why")</code> panics when the condition is false.</p>
 </article>
-<footer class="pager"><a class="prev" href="/guide/variables/">← Variables and types</a><a class="next" href="/guide/functions/">Functions and constants →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/variables/"><small>Previous</small>← Variables and types</a><a class="next" href="/guide/functions/"><small>Next</small>Functions and constants →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/03-control-flow.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#try-finally">try / finally</a></li><li class="l2"><a href="#stopping-the-program">Stopping the program</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

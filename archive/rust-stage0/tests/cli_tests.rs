@@ -202,7 +202,12 @@ fn build_and_run_hello_world_end_to_end() {
     let project = dir.path().join("hello");
 
     kite().current_dir(&project).arg("build").assert().success();
-    assert!(project.join("target/hello").is_file());
+    let exe = if cfg!(windows) {
+        "target/hello.exe"
+    } else {
+        "target/hello"
+    };
+    assert!(project.join(exe).is_file());
 
     kite()
         .current_dir(&project)

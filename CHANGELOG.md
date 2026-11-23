@@ -2,6 +2,49 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
+## 0.4.9 -- generic records, `Option<T>` and `Result<T, E>`
+- **Generic records**: `type Box<T>:` / `type Pair<A, B>:`; applied as `Box<int>` in any type position (`[Box<int>]`, `ptr<Box<int>>`, `Box<Box<int>>`)
+  and as a constructor `Box<int>()`. The compiler makes one instance per type arguments (`Box__int`), also from inside generic functions
+  (`make wrap<T>(x: T) -> Box<T>`, inferred through `Box<T>` parameters). Errors `E0125` (wrong number of type arguments), `E0067` for an unsupported field type.
+  Lexer note: `Box<int>(` is merged into one identifier token before parsing (uppercase name + `<...>` + `(`), `>>` closes two levels.
+- **New default pieces** `std.option` (`Option<T>`: `some`, `is_some`, `is_none`, `unwrap`, `unwrap_or`) and `std.result`
+  (`Result<T, E>`: `ok`, `err`, `is_ok`, `is_err`, `unwrap`, `unwrap_or`, `error`): 40 default pieces.
+- Docs: new guide chapter "Generics" (EN/FR/ES); test `lang_test/tests/generic_types.ki`. Kite compiler only (the seed cannot parse `<T>`).
+
+## 0.4.8 -- general constants, words usable as names
+- **Constants**: `const NAME = expr` also inside functions (`const STEP = LIMIT / 4`), with an optional type; any constant is read-only:
+  assigning to it, `+=`, `.incr()`, or changing a field of a constant record is error `E0124`. Global constants already accepted any type and other constants.
+- **Words usable as names**: `from use type class match case enum thread try failed finally` are keywords only where their meaning applies
+  (a token pass turns them into names after `=`, `(`, `,`, operators, `return`, `if`..., or at the start of an assignment), so
+  `from = 3`, `print(type)`, `make span(from: int, case: int)`, `for finally in xs`, `f"{try}"` work. Still reserved: `to`, `in`, type names, `null`.
+- Tests: `lang_test/tests/consts.ki`, `names.ki`; `build.sh test` checks `E0124`. Kite compiler only (the seed keeps the old rules).
+
+## 0.4.7 -- nested collections
+- Lists of lists to any depth (`[[int]]`, `[[string]]`, `[[Cell]]`), nested list literals (`[[1, 2], [3]]`), struct fields of nested
+  list types (`cells: [[int]]`), `len(grid[0])` on an element that is a list (it was lowered as a string length), lists of maps (`[StrMap_int]`).
+  Checked with AddressSanitizer. Kite compiler only. Tuples still hold scalars only.
+- Test: `stdlib/tests/lang_test/tests/nested.ki`. Docs: guide chapter 5 (EN/FR/ES).
+
+## 0.4.6 -- generic functions
+- **Generic functions**: `make first<T>(xs: [T]) -> T:`. Type parameters are inferred from the argument types (`T`, `[T]`, `ptr<T>`);
+  the compiler instantiates one specialised function per combination (`first__int`, `first__Lstring`) while checking calls, so there is
+  no run-time cost. Errors `E0120` (generic methods), `E0121` (argument count), `E0122` (type mismatch), `E0123` (cannot infer).
+  Kite compiler only (the Rust seed cannot parse type parameters, so the compiler sources do not use them).
+- Tests: `stdlib/tests/lang_test/tests/generics.ki`. Docs: guide chapter 4, language reference, cheat sheet (EN/FR/ES).
+
+## 0.4.5 -- visibility (`pub`), a site in three languages, Windows fixes
+- **Visibility**: `pub` before `make`, `type`, `class`, `enum` or `const` exports an item. A file that uses `pub` is in explicit mode: its
+  other top-level items are private to their piece (the `src/` tree). Files without `pub` stay open, so existing pieces keep working.
+  Using a private function, type, class, enum or constant of another piece is error `E0080`. `pub` is not a reserved word.
+  The standard-pieces reference lists only the `pub` items of a piece that uses `pub`.
+- **Windows (CI)**: the `timespec_get` shim was declared and defined (`invalid redefinition of function`): the extern declaration is now
+  skipped when the shim is emitted, in both back ends, with matching `i64` types; the end-to-end CLI test looks for `hello.exe`.
+  `build.sh test` compiles the Windows IR of a `std.time` program to an object as a regression check.
+- **Site**: English at `/`, French at `/fr/`, Spanish at `/es/` (language switcher, `hreflang`, sitemap); the install page is now a docs page;
+  outline of the page on the right, grouped collapsible menu, copy buttons, callouts, previous/next links, new cheat sheet and
+  troubleshooting pages. A page without translation shows the English text with a notice.
+- Tests: `stdlib/tests/visibility/` (fixture piece with public and private items), run by `build.sh test`.
+
 ## 0.4.4 -- language touches, freestanding runtime, first native back end
 - **Language** (Kite compiler only; the Rust seed cannot parse these): `.incr()` / `.decr()`; method chains continued on lines
   starting with `.name`; **uniform call syntax** `value.f(args)` = `f(value, args)` when the receiver is not a class instance;

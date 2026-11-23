@@ -69,6 +69,84 @@ make is_returnable(t: string) -> bool:
 make is_struct_ty(t: string) -> bool:
     return ty_is_named(t)
 
+// ---- generic functions -------------------------------------------------------------------------------
+make is_generic_fn(ast: Ast, f: int) -> bool:
+    return contains_str(ast.nodes[ast.nodes[f].kids[2]].text, "generic:")
+
+make is_word_char(c: int) -> bool:
+    return (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or c == 95 or (c >= 97 and c <= 122)
+
+// Replaces the type parameters `tn` by `tv` in a type text such as `[T]` or `ptr<T>`.
+make subst_type(text: string, tn: [string], tv: [string]) -> string:
+    out = ""
+    word = ""
+    i = 0
+    while i <= len(text):
+        c = 0
+        if i < len(text):
+            c = char_at(text, i)
+        if i < len(text) and is_word_char(c):
+            word = word + chr(c)
+        else:
+            if len(word) > 0:
+                k = index_of_str(tn, word)
+                if k >= 0:
+                    out = out + tv[k]
+                else:
+                    out = out + word
+                word = ""
+            if i < len(text):
+                out = out + chr(c)
+        i += 1
+    return out
+
+// A name for an instance: `first__int`, `first__Lstring` (for `[string]`).
+make mangle_type(t: string) -> string:
+    s = replace_all(t, "[", "L")
+    s = replace_all(s, "]", "")
+    s = replace_all(s, "<", "_")
+    s = replace_all(s, ">", "")
+    s = replace_all(s, "@", "")
+    s = replace_all(s, "(", "T")
+    s = replace_all(s, ")", "")
+    s = replace_all(s, ",", "_")
+    s = replace_all(s, " ", "")
+    return s
+
+// A struct field may be a scalar, a named type (struct/enum) or a list of those, nested to any depth.
+make field_type_ok(t: string) -> bool:
+    if is_scalar(t):
+        return true
+    if ty_is_list(t):
+        return field_type_ok(ty_list_elem(t))
+    return ty_is_named(t)
+
+// ---- generic records (`type Box<T>:`) -------------------------------------------------------------------
+make is_generic_struct(ast: Ast, st: int) -> bool:
+    k = ast.nodes[st].kids
+    return len(k) > 2 and k[2] >= 0 and contains_str(ast.nodes[k[2]].text, "generic:")
+
+// Splits `int,[string],Pair<a,b>` at the commas that are not nested in `<>`, `[]` or `()`.
+make split_top(text: string) -> [string]:
+    out: [string] = []
+    depth = 0
+    cur = ""
+    i = 0
+    while i < len(text):
+        c = char_at(text, i)
+        if c == 60 or c == 91 or c == 40:
+            depth += 1
+        orif c == 62 or c == 93 or c == 41:
+            depth -= 1
+        if c == 44 and depth == 0:
+            append(out, cur)
+            cur = ""
+        else:
+            cur = cur + chr(c)
+        i += 1
+    append(out, cur)
+    return out
+
 class Sema:
     ast: Ast
     diags: Diags
@@ -93,6 +171,22 @@ class Sema:
     cur_has_ret: bool
     ret_blocked: bool
     loop_depth: int
+    structs_l: int
+    gstruct_idx: StrMap_int
+    gstruct_nodes: [int]
+    ginst_names: [string]
+    ginst_base: [string]
+    ginst_args: [string]
+    const_vars: [string]
+    consts: StrMap_int
+    // generic functions (instantiated per argument types)
+    fns_l: int
+    gen_idx: StrMap_int
+    gen_nodes: [int]
+    inst_idx: StrMap_int
+    pending: [int]
+    ub_names: [string]
+    ub_vals: [string]
 
     make err(self, code: string, msg: string, span: Span):
         self.diags.add(code, msg, span)
@@ -183,6 +277,7 @@ class Sema:
         if contains_str(self.ast.nodes[fk[2]].text, "extern"):
             return
         self.push_scope()
+        clear(self.const_vars)
         self.cur_fn = fname
         si = self.sig_idx.get(fname) - 1
         self.cur_has_ret = self.sigs[si].has_ret
@@ -232,6 +327,15 @@ class Sema:
             ann = ""
             if kids[1] >= 0:
                 ann = self.ast.nodes[kids[1]].text
+            root = self.lvalue_root(kids[0])
+            if n.text == "const":
+                self.check_assign(kids[0], ann, kids[2], span)
+                append(self.const_vars, root)
+                return true
+            if len(root) > 0:
+                if index_of_str(self.const_vars, root) >= 0 or (self.ast.nodes[kids[0]].kind == "LIdent" and len(self.lookup(root)) == 0 and self.consts.has(root)):
+                    self.err("E0124", f"cannot assign to the constant `{root}`", span)
+                    return true
             self.check_assign(kids[0], ann, kids[2], span)
             return true
         if k == "ExprStmt":
@@ -319,6 +423,23 @@ class Sema:
         // Thread
         self.check_block(kids[0])
         return true
+
+    // The variable an assignment target ultimately writes to (`x`, `x.f`, `x[i].f` -> `x`), "" if unknown.
+    make lvalue_root(self, lv: int) -> string:
+        k = self.ast.nodes[lv].kind
+        if k == "LIdent":
+            return self.ast.nodes[lv].text
+        if k == "LField" or k == "LIndex":
+            return self.expr_root(self.ast.nodes[lv].kids[0])
+        return ""
+
+    make expr_root(self, e: int) -> string:
+        k = self.ast.nodes[e].kind
+        if k == "Ident":
+            return self.ast.nodes[e].text
+        if k == "Field" or k == "Index":
+            return self.expr_root(self.ast.nodes[e].kids[0])
+        return ""
 
     make check_assign(self, target: int, ann: string, value: int, span: Span):
         tn = self.ast.nodes[target]
@@ -498,6 +619,8 @@ class Sema:
         if k == "Binary":
             return self.check_binary(n.text, kids[0], kids[1], span)
         if k == "Call":
+            if self.gen_idx.has(n.text):
+                return self.check_generic_call(e, n.text, kids, span)
             return self.check_call(n.text, kids, span)
         if k == "Await":
             return self.check_expr(kids[0])
@@ -526,8 +649,8 @@ class Sema:
             self.err("E0046", "empty list literals need a type; write at least one element (e.g. `[0]` then remove it with future list ops)", span)
             return "[int]"
         first = self.check_expr(items[0])
-        if not is_scalar(first) and not ty_is_named(first):
-            self.err("E0047b", f"list elements must be `int`, `float`, `bool`, or `string` in Kite v0.1, found `{ty_disp(first)}` (nested collections are planned for v0.2)", self.ast.nodes[items[0]].span)
+        if not is_scalar(first) and not ty_is_named(first) and not ty_is_list(first):
+            self.err("E0047b", f"list elements must be scalars, structs, enums or lists, found `{ty_disp(first)}`", self.ast.nodes[items[0]].span)
         i = 1
         while i < len(items):
             t = self.check_expr(items[i])
@@ -694,6 +817,200 @@ class Sema:
             t = self.check_expr(args[i])
             if t != want:
                 self.err(code, msg_pre + ty_disp(t) + msg_post, self.ast.nodes[args[i]].span)
+
+    // Matches the declared parameter type `pat` (which mentions type parameters `tn`) against the argument type
+    // `actual`, recording the bindings in `ub_names` / `ub_vals`.
+    // `Box<int>` -> `Box__int` (instantiating the generic record on first use); other text is returned unchanged.
+    make resolve_type_text(self, text: string, span: Span) -> string:
+        if not contains_str(text, "<"):
+            return text
+        out = ""
+        i = 0
+        n = len(text)
+        while i < n:
+            c = char_at(text, i)
+            if is_word_char(c):
+                j = i
+                while j < n and is_word_char(char_at(text, j)):
+                    j += 1
+                word = substr(text, i, j)
+                if j < n and char_at(text, j) == 60 and self.gstruct_idx.has(word):
+                    depth = 0
+                    k = j
+                    while k < n:
+                        ch = char_at(text, k)
+                        if ch == 60:
+                            depth += 1
+                        orif ch == 62:
+                            depth -= 1
+                            if depth == 0:
+                                break
+                        k += 1
+                    inner = substr(text, j + 1, k)
+                    rargs: [string] = []
+                    for a in split_top(inner):
+                        ra = self.resolve_type_text(a, span)
+                        if self.enum_idx.has(ra):
+                            ra = "@" + ra
+                        append(rargs, ra)
+                    out = out + self.instantiate_struct(word, rargs, span)
+                    i = k + 1
+                else:
+                    out = out + word
+                    i = j
+            else:
+                out = out + chr(c)
+                i += 1
+        return out
+
+    make instantiate_struct(self, base: string, args: [string], span: Span) -> string:
+        g = self.gstruct_nodes[self.gstruct_idx.get(base) - 1]
+        gk = self.ast.nodes[g].kids
+        flags = self.ast.nodes[gk[2]].text
+        tn = split(substr(flags, find(flags, "generic:") + 8, len(flags)), ",")
+        if len(tn) != len(args):
+            self.err("E0125", f"`{base}` takes {str(len(tn))} type argument(s), found {str(len(args))}", span)
+            return base
+        mangled = base + "__" + mangle_type(join(args, "_"))
+        if self.struct_idx.has(mangled):
+            return mangled
+        append(self.structs, StructT())
+        si = len(self.structs) - 1
+        self.struct_idx.set(mangled, len(self.structs))
+        append(self.ginst_names, mangled)
+        append(self.ginst_base, base)
+        append(self.ginst_args, join(args, "|"))
+        fl = self.clone_subst(gk[1], tn, args)
+        sk: [int] = [-1, fl]
+        nf = self.ast.addl("Struct", mangled, self.ast.nodes[g].span, sk)
+        sd = StructT()
+        for fd in self.ast.nodes[fl].kids:
+            tnode = self.ast.nodes[fd].kids[0]
+            ftext = self.resolve_type_text(self.ast.nodes[tnode].text, span)
+            if self.enum_idx.has(ftext):
+                ftext = "@" + ftext
+            self.ast.nodes[tnode].text = ftext
+            if not field_type_ok(ftext):
+                self.err("E0067", f"field `{self.ast.nodes[fd].text}` of `{mangled}` has the unsupported type `{ty_disp(ftext)}`", self.ast.nodes[fd].span)
+            append(sd.names, self.ast.nodes[fd].text)
+            append(sd.types, ftext)
+        self.structs[si] = sd
+        append(self.ast.nodes[self.structs_l].kids, nf)
+        return mangled
+
+    // Rewrites every generic application (`Box<int>` in a type, `Box<int>()` as a call) under `id` to its instance.
+    make walk_resolve(self, id: int):
+        if id < 0:
+            return
+        k = self.ast.nodes[id].kind
+        if k == "Type" or k == "Call":
+            tx = self.ast.nodes[id].text
+            if contains_str(tx, "<"):
+                self.ast.nodes[id].text = self.resolve_type_text(tx, self.ast.nodes[id].span)
+        kl = self.ast.nodes[id].kids
+        for c in kl:
+            self.walk_resolve(c)
+
+    make unify(self, pat: string, actual: string, tn: [string]) -> bool:
+        if index_of_str(tn, pat) >= 0:
+            j = index_of_str(self.ub_names, pat)
+            if j >= 0:
+                return self.ub_vals[j] == actual
+            append(self.ub_names, pat)
+            append(self.ub_vals, actual)
+            return true
+        if ty_is_list(pat):
+            if not ty_is_list(actual):
+                return false
+            return self.unify(ty_list_elem(pat), ty_list_elem(actual), tn)
+        if starts_with(pat, "ptr<") and ends_with(pat, ">"):
+            if not (starts_with(actual, "ptr<") and ends_with(actual, ">")):
+                return false
+            return self.unify(substr(pat, 4, len(pat) - 1), substr(actual, 4, len(actual) - 1), tn)
+        lt = find(pat, "<")
+        if lt > 0 and ends_with(pat, ">") and self.gstruct_idx.has(substr(pat, 0, lt)):
+            gi = index_of_str(self.ginst_names, actual)
+            if gi < 0 or self.ginst_base[gi] != substr(pat, 0, lt):
+                return false
+            pargs = split_top(substr(pat, lt + 1, len(pat) - 1))
+            aargs = split(self.ginst_args[gi], "|")
+            if len(pargs) != len(aargs):
+                return false
+            q = 0
+            while q < len(pargs):
+                if not self.unify(pargs[q], aargs[q], tn):
+                    return false
+                q += 1
+            return true
+        return pat == actual or self.is_subtype(actual, pat)
+
+    make clone_subst(self, id: int, tn: [string], tv: [string]) -> int:
+        n = self.ast.nodes[id]
+        kids2: [int] = []
+        for c in n.kids:
+            if c < 0:
+                append(kids2, -1)
+            else:
+                append(kids2, self.clone_subst(c, tn, tv))
+        text = n.text
+        if n.kind == "Type" or (n.kind == "Call" and contains_str(text, "<")):
+            text = subst_type(text, tn, tv)
+        return self.ast.addl(n.kind, text, n.span, kids2)
+
+    make make_instance(self, f: int, inst: string, tn: [string], tv: [string]):
+        nf = self.clone_subst(f, tn, tv)
+        self.walk_resolve(nf)
+        self.ast.nodes[nf].text = inst
+        fk2 = self.ast.nodes[nf].kids
+        flags = self.ast.nodes[fk2[2]].text
+        self.ast.nodes[fk2[2]].text = trim(substr(flags, 0, find(flags, "generic:")))
+        sig = SigT()
+        for p in self.ast.nodes[fk2[0]].kids:
+            append(sig.params, self.ast.nodes[self.ast.nodes[p].kids[0]].text)
+        sig.ret = "()"
+        if fk2[1] >= 0:
+            sig.ret = self.ast.nodes[fk2[1]].text
+        sig.has_ret = true
+        append(self.sigs, sig)
+        self.sig_idx.set(inst, len(self.sigs))
+        self.inst_idx.set(inst, 1)
+        append(self.pending, nf)
+
+    // A call of a generic function: infer the type parameters from the argument types, instantiate the function
+    // for them (once) and point the call at the instance.
+    make check_generic_call(self, e: int, name: string, args: [int], span: Span) -> string:
+        f = self.gen_nodes[self.gen_idx.get(name) - 1]
+        fk = self.ast.nodes[f].kids
+        flags = self.ast.nodes[fk[2]].text
+        tn = split(substr(flags, find(flags, "generic:") + 8, len(flags)), ",")
+        pl = self.ast.nodes[fk[0]].kids
+        ats: [string] = []
+        for a in args:
+            append(ats, self.check_expr(a))
+        if len(args) != len(pl):
+            self.err("E0121", f"`{name}` takes {str(len(pl))} argument(s), found {str(len(args))}", span)
+            return "()"
+        clear(self.ub_names)
+        clear(self.ub_vals)
+        i = 0
+        while i < len(pl):
+            pty = self.ast.nodes[self.ast.nodes[pl[i]].kids[0]].text
+            if not self.unify(pty, ats[i], tn):
+                self.err("E0122", f"argument {str(i + 1)} of `{name}` should be `{ty_disp(subst_type(pty, self.ub_names, self.ub_vals))}`, found `{ty_disp(ats[i])}`", self.ast.nodes[args[i]].span)
+                return "()"
+            i += 1
+        tv: [string] = []
+        for t in tn:
+            j = index_of_str(self.ub_names, t)
+            if j < 0:
+                self.err("E0123", f"cannot infer the type parameter `{t}` of `{name}` from its arguments", span)
+                return "()"
+            append(tv, self.ub_vals[j])
+        inst = name + "__" + mangle_type(join(tv, "_"))
+        if not self.inst_idx.has(inst):
+            self.make_instance(f, inst, tn, tv)
+        self.ast.nodes[e].text = inst
+        return self.sigs[self.sig_idx.get(inst) - 1].ret
 
     make check_call(self, name: string, args: [int], span: Span) -> string:
         na = len(args)
@@ -978,6 +1295,9 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
     s.struct_idx = StrMap_int()
     s.enum_idx = StrMap_int()
     s.org_idx = StrMap_int()
+    s.gen_idx = StrMap_int()
+    s.consts = StrMap_int()
+    s.inst_idx = StrMap_int()
     s.org_files = org_files
     s.org_srcs = org_srcs
     oi = 0
@@ -989,7 +1309,18 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
     enums_l = ast.nodes[root].kids[2]
     fns_l = ast.nodes[root].kids[3]
     enum_nodes = ast.nodes[enums_l].kids
-    struct_nodes = ast.nodes[structs_l].kids
+    s.structs_l = structs_l
+    s.gstruct_idx = StrMap_int()
+    struct_nodes: [int] = []
+    for st0 in ast.nodes[structs_l].kids:
+        if is_generic_struct(ast, st0):
+            if s.gstruct_idx.has(ast.nodes[st0].text):
+                s.perr("E0061", f"struct `{ast.nodes[st0].text}` is defined multiple times", ast.nodes[st0].span)
+            else:
+                append(s.gstruct_nodes, st0)
+                s.gstruct_idx.set(ast.nodes[st0].text, len(s.gstruct_nodes))
+        else:
+            append(struct_nodes, st0)
     fn_nodes = ast.nodes[fns_l].kids
 
     // enums
@@ -1036,6 +1367,14 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
             fix_ty_node(ast, fk[1], s.enum_idx)
             fix_block_types(ast, fk[3], s.enum_idx)
 
+    // generic records: replace every `Box<int>` in the non-generic code by its instance
+    if len(s.gstruct_nodes) > 0:
+        for st in struct_nodes:
+            s.walk_resolve(st)
+        for f in fn_nodes:
+            if not is_generic_fn(ast, f):
+                s.walk_resolve(f)
+
     // structs
     for st in struct_nodes:
         before2 = len(s.pre.items)
@@ -1044,13 +1383,7 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
         sd = StructT()
         for fd in fl2:
             fty = ast.nodes[ast.nodes[fd].kids[0]].text
-            ok = is_scalar(fty)
-            if not ok:
-                if ty_is_list(fty):
-                    le = ty_list_elem(fty)
-                    ok = is_scalar(le) or ty_is_named(le)
-                orif ty_is_named(fty):
-                    ok = true
+            ok = field_type_ok(fty)
             if not ok:
                 s.pre.add("E0067", f"field `{ast.nodes[fd].text}` of struct `{sname}` has type `{ty_disp(fty)}`, but struct fields must be `int`/`float`/`bool`/`string` in Kite v0.1", ast.nodes[fd].span, "", "nested structs/collections are planned for v0.2")
             append(sd.names, ast.nodes[fd].text)
@@ -1065,7 +1398,18 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
         s.tag_from(s.pre, before2, sname)
 
     // functions
+    s.fns_l = fns_l
     for f in fn_nodes:
+        if ast.nodes[ast.nodes[f].kids[2]].text == "const":
+            s.consts.set(ast.nodes[f].text, 1)
+    for f in fn_nodes:
+        if is_generic_fn(ast, f):
+            if s.gen_idx.has(ast.nodes[f].text):
+                s.perr("E0036", f"function `{ast.nodes[f].text}` is defined multiple times", ast.nodes[f].span)
+            else:
+                append(s.gen_nodes, f)
+                s.gen_idx.set(ast.nodes[f].text, len(s.gen_nodes))
+            continue
         before3 = len(s.pre.items)
         fk = ast.nodes[f].kids
         fname = ast.nodes[f].text
@@ -1099,9 +1443,19 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
         s.pre.add("E0037", "no `main` function found", span_dummy(), "", "every Kite program needs a `make main():` entry point")
 
     for f in fn_nodes:
+        if is_generic_fn(ast, f):
+            continue
         before4 = len(s.diags.items)
         s.check_function(f)
         s.tag_from(s.diags, before4, ast.nodes[f].text)
+    // instances of generic functions created while checking (they may create further instances)
+    pk = 0
+    while pk < len(s.pending):
+        pf = s.pending[pk]
+        before5 = len(s.diags.items)
+        s.check_function(pf)
+        s.tag_from(s.diags, before5, s.ast.nodes[pf].text)
+        pk += 1
     for d in s.pre.items:
         append(s.diags.items, d)
 
@@ -1112,12 +1466,30 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
 
     // the typed program: infer-and-store non-void return types
     for f in fn_nodes:
+        if is_generic_fn(ast, f):
+            continue
         fk = ast.nodes[f].kids
         if fk[1] < 0 and not is_extern_fn(ast, f):
             gi2 = s.sig_idx.get(ast.nodes[f].text) - 1
             if s.sigs[gi2].has_ret and s.sigs[gi2].ret != "()":
                 tid = s.ast.add0("Type", s.sigs[gi2].ret, ast.nodes[f].span)
                 s.ast.nodes[f].kids[1] = tid
+    // generic records leave the program; their instances (appended while checking) stay
+    if len(s.gstruct_nodes) > 0:
+        live_s: [int] = []
+        for st1 in s.ast.nodes[structs_l].kids:
+            if not is_generic_struct(s.ast, st1):
+                append(live_s, st1)
+        s.ast.nodes[structs_l].kids = live_s
+    // generic functions leave the program; their instances join it
+    if len(s.gen_nodes) > 0:
+        live: [int] = []
+        for f in fn_nodes:
+            if not is_generic_fn(ast, f):
+                append(live, f)
+        for pf2 in s.pending:
+            append(live, pf2)
+        s.ast.nodes[fns_l].kids = live
     // `Sema.ast` is a copy of the arena header: hand the grown node list back
     ast.nodes = s.ast.nodes
     return true

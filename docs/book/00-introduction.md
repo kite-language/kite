@@ -12,7 +12,7 @@ make main():
 **What you get**
 
 - A compiler written in Kite itself (it compiles itself: stage 1 = stage 2 = stage 3).
-- **Pieces**: Kite's packages. The language ships with 38 default pieces (`std.fs`, `std.json`, `std.random`, ...) and a
+- **Pieces**: Kite's packages. The language ships with 40 default pieces (`std.fs`, `std.json`, `std.random`, ...) and a
   community registry that lives in the repository.
 - Threads, pointers and manual memory when you need them; strings, lists, tuples and dictionaries when you do not.
 - `kite` does everything: `init`, `build`, `run`, `check`, `test`, `fmt`, `doc`, `add`, `publish`, `target`, ...

@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Your first project — Kite</title>
+<meta name="description" content="kite init creates:">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/first-project/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/first-project/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/first-project/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/first-project/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/first-project/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/first-project/" hreflang="en" lang="en">EN</a><a href="/fr/guide/first-project/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/first-project/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
-<li><a class="cur" href="/guide/first-project/">Your first project</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a class="cur" aria-current="page" href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,21 +52,22 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Guide › Your first project</div>
 <article>
 <h1 id="your-first-project">Your first project</h1>
-<pre class="code"><code>kite init hello
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite init hello
 cd hello
 kite run
-</code></pre>
+</code></pre></div>
 <p><code>kite init</code> creates:</p>
 <table>
 <thead>
@@ -80,9 +92,9 @@ kite run
 </tbody>
 </table>
 <p><code>src/main.ki</code>:</p>
-<pre class="code"><code><span class="k">make</span> main():
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> main():
     print(<span class="s">&quot;Hello, Kite!&quot;</span>)
-</code></pre>
+</code></pre></div>
 <h2 id="the-commands-you-will-use-every-day">The commands you will use every day</h2>
 <table>
 <thead>
@@ -126,21 +138,24 @@ kite run
 your pieces and the compiler version.</p>
 <h2 id="package-metadata-in-your-program">Package metadata in your program</h2>
 <p><code>kite.toml</code> can describe the package, and the program can read it:</p>
-<pre class="code"><code>[package]
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>[package]
 name = <span class="s">&quot;hello&quot;</span>
 version = <span class="s">&quot;0.1.0&quot;</span>
 description = <span class="s">&quot;My first Kite program&quot;</span>
 authors = [<span class="s">&quot;Ada &lt;ada@example.com&gt;&quot;</span>]
 license = <span class="s">&quot;MIT&quot;</span>
-</code></pre>
-<pre class="code"><code><span class="k">make</span> main():
+</code></pre></div>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> main():
     print(<span class="s">f&quot;{pkg_name()} {pkg_version()} by {pkg_authors()}&quot;</span>)
-</code></pre>
+</code></pre></div>
 <p>Every binary also carries a signature (<code>kite inspect target/debug/hello</code> shows the package, the compiler and the build).</p>
 </article>
-<footer class="pager"><a class="prev" href="/installation/">← Installation</a><a class="next" href="/guide/variables/">Variables and types →</a></footer>
+<footer class="pager"><a class="prev" href="/installation/"><small>Previous</small>← Installation</a><a class="next" href="/guide/variables/"><small>Next</small>Variables and types →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/01-first-project.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#the-commands-you-will-use-every-day">The commands you will use every day</a></li><li class="l2"><a href="#package-metadata-in-your-program">Package metadata in your program</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

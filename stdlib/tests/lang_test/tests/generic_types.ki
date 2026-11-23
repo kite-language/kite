@@ -1,0 +1,66 @@
+use std.test
+use std.option
+use std.result
+
+type Box<T>:
+    value: T
+    count: int
+
+type Pair<A, B>:
+    first: A
+    second: B
+
+make wrap<T>(x: T) -> Box<T>:
+    b = Box<T>()
+    b.value = x
+    b.count = 1
+    return b
+
+make unwrap_box<T>(b: Box<T>) -> T:
+    return b.value
+
+make find(xs: [int], x: int) -> Option<int>:
+    i = 0
+    for v in xs:
+        if v == x:
+            return option.some(i)
+        i.incr()
+    return Option<int>()
+
+make digit(c: string) -> Result<int, string>:
+    r = Result<int, string>()
+    if c >= "0" and c <= "9":
+        return result.ok(r, to_int(c))
+    return result.err(r, f"not a digit: {c}")
+
+make main():
+    t = test_new("generic types")
+    a = Box<int>()
+    a.value = 41
+    a.count = 2
+    test_eq_int(t, "Box<int>", a.value + a.count, 43)
+    s = Box<string>()
+    s.value = "hi"
+    test_eq_str(t, "Box<string>", s.value, "hi")
+    p = Pair<string, int>()
+    p.first = "k"
+    p.second = 7
+    test_eq_str(t, "Pair first", p.first, "k")
+    test_eq_int(t, "Pair second", p.second, 7)
+    test_eq_int(t, "inferred through Box<T>", unwrap_box(wrap(5)), 5)
+    test_eq_str(t, "second instance", unwrap_box(wrap("str")), "str")
+    nested = Box<Box<int>>()
+    nested.value = a
+    test_eq_int(t, "nested", nested.value.value, 41)
+    items: [Box<int>] = []
+    append(items, a)
+    test_eq_int(t, "list of Box<int>", items[0].count, 2)
+    f = find([4, 5, 6], 5)
+    test_eq_int(t, "option some", option.unwrap(f), 1)
+    test_eq_int(t, "option none", option.unwrap_or(find([1], 9), -1), -1)
+    test_eq_str(t, "option flags", f"{f.has} {option.is_none(find([1], 9))}", "true true")
+    test_eq_int(t, "result ok", result.unwrap(digit("7")), 7)
+    bad = digit("x")
+    test_eq_str(t, "result err", result.error(bad), "not a digit: x")
+    test_eq_int(t, "result fallback", result.unwrap_or(bad, 0), 0)
+    exit(test_finish(t))

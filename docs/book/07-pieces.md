@@ -53,3 +53,25 @@ kite publish           # prepares pieces/community/<name>/<version>/ and prints 
 ```
 
 `kite publish` never runs git: you run the printed commands and open a pull request; CI compiles every changed piece.
+
+## Public and private items
+
+By default everything is public. As soon as a file marks one top-level item `pub`, that file is in *explicit mode*:
+the items without `pub` are **private to their piece** (every file under the piece's `src/`).
+
+```kite
+pub type Point:
+    x: int
+    y: int
+
+pub make dist(a: Point, b: Point) -> int:     // part of the interface
+    return abs(a.x - b.x) + abs(a.y - b.y)
+
+make helper(n: int) -> int:                   // private: other pieces cannot call it
+    return n * 2
+```
+
+`pub` works on `make`, `type`, `class`, `enum` and `const`. A class's methods follow the class. Using a private item
+from another piece is error `E0080`. The [standard pieces](/reference/std-pieces/) reference lists only the `pub` items of a piece that uses `pub`.
+
+> **Tip:** start private, and mark `pub` only what users of your piece need: it keeps the interface small and lets you change the rest freely.

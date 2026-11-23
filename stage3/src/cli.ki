@@ -23,7 +23,7 @@ use std.fmt
 use std.types
 
 make version_text() -> string:
-    return "0.4.4"
+    return "0.4.9"
 
 make usage() -> string:
     out = "The Kite programming language compiler and project manager\n\n"

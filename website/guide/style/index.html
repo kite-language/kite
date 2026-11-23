@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Writing readable Kite — Kite</title>
+<meta name="description" content="Kite">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/style/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/style/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/style/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/style/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/style/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/style/" hreflang="en" lang="en">EN</a><a href="/fr/guide/style/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/style/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
-<li><a class="cur" href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a class="cur" aria-current="page" href="/guide/style/">Writing readable Kite</a></li>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,15 +52,16 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Guide › Writing readable Kite</div>
 <article>
 <h1 id="writing-readable-kite">Writing readable Kite</h1>
 <ul>
@@ -64,13 +76,17 @@
 <li>Put a <code>//</code> comment above every function you want in <code>kite doc</code>.</li>
 <li>Prefer <code>const</code> over magic numbers.</li>
 <li>Keep functions short; return early.</li>
-<li>Names to avoid for variables and functions (reserved): <code>to in from use type class match case enum thread try failed finally
-  int float string bool ptr null</code>. Member names after a dot and record fields may use them.</li>
+<li>Mark only a piece's interface <code>pub</code>; everything else stays private.</li>
+<li>Names to avoid for variables and functions (reserved): <code>to in int float string bool ptr null</code>, and the built-ins (<code>len</code>, <code>print</code>, ...).
+  Other keywords (<code>from</code>, <code>type</code>, <code>match</code>, ...) work as names, but a clearer name reads better.</li>
 </ul>
 </article>
-<footer class="pager"><a class="prev" href="/guide/memory/">← Memory, pointers and threads</a><a class="next" href="/reference/language/">Language reference →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/memory/"><small>Previous</small>← Memory, pointers and threads</a><a class="next" href="/guide/cheatsheet/"><small>Next</small>Cheat sheet →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/09-style.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+[package]
+name = "vis"
+version = "0.1.0"
+edition = "2026"
+description = "visibility fixture"
+authors = ["test"]
+license = "MIT"
+
+[build]
+opt_level = 0
+
+[dependencies]

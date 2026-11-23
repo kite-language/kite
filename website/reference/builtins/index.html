@@ -4,36 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Built-in functions — Kite</title>
+<meta name="description" content="Always available, no import. Indexes are 0-based.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/reference/builtins/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/builtins/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/builtins/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/builtins/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/builtins/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/reference/builtins/" hreflang="en" lang="en">EN</a><a href="/fr/reference/builtins/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/builtins/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
-<li><a class="cur" href="/reference/builtins/">Built-in functions</a></li>
+<li><a class="cur" aria-current="page" href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
 <li><a href="/reference/cli/">The kite command</a></li>
 <li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
@@ -41,15 +52,16 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Reference › Built-in functions</div>
 <article>
 <h1 id="built-in-functions">Built-in functions</h1>
 <p>Always available, no import. Indexes are <strong>0-based</strong>.</p>
@@ -126,9 +138,12 @@
 <code>StrMap_int</code>, <code>StrMap_string</code>, <code>StrMap_float</code>, <code>StrMap_bool</code>, <code>StrMap_&lt;YourStruct&gt;</code>
 (<code>m.set(k, v)</code>, <code>m.get(k)</code>, <code>m.has(k)</code>, <code>m.size()</code>, <code>m.keys</code>). Sources: <code>stdlib/prelude/</code>.</p>
 </article>
-<footer class="pager"><a class="prev" href="/reference/language/">← Language reference</a><a class="next" href="/reference/std-pieces/">Standard pieces →</a></footer>
+<footer class="pager"><a class="prev" href="/reference/language/"><small>Previous</small>← Language reference</a><a class="next" href="/reference/std-pieces/"><small>Next</small>Standard pieces →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/builtins.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#prelude-written-in-kite-compiled-in-only-when-used">Prelude (written in Kite, compiled in only when used)</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

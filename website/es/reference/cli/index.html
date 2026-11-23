@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El comando kite — Kite</title>
+<meta name="description" content="kite.toml fija las mismas opciones: [build] opt_level, target, runtime, heap_size.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/reference/cli/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/cli/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/cli/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/cli/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/cli/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/reference/cli/" hreflang="en" lang="en">EN</a><a href="/fr/reference/cli/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/reference/cli/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a class="cur" aria-current="page" href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Referencia › El comando kite</div>
+<article>
+<h1 id="el-comando-kite">El comando <code>kite</code></h1>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite &lt;comando&gt; [opciones]
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>comando</th>
+<th>qué hace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kite init [NOMBRE]</code></td>
+<td>crea un paquete (<code>--lib</code> para una pieza); sin nombre, en el directorio actual</td>
+</tr>
+<tr>
+<td><code>kite build</code></td>
+<td>compila el paquete</td>
+</tr>
+<tr>
+<td><code>kite run</code></td>
+<td>compila y luego ejecuta el programa</td>
+</tr>
+<tr>
+<td><code>kite check</code></td>
+<td>comprueba los tipos sin producir un binario</td>
+</tr>
+<tr>
+<td><code>kite test [FILTRO]</code></td>
+<td>compila y ejecuta <code>tests/*.ki</code> (un código de salida distinto de cero es un fallo)</td>
+</tr>
+<tr>
+<td><code>kite fmt [--check]</code></td>
+<td>normaliza los espacios en <code>src/</code> y <code>tests/</code></td>
+</tr>
+<tr>
+<td><code>kite doc</code></td>
+<td>escribe <code>target/doc/&lt;nombre&gt;.md</code> a partir de los comentarios <code>//</code> sobre los elementos</td>
+</tr>
+<tr>
+<td><code>kite clean</code></td>
+<td>borra <code>target/</code></td>
+</tr>
+<tr>
+<td><code>kite bench [--runs N]</code></td>
+<td>compila en modo release y mide ejecuciones repetidas</td>
+</tr>
+<tr>
+<td><code>kite add NOMBRE[@REQ]</code> / <code>remove NOMBRE</code></td>
+<td>edita <code>[dependencies]</code></td>
+</tr>
+<tr>
+<td><code>kite update</code></td>
+<td>vuelve a resolver las dependencias y reescribe <code>kite.lock</code></td>
+</tr>
+<tr>
+<td><code>kite tree</code></td>
+<td>imprime el árbol de dependencias</td>
+</tr>
+<tr>
+<td><code>kite search [CONSULTA]</code> / <code>kite info PIEZA</code></td>
+<td>explora el registro de piezas</td>
+</tr>
+<tr>
+<td><code>kite verify</code> / <code>kite publish</code></td>
+<td>comprueba una pieza / prepara su pull request</td>
+</tr>
+<tr>
+<td><code>kite target list\|add\|remove\|show [NOMBRE]</code></td>
+<td>gestiona los destinos de compilación</td>
+</tr>
+<tr>
+<td><code>kite inspect ARCHIVO</code></td>
+<td>muestra la firma de Kite guardada en un binario</td>
+</tr>
+</tbody>
+</table>
+<h2 id="kite-build">kite build</h2>
+<table>
+<thead>
+<tr>
+<th>opción</th>
+<th>significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--release</code></td>
+<td>optimiza (<code>-O3</code>), resultado en <code>target/release/</code></td>
+</tr>
+<tr>
+<td><code>--target T</code></td>
+<td>compila para otro destino (<code>target/&lt;T&gt;/&lt;perfil&gt;/</code>)</td>
+</tr>
+<tr>
+<td><code>-q</code>, <code>--quiet</code></td>
+<td>sin líneas de progreso</td>
+</tr>
+<tr>
+<td><code>-o ARCHIVO</code>, <code>--out-dir DIR</code></td>
+<td>dónde poner el resultado</td>
+</tr>
+<tr>
+<td><code>--link ARCHIVO</code></td>
+<td>enlaza un objeto/biblioteca adicional (repetible)</td>
+</tr>
+<tr>
+<td><code>--static</code></td>
+<td>enlaza estáticamente</td>
+</tr>
+<tr>
+<td><code>--lib</code></td>
+<td>un archivo objeto más una cabecera C, para llamar a Kite desde C</td>
+</tr>
+<tr>
+<td><code>--freestanding</code></td>
+<td>un archivo objeto sin requisito de libc, sin <code>main</code></td>
+</tr>
+<tr>
+<td><code>--runtime core</code></td>
+<td>añade el runtime integrado sin libc (asignador «bump», funciones de memoria y cadenas)</td>
+</tr>
+<tr>
+<td><code>--heap-size N</code></td>
+<td>heap de ese runtime en bytes (por defecto 1048576)</td>
+</tr>
+<tr>
+<td><code>--backend native</code></td>
+<td>generador x86-64 experimental, sin clang (subconjunto entero)</td>
+</tr>
+</tbody>
+</table>
+<p><code>kite.toml</code> fija las mismas opciones: <code>[build] opt_level</code>, <code>target</code>, <code>runtime</code>, <code>heap_size</code>.</p>
+<h2 id="salida-de-la-compilacion">Salida de la compilación</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">4.9</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.4</span>.<span class="n">9</span>)
+   Compiling hello v0.<span class="n">1.0</span> (/home/me/hello)
+    Finished dev [unoptimized] target(s) <span class="k">in</span> <span class="n">0</span>.42s
+</code></pre></div>
+<p><code>Fresh</code> sustituye a <code>Compiling</code> cuando nada ha cambiado. Estructura: <code>target/debug/&lt;nombre&gt;</code>, <code>target/release/&lt;nombre&gt;</code>, con el
+IR de LLVM (<code>&lt;nombre&gt;.ll</code>) junto al binario y la huella de caché en <code>.fingerprint/</code>.</p>
+<h2 id="entorno">Entorno</h2>
+<table>
+<thead>
+<tr>
+<th>variable</th>
+<th>significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KITE_PIECES</code></td>
+<td>el directorio del registro (el <code>pieces/</code> del repositorio)</td>
+</tr>
+<tr>
+<td><code>KITE_HOME</code></td>
+<td>dónde instala los destinos <code>kite target add</code> (por defecto <code>~/.kite</code>)</td>
+</tr>
+</tbody>
+</table>
+</article>
+<footer class="pager"><a class="prev" href="/es/reference/std-pieces/"><small>Anterior</small>← Piezas estándar</a><a class="next" href="/es/reference/pieces-registry/"><small>Siguiente</small>Piezas y registro →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/10-cli.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#salida-de-la-compilacion">Salida de la compilación</a></li><li class="l2"><a href="#entorno">Entorno</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

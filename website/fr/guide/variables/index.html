@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Variables et types — Kite</title>
+<meta name="description" content="Une variable se crée en lui assignant une valeur. Son type est inféré et ne peut pas changer ; les noms vivent dans la fonction qui les crée.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/guide/variables/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/variables/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/variables/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/variables/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/variables/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/guide/variables/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/variables/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/variables/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a class="cur" aria-current="page" href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Variables et types</div>
+<article>
+<h1 id="variables-types-et-conversions">Variables, types et conversions</h1>
+<p>Une variable se crée en lui assignant une valeur. Son type est inféré et <strong>ne peut pas changer</strong> ; les noms vivent dans la fonction qui
+les crée.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>count = <span class="n">0</span>            <span class="c">// int</span>
+price = <span class="n">9.5</span>          <span class="c">// float</span>
+ready = <span class="k">true</span>         <span class="c">// bool</span>
+name = <span class="s">&quot;Kite&quot;</span>        <span class="c">// string</span>
+</code></pre></div>
+<p>Annotez quand vous voulez être explicite (ou pour <code>null</code>) :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>total: <span class="t">int</span> = <span class="n">0</span>
+p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k">null</span>
+</code></pre></div>
+<h2 id="les-types">Les types</h2>
+<table>
+<thead>
+<tr>
+<th>type</th>
+<th>exemples</th>
+<th>remarques</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>int</code></td>
+<td><code>42</code>, <code>-7</code>, <code>0</code></td>
+<td>entier signé sur 64 bits</td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>3.14</code>, <code>0.5</code></td>
+<td>64 bits</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td><code>true</code>, <code>false</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>"hi"</code>, <code>"line\n"</code></td>
+<td>octets ; échappements <code>\n \t \r \0 \e \\ \" \x41</code></td>
+</tr>
+<tr>
+<td><code>[T]</code></td>
+<td><code>[1, 2, 3]</code></td>
+<td>liste, voir <a href="/fr/guide/collections/">Collections</a></td>
+</tr>
+<tr>
+<td><code>(A, B)</code></td>
+<td><code>(1, "a")</code></td>
+<td>tuple de scalaires</td>
+</tr>
+<tr>
+<td><code>{"k": T}</code></td>
+<td><code>{"a": 1}</code></td>
+<td>dictionnaire à clés littérales</td>
+</tr>
+<tr>
+<td><code>ptr&lt;T&gt;</code></td>
+<td><code>alloc(int)</code></td>
+<td>pointeur, voir <a href="/fr/guide/memory/">Mémoire</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="operateurs">Opérateurs</h2>
+<p><code>+ - * / %</code> sur les nombres (<code>+</code> concatène aussi les chaînes), <code>== != &lt; &gt; &lt;= &gt;=</code>, <code>and or not</code>, opérateurs binaires <code>&amp; | ^ ~ &lt;&lt; &gt;&gt;</code>.
+Affectation composée : <code>x += 1</code>, <code>x -= 1</code>, ... et le lisible <code>x.incr()</code> / <code>x.decr()</code> pour <code>+1</code> / <code>-1</code>
+(aussi sur les champs et les éléments de liste : <code>self.count.incr()</code>, <code>items[2].decr()</code>).</p>
+<h2 id="convertir">Convertir</h2>
+<table>
+<thead>
+<tr>
+<th>depuis</th>
+<th>vers</th>
+<th>comment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>tout ce qui s'affiche</td>
+<td><code>string</code></td>
+<td><code>str(x)</code> ou une f-string</td>
+</tr>
+<tr>
+<td><code>string</code></td>
+<td><code>int</code></td>
+<td><code>to_int("42")</code></td>
+</tr>
+<tr>
+<td><code>int</code></td>
+<td><code>float</code></td>
+<td><code>float_of(3)</code></td>
+</tr>
+<tr>
+<td><code>float</code></td>
+<td><code>int</code></td>
+<td><code>int_of(2.9)</code> (tronque)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="construire-des-chaines">Construire des chaînes</h2>
+<p>Utilisez les <strong>f-strings</strong> plutôt que de longues chaînes de <code>+</code> :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>name = <span class="s">&quot;Kite&quot;</span>
+n = len(name)
+print(<span class="s">f&quot;{name} has {n} letters&quot;</span>)      <span class="c">// Kite has 4 letters</span>
+</code></pre></div>
+<p>Toute expression sans guillemets tient dans <code>{ }</code> ; pour le reste, calculez-la d'abord.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/first-project/"><small>Précédent</small>← Votre premier projet</a><a class="next" href="/fr/guide/control-flow/"><small>Suivant</small>Structures de contrôle →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/02-variables.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#les-types">Les types</a></li><li class="l2"><a href="#operateurs">Opérateurs</a></li><li class="l2"><a href="#convertir">Convertir</a></li><li class="l2"><a href="#construire-des-chaines">Construire des chaînes</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

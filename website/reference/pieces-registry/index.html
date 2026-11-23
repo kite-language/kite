@@ -4,52 +4,64 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pieces and the registry — Kite</title>
+<meta name="description" content="A piece is a Kite library: a project with src/lib.ki and a kite.toml. Pieces are Kite&#x27;s crates: the language itself is &quot;made of pieces&quot; -- the default ones (std.*) live in the same">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/reference/pieces-registry/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/pieces-registry/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/pieces-registry/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/pieces-registry/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/pieces-registry/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/reference/pieces-registry/" hreflang="en" lang="en">EN</a><a href="/fr/reference/pieces-registry/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/pieces-registry/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
 <li><a href="/reference/cli/">The kite command</a></li>
-<li><a class="cur" href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a class="cur" aria-current="page" href="/reference/pieces-registry/">Pieces and the registry</a></li>
 <li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Reference › Pieces and the registry</div>
 <article>
 <h1 id="pieces-packages">Pieces (packages)</h1>
 <p>A <strong>piece</strong> is a Kite library: a project with <code>src/lib.ki</code> and a <code>kite.toml</code>. Pieces are Kite's crates:
@@ -63,18 +75,18 @@ the language itself is "made of pieces" -- the default ones (<code>std.*</code>)
   <code>[dependencies]</code> and imported by name. A community piece cannot take the name of a default piece.</li>
 </ul>
 <p>Published <strong>community</strong> versions are <strong>immutable</strong>. The default pieces are versioned with the language (each release
-replaces the directory of the previous one: <code>pieces/std/&lt;name&gt;/0.4.4/</code>), so they are exempt from the immutability
+replaces the directory of the previous one: <code>pieces/std/&lt;name&gt;/0.4.9/</code>), so they are exempt from the immutability
 check. kite finds it through <code>$KITE_PIECES</code>, a <code>pieces/</code> folder (with a <code>REGISTRY</code>
 file) above the project, <code>~/.kite/pieces</code>, or <code>/usr/share/kite/pieces</code> (installed with the <code>.deb</code>/<code>.rpm</code>/archive).</p>
 <h2 id="using-pieces">Using pieces</h2>
-<pre class="code"><code>kite search json          # search names, descriptions, keywords
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite search json          # search names, descriptions, keywords
 kite info semver          # metadata <span class="k">and</span> versions
-kite add sha256           # writes `sha256 = <span class="s">&quot;0.4.4&quot;</span>` <span class="k">to</span> [dependencies] <span class="k">and</span> updates kite.lock
+kite add sha256           # writes `sha256 = <span class="s">&quot;0.4.9&quot;</span>` <span class="k">to</span> [dependencies] <span class="k">and</span> updates kite.lock
 kite add semver@^<span class="n">0.4</span>      # a requirement: <span class="s">&quot;1.2&quot;</span> / <span class="s">&quot;^1.2&quot;</span> / <span class="s">&quot;~1.2.3&quot;</span> / <span class="s">&quot;&gt;=1.0&quot;</span> / <span class="s">&quot;=1.2.3&quot;</span> / <span class="s">&quot;*&quot;</span>
 kite tree                 # dependency tree (transitive dependencies are detected <span class="k">and</span> resolved)
 kite update               # re-resolve <span class="k">and</span> rewrite kite.lock
 kite remove sha256
-</code></pre>
+</code></pre></div>
 <p><code>kite.toml</code> also accepts local pieces: <code>mylib = { path = "../mylib" }</code> (not publishable).
 <code>kite.lock</code> records name, version, source and a sha256 checksum of every registry piece; a mismatch with the
 registry copy aborts the build.</p>
@@ -107,6 +119,10 @@ Functions still share one global namespace under the hood, so name your piece's 
 <tr>
 <td><code>error</code></td>
 <td><code>Error</code> (code, message, context chain), <code>error_wrap</code>, <code>error_describe</code>, <code>ResultInt/Str/Bool</code></td>
+</tr>
+<tr>
+<td><code>option</code>, <code>result</code></td>
+<td>generic <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> records with <code>some</code>, <code>unwrap</code>, <code>unwrap_or</code>, <code>ok</code>, <code>err</code> (0.4.9)</td>
 </tr>
 <tr>
 <td><code>mem</code></td>
@@ -170,11 +186,11 @@ Threads: <code>h = spawn(worker, arg)</code> runs <code>make worker(arg: int)</c
 <code>keywords</code>. They are available to programs: <code>pkg_name()</code>, <code>pkg_version()</code>, <code>pkg_edition()</code>, <code>pkg_description()</code>,
 <code>pkg_authors()</code>, <code>pkg_license()</code>, <code>pkg_repository()</code>, <code>pkg_homepage()</code>, <code>pkg_keywords()</code> (compiled in only when used).</p>
 <h2 id="writing-and-publishing-a-piece">Writing and publishing a piece</h2>
-<pre class="code"><code>kite init --lib my-piece   # src/lib.ki, kite.toml with metadata (authors from git config)
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite init --lib my-piece   # src/lib.ki, kite.toml with metadata (authors from git config)
 kite verify                # same checks as the registry CI
 export KITE_PIECES=~/src/kite/pieces      # your clone of the Kite repository
 kite publish               # validates, compiles, copies into pieces/community/my-piece/&lt;version&gt;/ <span class="k">and</span> prints the commands
-</code></pre>
+</code></pre></div>
 <p><code>kite publish</code> never runs git or touches GitHub: it prints <code>git checkout -b</code>, <code>git add</code>, <code>git commit</code>,
 <code>git push</code> and <code>gh pr create</code> for you to run. The pull request is checked by <code>.github/workflows/pieces.yml</code>
 (<code>scripts/verify-pieces.sh</code>): metadata complete (<code>description</code>, <code>license</code>, <code>authors</code>, valid name and semver),
@@ -192,9 +208,12 @@ nearest <code>pieces/</code> folder with a <code>REGISTRY</code> file above <cod
 compiler's own code uses the prefixed names (<code>path_join</code>, <code>fs_is_dir</code>). Pieces that the compiler imports must not use
 features the seed lacks (for example the <code>\x1b</code> string escape): <code>term</code> builds ESC with <code>chr_byte(27)</code>.</p>
 </article>
-<footer class="pager"><a class="prev" href="/reference/cli/">← The kite command</a><a class="next" href="/reference/targets/">Targets, OS and freestanding →</a></footer>
+<footer class="pager"><a class="prev" href="/reference/cli/"><small>Previous</small>← The kite command</a><a class="next" href="/reference/targets/"><small>Next</small>Targets, OS and freestanding →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/pieces.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#the-registry">The registry</a></li><li class="l2"><a href="#using-pieces">Using pieces</a></li><li class="l2"><a href="#default-pieces-std">Default pieces (std.*)</a></li><li class="l2"><a href="#reserved-words-as-member-names-043">Reserved words as member names (0.4.3)</a></li><li class="l2"><a href="#language-support-added-in-041">Language support added in 0.4.1</a></li><li class="l2"><a href="#package-metadata-in-code">Package metadata in code</a></li><li class="l2"><a href="#writing-and-publishing-a-piece">Writing and publishing a piece</a></li><li class="l2"><a href="#build-output-like-cargo">Build output (like cargo)</a></li><li class="l2"><a href="#the-compiler-uses-the-default-pieces-itself">The compiler uses the default pieces itself</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

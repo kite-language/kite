@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Genéricos — Kite</title>
+<meta name="description" content="Los genéricos permiten que una sola definición funcione con muchos tipos. Kite tiene funciones genéricas y registros genéricos; ambos se especializan en tiempo de compilación (una ">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/generics/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/generics/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/generics/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/generics/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/generics/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/generics/" hreflang="en" lang="en">EN</a><a href="/fr/guide/generics/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/generics/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Genéricos</div>
+<article>
+<h1 id="genericos">Genéricos</h1>
+<p>Los genéricos permiten que una sola definición funcione con muchos tipos. Kite tiene <strong>funciones genéricas</strong> y <strong>registros genéricos</strong>;
+ambos se especializan en tiempo de compilación (una copia por combinación de tipos), así que no cuestan nada en ejecución.</p>
+<h2 id="funciones-genericas">Funciones genéricas</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+<span class="k">make</span> main():
+    print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))        <span class="c">// T = int</span>
+    print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))       <span class="c">// T = string</span>
+</code></pre></div>
+<p>El compilador deduce los parámetros de tipo a partir de los argumentos. Un parámetro de tipo puede aparecer como <code>T</code>, <code>[T]</code>, <code>ptr&lt;T&gt;</code> o dentro
+de un registro genérico como <code>Box&lt;T&gt;</code>. Si no puede deducirse, la llamada es el error <code>E0123</code>.</p>
+<h2 id="registros-genericos">Registros genéricos</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Box&lt;T&gt;:
+    value: T
+    count: <span class="t">int</span>
+
+<span class="k">type</span> Pair&lt;A, B&gt;:
+    first: A
+    second: B
+
+<span class="k">make</span> main():
+    b = Box&lt;<span class="t">int</span>&gt;()                 <span class="c">// argumentos de tipo entre ángulos</span>
+    b.value = <span class="n">41</span>
+    p = Pair&lt;<span class="t">string</span>, <span class="t">int</span>&gt;()
+    p.first = <span class="s">&quot;k&quot;</span>
+    p.second = <span class="n">7</span>
+
+    boxes: [Box&lt;<span class="t">int</span>&gt;] = []         <span class="c">// también en los tipos</span>
+    append(boxes, b)
+    nested = Box&lt;Box&lt;<span class="t">int</span>&gt;&gt;()       <span class="c">// y anidados</span>
+</code></pre></div>
+<p><code>Box&lt;int&gt;</code> y <code>Box&lt;string&gt;</code> son dos tipos distintos hechos a partir de la misma definición. Las funciones genéricas pueden recibirlos y
+devolverlos: <code>make wrap&lt;T&gt;(x: T) -&gt; Box&lt;T&gt;:</code> y <code>make unwrap&lt;T&gt;(b: Box&lt;T&gt;) -&gt; T:</code>.
+Los registros genéricos son simples registros <code>type</code> (todavía no hay clases ni enums genéricos).</p>
+<h2 id="option-y-result">Option y Result</h2>
+<p>Hay dos registros genéricos listos para usar:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.option
+<span class="k">use</span> std.result
+
+<span class="k">make</span> find(xs: [<span class="t">int</span>], x: <span class="t">int</span>) -&gt; Option&lt;<span class="t">int</span>&gt;:
+    i = <span class="n">0</span>
+    <span class="k">for</span> v <span class="k">in</span> xs:
+        <span class="k">if</span> v == x:
+            <span class="k">return</span> option.some(i)
+        i.incr()
+    <span class="k">return</span> Option&lt;<span class="t">int</span>&gt;()                    <span class="c">// un Option vacío significa «nada»</span>
+
+<span class="k">make</span> digit(c: <span class="t">string</span>) -&gt; Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;:
+    r = Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;()               <span class="c">// un Result vacío que se rellena</span>
+    <span class="k">if</span> c &gt;= <span class="s">&quot;0&quot;</span> <span class="k">and</span> c &lt;= <span class="s">&quot;9&quot;</span>:
+        <span class="k">return</span> result.ok(r, to_int(c))
+    <span class="k">return</span> result.err(r, <span class="s">f&quot;not a digit: {c}&quot;</span>)
+
+<span class="k">make</span> main():
+    print(option.unwrap_or(find([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>], <span class="n">9</span>), -<span class="n">1</span>))     <span class="c">// -1</span>
+    r = digit(<span class="s">&quot;x&quot;</span>)
+    <span class="k">if</span> result.is_err(r):
+        print(result.error(r))                           <span class="c">// not a digit: x</span>
+</code></pre></div>
+<blockquote class="callout note"><p><strong>Nota:</strong> <code>Option</code> y <code>Result</code> son simples registros genéricos, así que puedes leer sus campos (<code>o.has</code>, <code>o.value</code>, <code>r.is_ok</code>).</p>
+</blockquote>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/records/"><small>Anterior</small>← Registros, clases y enums</a><a class="next" href="/es/guide/pieces/"><small>Siguiente</small>Piezas (paquetes) →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/13-generics.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#funciones-genericas">Funciones genéricas</a></li><li class="l2"><a href="#registros-genericos">Registros genéricos</a></li><li class="l2"><a href="#option-y-result">Option y Result</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

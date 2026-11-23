@@ -79,5 +79,5 @@ Errors as values: `use std.error` (`Error`, `ResultInt`, ...).
 / `update` / `tree` / `search` / `info` / `publish` / `verify` (pieces), `target list|add|remove|show`, `bench`.
 
 Rules that surprise newcomers: variables keep one type, names are function-scoped, a few words are reserved
-(`to in from use type class match case enum thread try failed finally int float string bool ptr null`), and there
+(`to in int float string bool ptr null`), and there
 are no globals except `const`. The roadmap lists what is planned next: see `ROADMAP.md`.

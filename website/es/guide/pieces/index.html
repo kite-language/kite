@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piezas (paquetes) — Kite</title>
+<meta name="description" content="Una pieza es una biblioteca: una carpeta con kite.toml y src/lib.ki.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/pieces/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/pieces/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/pieces/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/pieces/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/pieces/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/pieces/" hreflang="en" lang="en">EN</a><a href="/fr/guide/pieces/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/pieces/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Piezas (paquetes)</div>
+<article>
+<h1 id="piezas-paquetes">Piezas (paquetes)</h1>
+<p>Una <strong>pieza</strong> es una biblioteca: una carpeta con <code>kite.toml</code> y <code>src/lib.ki</code>.</p>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite init --lib shapes     # crear una
+kite add sha256            # usar una (ver más abajo)
+</code></pre></div>
+<h2 id="dos-tipos">Dos tipos</h2>
+<ul>
+<li>Las <strong>piezas por defecto</strong> (<code>std.*</code>) vienen con Kite y no necesitan declaración: <code>use std.fs</code>.</li>
+<li>Las <strong>piezas comunitarias</strong> viven en el registro del repositorio. Decláralas en <code>[dependencies]</code> (<code>kite add table</code>) e
+  impórtalas por su nombre: <code>use table</code>.</li>
+</ul>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.strings         <span class="c">// una pieza por defecto</span>
+<span class="k">use</span> table               <span class="c">// una pieza comunitaria (listada en kite.toml)</span>
+
+<span class="k">make</span> main():
+    t = table_new(<span class="n">2</span>)
+    table_add_row(t, [<span class="s">&quot;name&quot;</span>, <span class="s">&quot;qty&quot;</span>])
+    print(table_render(t))
+    print(strings.upper(<span class="s">&quot;kite&quot;</span>))     <span class="c">// llamadas piece.function(...)</span>
+</code></pre></div>
+<h2 id="llamar-a-piezas">Llamar a piezas</h2>
+<p><code>piece.function(args)</code> es la forma legible de llamar a una pieza. Significa la función llamada <code>&lt;pieza&gt;_&lt;función&gt;</code>:
+<code>fs.read(path)</code> es <code>fs_read(path)</code>, <code>strings.upper(s)</code> es <code>strings_upper(s)</code>. Si una variable local tiene el mismo nombre que la
+pieza, gana la variable (usa el nombre largo).</p>
+<p>Las funciones de todas las piezas comparten un único espacio de nombres internamente, así que nombra las tuyas <code>&lt;pieza&gt;_&lt;función&gt;</code>.</p>
+<h2 id="gestionar-dependencias">Gestionar dependencias</h2>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite search json       # buscar piezas
+kite info semver       # metadatos y versiones
+kite add sha256@^1.2   # añadir con un requisito (^ ~ &gt;= &lt; =)
+kite tree              # árbol de dependencias (con subdependencias)
+kite update            # volver a resolver kite.lock
+kite remove sha256
+</code></pre></div>
+<p><code>kite.lock</code> guarda las versiones exactas y las sumas de verificación; si una copia del registro cambia, la compilación se detiene.</p>
+<h2 id="publicar">Publicar</h2>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite verify            # las mismas comprobaciones que la CI del registro
+kite publish           # prepara pieces/community/&lt;nombre&gt;/&lt;versión&gt;/ e imprime los comandos de git
+</code></pre></div>
+<p><code>kite publish</code> nunca ejecuta git: tú ejecutas los comandos impresos y abres un pull request; la CI compila cada pieza modificada.</p>
+<h2 id="elementos-publicos-y-privados">Elementos públicos y privados</h2>
+<p>Por defecto todo es público. En cuanto un archivo marca un elemento de nivel superior como <code>pub</code>, ese archivo pasa a <em>modo explícito</em>:
+los elementos sin <code>pub</code> son <strong>privados de su pieza</strong> (todos los archivos bajo el <code>src/</code> de la pieza).</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>pub <span class="k">type</span> Point:
+    x: <span class="t">int</span>
+    y: <span class="t">int</span>
+
+pub <span class="k">make</span> dist(a: Point, b: Point) -&gt; <span class="t">int</span>:     <span class="c">// parte de la interfaz</span>
+    <span class="k">return</span> abs(a.x - b.x) + abs(a.y - b.y)
+
+<span class="k">make</span> helper(n: <span class="t">int</span>) -&gt; <span class="t">int</span>:                   <span class="c">// privado: otras piezas no pueden llamarlo</span>
+    <span class="k">return</span> n * <span class="n">2</span>
+</code></pre></div>
+<p><code>pub</code> funciona con <code>make</code>, <code>type</code>, <code>class</code>, <code>enum</code> y <code>const</code>. Los métodos de una clase siguen a la clase. Usar un elemento privado
+de otra pieza es el error <code>E0080</code>. La referencia de <a href="/es/reference/std-pieces/">piezas estándar</a> solo lista los elementos <code>pub</code> de una pieza que usa <code>pub</code>.</p>
+<blockquote class="callout tip"><p><strong>Consejo:</strong> empieza en privado y marca <code>pub</code> solo lo que necesitan los usuarios de tu pieza: la interfaz se mantiene pequeña y puedes cambiar el resto con libertad.</p>
+</blockquote>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/generics/"><small>Anterior</small>← Genéricos</a><a class="next" href="/es/guide/memory/"><small>Siguiente</small>Memoria, punteros e hilos →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/07-pieces.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#dos-tipos">Dos tipos</a></li><li class="l2"><a href="#llamar-a-piezas">Llamar a piezas</a></li><li class="l2"><a href="#gestionar-dependencias">Gestionar dependencias</a></li><li class="l2"><a href="#publicar">Publicar</a></li><li class="l2"><a href="#elementos-publicos-y-privados">Elementos públicos y privados</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

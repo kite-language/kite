@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting — Kite</title>
+<meta name="description" content="Kite writes LLVM IR and asks clang to compile it. The error message names the .ll file in target/: open it at the reported line. If the program is plain Kite, this is a compiler bu">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/troubleshooting/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/troubleshooting/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/troubleshooting/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/troubleshooting/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/troubleshooting/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/troubleshooting/" hreflang="en" lang="en">EN</a><a href="/fr/guide/troubleshooting/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/troubleshooting/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a class="cur" aria-current="page" href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Troubleshooting</div>
+<article>
+<h1 id="troubleshooting">Troubleshooting</h1>
+<h2 id="clang-failed-to-compile-the-generated-llvm-ir"><code>clang failed to compile the generated LLVM IR</code></h2>
+<p>Kite writes LLVM IR and asks <code>clang</code> to compile it. The error message names the <code>.ll</code> file in <code>target/</code>: open it at the reported line.
+If the program is plain Kite, this is a compiler bug: please report it with the <code>.ll</code> file.</p>
+<h2 id="clang-command-not-found"><code>clang: command not found</code></h2>
+<p>Install clang (<code>sudo apt install clang</code>, <code>xcode-select --install</code>, or <code>winget install LLVM.LLVM</code>).</p>
+<h2 id="e0080-is-private-to-the-piece-that-defines-it"><code>E0080: ... is private to the piece that defines it</code></h2>
+<p>The piece marks some items <code>pub</code>, so the others are private. Ask the piece author to mark the item <code>pub</code>, or use a public function instead.
+Inside your own project there is no such restriction unless your file uses <code>pub</code>.</p>
+<h2 id="e0072-piece-has-no-function"><code>E0072: piece ... has no function ...</code></h2>
+<p>Functions of a piece are called as <code>piece.function(...)</code>. The piece must be imported (<code>use std.fs</code>, or <code>use name</code> after <code>kite add name</code>).
+See the function list in the <a href="/reference/std-pieces/">standard pieces</a>.</p>
+<h2 id="a-variable-cannot-be-used-as-a-name">A variable cannot be used as a name</h2>
+<p>A few words are reserved (<code>to in int float string bool ptr null</code>),
+and the built-in names <code>str len print append pop remove insert clear free arg</code> are taken. Pick another name.
+Words such as <code>from</code>, <code>type</code>, <code>use</code>, <code>match</code>, <code>case</code>, <code>class</code>, <code>thread</code> or <code>try</code> are fine as names (<code>from = 3</code>, <code>make f(case: int)</code>);
+after a <code>.</code> any word is accepted: <code>job.thread</code>.</p>
+<h2 id="segmentation-fault-with-lists-inside-classes">Segmentation fault with lists inside classes</h2>
+<p>Assigning a class copies its header, so two names can share one buffer. Use <code>self.items.append(x)</code>, not a copy such as <code>items = self.items</code>.</p>
+<h2 id="a-string-field-crashes-len">A string field crashes <code>len()</code></h2>
+<p>A <code>string</code> field of a freshly created record is a null pointer until you set it. Set the field before reading it.</p>
+<h2 id="windows-link-errors-about-printf-or-timespec_get">Windows: link errors about <code>printf</code> or <code>timespec_get</code></h2>
+<p>Update to the latest version (these symbols are provided by Kite's own shims). Run <code>kite build</code> again and report the full output if it still fails.</p>
+</article>
+<footer class="pager"><a class="prev" href="/guide/cheatsheet/"><small>Previous</small>← Cheat sheet</a><a class="next" href="/reference/language/"><small>Next</small>Language reference →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/12-troubleshooting.md">Edit this page on GitHub</a></p>
+</main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#a-variable-cannot-be-used-as-a-name">A variable cannot be used as a name</a></li><li class="l2"><a href="#segmentation-fault-with-lists-inside-classes">Segmentation fault with lists inside classes</a></li><li class="l2"><a href="#a-string-field-crashes-len">A string field crashes len()</a></li><li class="l2"><a href="#windows-link-errors-about-printf-or-timespec_get">Windows: link errors about printf or timespec_get</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

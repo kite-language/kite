@@ -1,0 +1,2 @@
+make vis_inner_two() -> int:
+    return 2

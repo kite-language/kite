@@ -1,0 +1,2069 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piezas estándar — Kite</title>
+<meta name="description" content="Generated from pieces/ (run python3 scripts/build-site.py). Import a default piece with use std.&amp;lt;name&amp;gt; and call it as &amp;lt;name&amp;gt;.function(...); community pieces are declare">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/reference/std-pieces/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/std-pieces/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/std-pieces/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/std-pieces/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/std-pieces/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/reference/std-pieces/" hreflang="en" lang="en">EN</a><a href="/fr/reference/std-pieces/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/reference/std-pieces/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a class="cur" aria-current="page" href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Referencia › Piezas estándar</div>
+<article>
+<h1 id="standard-pieces">Standard pieces</h1>
+<p>Generated from <code>pieces/</code> (run <code>python3 scripts/build-site.py</code>). Import a default piece with <code>use std.&lt;name&gt;</code> and call it as <code>&lt;name&gt;.function(...)</code>; community pieces are declared in <code>[dependencies]</code> and imported by name.</p>
+<h2 id="default-pieces">Default pieces</h2>
+<h3 id="args"><code>args</code></h3>
+<p>command-line argument parsing<br />
+<code>use std.args</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>args_new() -&gt; Args</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>args_from(items: [string]) -&gt; Args</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>args_count(a: Args) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>args_has_flag(a: Args, name: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>args_value(a: Args, name: string, dflt: string) -&gt; string</code></td>
+<td>Value of <code>--name value</code> or <code>--name=value</code>, or <code>dflt</code>.</td>
+</tr>
+<tr>
+<td><code>args_positional(a: Args, value_flags: [string]) -&gt; [string]</code></td>
+<td>Arguments that do not start with <code>-</code>, skipping the values of <code>value_flags</code> (flags taking a value).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="base64"><code>base64</code></h3>
+<p>Base64 encoding and decoding (RFC 4648)<br />
+<code>use std.base64</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>base64_alphabet() -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>base64_encode(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>base64_value(c: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>base64_decode(s: string) -&gt; string</code></td>
+<td>"" on malformed input.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="bits"><code>bits</code></h3>
+<p>bit tricks on 64-bit ints: popcount, rotations, flags<br />
+<code>use std.bits</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bits_get(n: int, i: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_set(n: int, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_clear(n: int, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_toggle(n: int, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_popcount(n: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_is_power_of_two(n: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>bits_next_pow2(n: int) -&gt; int</code></td>
+<td>Smallest power of two &gt;= n (n &gt;= 1).</td>
+</tr>
+<tr>
+<td><code>bits_rotl32(x: int, k: int) -&gt; int</code></td>
+<td>Rotate the low 32 bits left by k.</td>
+</tr>
+<tr>
+<td><code>bits_trailing_zeros(n: int) -&gt; int</code></td>
+<td>Number of trailing zero bits (64 for 0).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="collections"><code>collections</code></h3>
+<p>stacks, queues, sets, sorting and list helpers for ints and strings<br />
+<code>use std.collections</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>intstack_new() -&gt; IntStack</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intstack_push(s: IntStack, x: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intstack_pop(s: IntStack) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intstack_peek(s: IntStack) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intstack_len(s: IntStack) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intstack_is_empty(s: IntStack) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intqueue_new() -&gt; IntQueue</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intqueue_push(q: IntQueue, x: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intqueue_pop(q: IntQueue) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intqueue_len(q: IntQueue) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intqueue_is_empty(q: IntQueue) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strset_new() -&gt; StrSet</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strset_add(s: StrSet, k: string) -&gt; bool</code></td>
+<td>True when <code>k</code> was not in the set yet.</td>
+</tr>
+<tr>
+<td><code>strset_has(s: StrSet, k: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strset_len(s: StrSet) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_sort_ints(xs: [int]) -&gt; [int]</code></td>
+<td>---- int lists ------------------------------------------------------------------------------- A sorted copy (merge sort).</td>
+</tr>
+<tr>
+<td><code>collections_reverse_ints(xs: [int]) -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_unique_ints(xs: [int]) -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_index_of_int(xs: [int], x: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_contains_int(xs: [int], x: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_slice_ints(xs: [int], from_i: int, to_i: int) -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_concat_ints(a: [int], b: [int]) -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_range_ints(a: int, b: int) -&gt; [int]</code></td>
+<td>a, a+1, ..., b-1</td>
+</tr>
+<tr>
+<td><code>collections_sum_ints(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_min_int(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_max_int(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_sort_strings(xs: [string]) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_reverse_strings(xs: [string]) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_unique_strings(xs: [string]) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_index_of_string(xs: [string], x: string) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_contains_string(xs: [string], x: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_slice_strings(xs: [string], from_i: int, to_i: int) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>collections_concat_strings(a: [string], b: [string]) -&gt; [string]</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="crc32"><code>crc32</code></h3>
+<p>CRC-32 checksum (IEEE 802.3)<br />
+<code>use std.crc32</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>crc32_of(s: string) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>crc32_hex(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="csv"><code>csv</code></h3>
+<p>CSV lines: parsing with quotes and writing<br />
+<code>use std.csv</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>csv_parse_line(line: string, sep: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>csv_quote(field: string, sep: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>csv_join(fields: [string], sep: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="datetime"><code>datetime</code></h3>
+<p>calendar dates and times from Unix timestamps (UTC)<br />
+<code>use std.datetime</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>datetime_is_leap(y: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_days_in_month(y: int, m: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_floor_div(a: int, b: int) -&gt; int</code></td>
+<td>Floor division (the C <code>/</code> truncates toward zero).</td>
+</tr>
+<tr>
+<td><code>datetime_days(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_year(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_month(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_day(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_hour(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_minute(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_second(secs: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_weekday(secs: int) -&gt; int</code></td>
+<td>0 = Sunday ... 6 = Saturday</td>
+</tr>
+<tr>
+<td><code>datetime_from_civil(y: int, m: int, d: int, hh: int, mm: int, ss: int) -&gt; int</code></td>
+<td>Seconds since the epoch of a UTC date and time.</td>
+</tr>
+<tr>
+<td><code>datetime_pad2(n: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>datetime_format_iso(secs: int) -&gt; string</code></td>
+<td>"2026-11-14T10:30:00Z"</td>
+</tr>
+<tr>
+<td><code>datetime_weekday_name(w: int) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="error"><code>error</code></h3>
+<p>error handling: Error values with context chains and Result-like records<br />
+<code>use std.error</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>error_none() -&gt; Error</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_new(code: int, message: string) -&gt; Error</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_is(e: Error) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_code(e: Error) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_message(e: Error) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_wrap(e: Error, context: string) -&gt; Error</code></td>
+<td>Adds context in front of the message, keeping the code: "context: message".</td>
+</tr>
+<tr>
+<td><code>error_describe(e: Error) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>error_fatal(e: Error)</code></td>
+<td>Prints the error to stdout and exits with its code (1 when the code is 0).</td>
+</tr>
+<tr>
+<td><code>result_int_ok(v: int) -&gt; ResultInt</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_int_err(e: Error) -&gt; ResultInt</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_int_is_ok(r: ResultInt) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_int_value(r: ResultInt) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_int_error(r: ResultInt) -&gt; Error</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_str_ok(v: string) -&gt; ResultStr</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_str_err(e: Error) -&gt; ResultStr</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_str_is_ok(r: ResultStr) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_str_value(r: ResultStr) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_str_error(r: ResultStr) -&gt; Error</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_bool_ok(v: bool) -&gt; ResultBool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_bool_err(e: Error) -&gt; ResultBool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_bool_is_ok(r: ResultBool) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_bool_value(r: ResultBool) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>result_bool_error(r: ResultBool) -&gt; Error</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="fmt"><code>fmt</code></h3>
+<p>padding and number formatting<br />
+<code>use std.fmt</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fmt_pad_left(s: string, width: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_pad_right(s: string, width: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_zero_pad(n: int, width: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_radix(n: int, base: int, upper: bool) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_hex(n: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_bin(n: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fmt_thousands(n: int) -&gt; string</code></td>
+<td>1234567 -&gt; "1,234,567"</td>
+</tr>
+<tr>
+<td><code>fmt_milli(v: int) -&gt; string</code></td>
+<td>A value stored in thousandths, printed with 3 decimals: 1500 -&gt; "1.500".</td>
+</tr>
+<tr>
+<td><code>fmt_bool(b: bool) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="fs"><code>fs</code></h3>
+<p>files and directories<br />
+<code>use std.fs</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fs_exists(path: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_read(path: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_write(path: string, text: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_append(path: string, text: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_copy(src: string, dst: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_rename(src: string, dst: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_temp_dir(prefix: string) -&gt; string</code></td>
+<td>Entry names of a directory (including hidden ones, sorted).</td>
+</tr>
+<tr>
+<td><code>fs_is_dir(path: string) -&gt; bool</code></td>
+<td>Directories answer <code>access("&lt;dir&gt;/.")</code>; files do not. No shell involved (works on Windows too).</td>
+</tr>
+<tr>
+<td><code>fs_is_file(path: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_mkdir_all(path: string) -&gt; bool</code></td>
+<td>Creates <code>path</code> and its parents with the C library (no shell).</td>
+</tr>
+<tr>
+<td><code>fs_cwd() -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_remove(path: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_remove_all(path: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>fs_list(dir: string) -&gt; [string]</code></td>
+<td>Entry names of a directory (including hidden ones).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="git"><code>git</code></h3>
+<p>thin wrappers over the git command line<br />
+<code>use std.git</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>git_available() -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_clone(url: string, dir: string, tag: string) -&gt; bool</code></td>
+<td>Shallow clone of <code>tag</code> (or the default branch when <code>tag</code> is "") into <code>dir</code>.</td>
+</tr>
+<tr>
+<td><code>git_fetch(dir: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_pull(dir: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_rev_parse(dir: string, rev: string) -&gt; string</code></td>
+<td>Full commit hash of HEAD (or of <code>rev</code>), "" on failure.</td>
+</tr>
+<tr>
+<td><code>git_head(dir: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_is_repo(dir: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_tags(dir: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_remote_url(dir: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>git_remote_tags(url: string) -&gt; [string]</code></td>
+<td><code>git ls-remote --tags URL</code>: tag names (without refs/tags/).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="glob"><code>glob</code></h3>
+<p>wildcard matching with * and ?<br />
+<code>use std.glob</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>glob_match(pattern: string, text: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>glob_filter(pattern: string, names: [string]) -&gt; [string]</code></td>
+<td>The names of <code>names</code> that match <code>pattern</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="hex"><code>hex</code></h3>
+<p>hexadecimal encoding and decoding of byte strings<br />
+<code>use std.hex</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hex_digit_value(c: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>hex_encode(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>hex_decode(s: string) -&gt; string</code></td>
+<td>"" when the text is not valid hex (odd length or a bad digit).</td>
+</tr>
+<tr>
+<td><code>hex_is_valid(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="http"><code>http</code></h3>
+<p>HTTP requests through the curl command<br />
+<code>use std.http</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>http_get(url: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>http_post(url: string, body: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>http_status(url: string) -&gt; int</code></td>
+<td>HTTP status code (0 when the request could not be made).</td>
+</tr>
+<tr>
+<td><code>http_download(url: string, path: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="io"><code>io</code></h3>
+<p>standard input and output helpers<br />
+<code>use std.io</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>io_println(s: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>io_eprintln(s: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>io_read_all() -&gt; string</code></td>
+<td>Everything on standard input.</td>
+</tr>
+<tr>
+<td><code>io_read_lines() -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>io_read_line() -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="json"><code>json</code></h3>
+<p>JSON value extraction without a tree<br />
+<code>use std.json</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>json_skip_ws(t: string, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>json_string_end(t: string, i: int) -&gt; int</code></td>
+<td>Index just after the string literal that starts at <code>i</code> (t[i] == '"').</td>
+</tr>
+<tr>
+<td><code>json_value_end(t: string, i: int) -&gt; int</code></td>
+<td>Index just after the value that starts at <code>i</code>.</td>
+</tr>
+<tr>
+<td><code>json_unescape(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>json_member_raw(t: string, key: string) -&gt; string</code></td>
+<td>Raw JSON of member <code>key</code> of the object <code>t</code> ("" if <code>t</code> is not an object or has no such key).</td>
+</tr>
+<tr>
+<td><code>json_get_raw(t: string, path: string) -&gt; string</code></td>
+<td>Raw JSON at a dotted path ("a.b.c"; array elements as numbers, "items.0.name").</td>
+</tr>
+<tr>
+<td><code>json_is_index(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>json_get(t: string, path: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>json_array(t: string) -&gt; [string]</code></td>
+<td>Raw JSON of every element of the array <code>t</code>.</td>
+</tr>
+<tr>
+<td><code>json_quote(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="log"><code>log</code></h3>
+<p>leveled log lines on stdout with timestamps<br />
+<code>use std.log</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log_line(level: string, msg: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_debug(msg: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_info(msg: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_warn(msg: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_error(msg: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_stamp() -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_info_ts(msg: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>log_error_ts(msg: string)</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="math"><code>math</code></h3>
+<p>floating point math (libm) and int/float conversion helpers<br />
+<code>use std.math</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>math_sqrt(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_pow(x: float, y: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_sin(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_cos(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_tan(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_atan2(y: float, x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_exp(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_log(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_floor(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_ceil(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_abs(x: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_min(a: float, b: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_max(a: float, b: float) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_round(x: float) -&gt; int</code></td>
+<td>Rounds to the nearest integer (halves away from zero).</td>
+</tr>
+<tr>
+<td><code>math_pi() -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>math_e() -&gt; float</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mem"><code>mem</code></h3>
+<p>manual memory: typed buffers, realloc, copy and zero on top of alloc_n/realloc_n/copy_n/zero_n<br />
+<code>use std.mem</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mem_new(n: int) -&gt; ptr&lt;int&gt;</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_free(p: ptr&lt;int&gt;)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_get(p: ptr&lt;int&gt;, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_set(p: ptr&lt;int&gt;, i: int, v: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_grow(p: ptr&lt;int&gt;, old: int, n: int) -&gt; ptr&lt;int&gt;</code></td>
+<td>Resizes to <code>n</code> elements; new elements are zeroed, <code>old</code> is the previous element count.</td>
+</tr>
+<tr>
+<td><code>mem_copy(dst: ptr&lt;int&gt;, src: ptr&lt;int&gt;, n: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_zero(p: ptr&lt;int&gt;, n: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_fill(p: ptr&lt;int&gt;, n: int, v: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mem_equal(a: ptr&lt;int&gt;, b: ptr&lt;int&gt;, n: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_new() -&gt; IntVec</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_push(v: IntVec, x: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_get(v: IntVec, i: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_set(v: IntVec, i: int, x: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_pop(v: IntVec) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_len(v: IntVec) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>intvec_free(v: IntVec)</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="option"><code>option</code></h3>
+<p>Option<T>: a value that may be missing<br />
+<code>use std.option</code> · version 0.4.9</p>
+<h3 id="path"><code>path</code></h3>
+<p>string-based path helpers<br />
+<code>use std.path</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path_file_name(p: string) -&gt; string</code></td>
+<td>std.path -- string-based path helpers (<code>/</code> separated). Collapses <code>.</code>, <code>..</code> and repeated separators.</td>
+</tr>
+<tr>
+<td><code>path_parent(p: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>path_extension(p: string) -&gt; string</code></td>
+<td>Extension without the dot ("" when there is none; ".bashrc" has none).</td>
+</tr>
+<tr>
+<td><code>path_stem(p: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>path_with_extension(p: string, ext: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>path_relative(p: string, root: string) -&gt; string</code></td>
+<td><code>p</code> relative to <code>root</code> when it lies below it, else <code>p</code>.</td>
+</tr>
+<tr>
+<td><code>path_has_extension(p: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>path_display(p: string, root: string) -&gt; string</code></td>
+<td><code>p</code> relative to <code>root</code> for display (an alias of path_relative, the name the compiler uses in messages).</td>
+</tr>
+<tr>
+<td><code>path_is_absolute(p: string) -&gt; bool</code></td>
+<td><code>/x</code> or a Windows drive path (<code>C:/x</code>).</td>
+</tr>
+<tr>
+<td><code>path_join(a: string, b: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>path_norm(p0: string) -&gt; string</code></td>
+<td>Collapses <code>.</code>, <code>..</code> and repeated separators (a Windows drive prefix <code>C:</code> is kept).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="process"><code>process</code></h3>
+<p>running programs and reading the environment<br />
+<code>use std.process</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>process_run(cmd: string) -&gt; int</code></td>
+<td>Exit code of the command (run through <code>sh -c</code>).</td>
+</tr>
+<tr>
+<td><code>process_output(cmd: string) -&gt; string</code></td>
+<td>Standard output of the command.</td>
+</tr>
+<tr>
+<td><code>process_pid() -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>process_which(program: string) -&gt; bool</code></td>
+<td>Whether <code>program</code> can be found on PATH.</td>
+</tr>
+<tr>
+<td><code>process_env(name: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="random"><code>random</code></h3>
+<p>pseudo-random numbers (xorshift64): ranges, shuffles, random strings<br />
+<code>use std.random</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>random_new(seed: int) -&gt; Rng</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>random_from_clock() -&gt; Rng</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>random_next(r: Rng) -&gt; int</code></td>
+<td>A non-negative integer.</td>
+</tr>
+<tr>
+<td><code>random_range(r: Rng, lo: int, hi: int) -&gt; int</code></td>
+<td>lo &lt;= n &lt; hi</td>
+</tr>
+<tr>
+<td><code>random_bool(r: Rng) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>random_chance(r: Rng, percent: int) -&gt; bool</code></td>
+<td>True <code>percent</code> times out of 100.</td>
+</tr>
+<tr>
+<td><code>random_shuffle(r: Rng, xs: [int]) -&gt; [int]</code></td>
+<td>A shuffled copy (Fisher-Yates).</td>
+</tr>
+<tr>
+<td><code>random_string(r: Rng, n: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>random_hex(r: Rng, n: int) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="result"><code>result</code></h3>
+<p>Result<T, E>: a value or an error, for any types T and E<br />
+<code>use std.result</code> · version 0.4.9</p>
+<h3 id="semver"><code>semver</code></h3>
+<p>semantic versions and requirements<br />
+<code>use std.semver</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>semver_parse(text: string) -&gt; Version</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>semver_to_string(v: Version) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>semver_cmp_pre(a: string, b: string) -&gt; int</code></td>
+<td>Compares two pre-release strings by dot-separated identifiers (numeric &lt; alphanumeric).</td>
+</tr>
+<tr>
+<td><code>semver_all_digits(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>semver_compare(a: string, b: string) -&gt; int</code></td>
+<td>-1, 0 or 1.</td>
+</tr>
+<tr>
+<td><code>semver_satisfies(version: string, req: string) -&gt; bool</code></td>
+<td>Requirements: "*", "1.2.3" (exact), "^1.2", "~1.2.3", "&gt;=1.0", "&gt;1", "&lt;=2", "&lt;2", "=1.2.3".</td>
+</tr>
+<tr>
+<td><code>semver_best(versions: [string], req: string) -&gt; string</code></td>
+<td>Highest of <code>versions</code> that satisfies <code>req</code> ("" when none).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sha256"><code>sha256</code></h3>
+<p>SHA-256 hashing<br />
+<code>use std.sha256</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sha_rotr(x: int, n: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sha_k() -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sha_hex8(x: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sha256_hex(text: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="stats"><code>stats</code></h3>
+<p>basic statistics over int lists: mean, median, variance, standard deviation<br />
+<code>use std.stats</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stats_sum(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_mean(xs: [int]) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_median(xs: [int]) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_variance(xs: [int]) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_stddev(xs: [int]) -&gt; float</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_min(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>stats_max(xs: [int]) -&gt; int</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="strings"><code>strings</code></h3>
+<p>string utilities: lines, chars, wrapping, counting, trimming, case<br />
+<code>use std.strings</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strings_lines(s: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_chars(s: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_reverse(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_count(s: string, sub: string) -&gt; int</code></td>
+<td>Non-overlapping occurrences of <code>sub</code>.</td>
+</tr>
+<tr>
+<td><code>strings_last_index(s: string, sub: string) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_ltrim(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_rtrim(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_is_blank(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_upper(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_lower(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_capitalize(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_title(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_pad_center(s: string, width: int) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_before(s: string, sep: string) -&gt; string</code></td>
+<td>Text before / after the first <code>sep</code> ("" / the whole text when absent).</td>
+</tr>
+<tr>
+<td><code>strings_after(s: string, sep: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_replace_first(s: string, a: string, b: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>strings_truncate(s: string, n: int, ellipsis: string) -&gt; string</code></td>
+<td><code>s</code> cut to <code>n</code> characters, ending with <code>ellipsis</code> when shortened.</td>
+</tr>
+<tr>
+<td><code>strings_wrap(text: string, width: int) -&gt; [string]</code></td>
+<td>Greedy word wrap into lines of at most <code>width</code> characters.</td>
+</tr>
+<tr>
+<td><code>strings_join_ints(xs: [int], sep: string) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="sys"><code>sys</code></h3>
+<p>libc hooks and shell helpers: the base of the other default pieces<br />
+<code>use std.sys</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sys_sh(cmd: string) -&gt; int</code></td>
+<td>Runs a shell command and returns its exit code (-1 if it could not be started).</td>
+</tr>
+<tr>
+<td><code>sys_path_exists(path: string) -&gt; bool</code></td>
+<td>Standard output of a shell command (stderr is discarded).</td>
+</tr>
+<tr>
+<td><code>sys_is_tty(fd: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sys_pid() -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sys_getenv(name: string) -&gt; string</code></td>
+<td>Value of an environment variable ("" when unset). No shell involved.</td>
+</tr>
+<tr>
+<td><code>sys_is_windows() -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sys_null() -&gt; string</code></td>
+<td>The null device: NUL on Windows, /dev/null elsewhere.</td>
+</tr>
+<tr>
+<td><code>sys_tmp_dir() -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>sys_quote(s: string) -&gt; string</code></td>
+<td>Quotes one shell argument: single quotes for sh, double quotes for cmd.exe.</td>
+</tr>
+<tr>
+<td><code>sys_capture(cmd: string) -&gt; string</code></td>
+<td>Standard output of a shell command (stderr is discarded).</td>
+</tr>
+<tr>
+<td><code>sys_eprint(s: string)</code></td>
+<td>Writes to standard error (unbuffered).</td>
+</tr>
+<tr>
+<td><code>sys_eprint_line(s: string)</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="term"><code>term</code></h3>
+<p>terminal colours and queries<br />
+<code>use std.term</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>term_is_tty() -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_esc() -&gt; string</code></td>
+<td>The ESC byte, built at run time (so the seed compiler's lexer, which has no <code>\x1b</code> escape, can compile this too).</td>
+</tr>
+<tr>
+<td><code>term_paint_if(code: string, s: string, enabled: bool) -&gt; string</code></td>
+<td><code>s</code> wrapped in the SGR sequence <code>code</code> when <code>enabled</code>, else unchanged.</td>
+</tr>
+<tr>
+<td><code>term_is_tty_fd(fd: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_paint(code: string, s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_bold(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_dim(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_red(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_green(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_yellow(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_blue(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_cyan(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_clear() -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>term_width() -&gt; int</code></td>
+<td>Number of columns (80 when unknown).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="test"><code>test</code></h3>
+<p>a tiny assertion library<br />
+<code>use std.test</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>test_new(name: string) -&gt; Tester</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_ok(t: Tester, label: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_fail(t: Tester, label: string, detail: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_true(t: Tester, label: string, cond: bool)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_false(t: Tester, label: string, cond: bool)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_eq_int(t: Tester, label: string, actual: int, expected: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_eq_str(t: Tester, label: string, actual: string, expected: string)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_eq_bool(t: Tester, label: string, actual: bool, expected: bool)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>test_finish(t: Tester) -&gt; int</code></td>
+<td>Prints the summary; returns the process exit code (0 = all passed).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="threads"><code>threads</code></h3>
+<p>threads: mutexes, atomics and sleeping on top of the spawn/thread_join builtins<br />
+<code>use std.threads</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mutex_new() -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mutex_lock(m: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mutex_unlock(m: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>mutex_free(m: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>atomic_new(initial: int) -&gt; int</code></td>
+<td>An atomic integer: a mutex plus a value (handle = address of the block).</td>
+</tr>
+<tr>
+<td><code>atomic_get(a: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>atomic_set(a: int, value: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>atomic_add(a: int, delta: int) -&gt; int</code></td>
+<td>Adds <code>delta</code> and returns the new value.</td>
+</tr>
+<tr>
+<td><code>atomic_free(a: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>thread_sleep_ms(ms: int)</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>thread_yield()</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="time"><code>time</code></h3>
+<p>clock, formatting and sleeping<br />
+<code>use std.time</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>time_now_ms() -&gt; int</code></td>
+<td>Nanoseconds since the Unix epoch.</td>
+</tr>
+<tr>
+<td><code>time_now_secs() -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>time_sleep_ms(ms: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>time_format(fmt: string) -&gt; string</code></td>
+<td><code>date</code> format string, e.g. time_format("%Y-%m-%d %H:%M:%S").</td>
+</tr>
+<tr>
+<td><code>time_elapsed_ms(start_ns: int) -&gt; int</code></td>
+<td>Milliseconds elapsed since <code>start_ns</code>.</td>
+</tr>
+<tr>
+<td><code>time_fmt_secs(ns: int) -&gt; string</code></td>
+<td>A nanosecond duration as seconds with two decimals: 1234000000 -&gt; "1.23".</td>
+</tr>
+<tr>
+<td><code>time_now_ns() -&gt; int</code></td>
+<td>Nanoseconds since the Unix epoch (C11 timespec_get: Linux, macOS and the Windows UCRT).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="toml"><code>toml</code></h3>
+<p>flat TOML reader<br />
+<code>use std.toml</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>toml_unquote(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>toml_get(text: string, section: string, key: string, dflt: string) -&gt; string</code></td>
+<td>Value of <code>key</code> in <code>section</code> ("" for the top level); <code>dflt</code> when absent.</td>
+</tr>
+<tr>
+<td><code>toml_has(text: string, section: string, key: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>toml_get_int(text: string, section: string, key: string, dflt: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>toml_keys(text: string, section: string) -&gt; [string]</code></td>
+<td>Keys of a section, in file order.</td>
+</tr>
+<tr>
+<td><code>toml_quote(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>toml_array_join(v: string) -&gt; string</code></td>
+<td><code>["a", "b"]</code> -&gt; <code>a, b</code> (a plain value is just unquoted).</td>
+</tr>
+<tr>
+<td><code>toml_inline_get(v: string, key: string) -&gt; string</code></td>
+<td>Value of <code>key</code> inside an inline table <code>{ a = "x", b = "y" }</code> ("" if absent).</td>
+</tr>
+<tr>
+<td><code>toml_strip_comment(line: string) -&gt; string</code></td>
+<td>Strips a trailing <code># comment</code> that is not inside quotes.</td>
+</tr>
+<tr>
+<td><code>toml_quote_list(csv: string) -&gt; string</code></td>
+<td><code>a, b</code> -&gt; <code>["a", "b"]</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="types"><code>types</code></h3>
+<p>number and character helpers: parsing, clamping, classification<br />
+<code>use std.types</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>types_min(a: int, b: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_max(a: int, b: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_abs(a: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_clamp(v: int, lo: int, hi: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_sign(a: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_is_even(a: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_gcd(a: int, b: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_pow(base: int, exp: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_is_int(s: string) -&gt; bool</code></td>
+<td>True when <code>s</code> is an optionally signed decimal integer.</td>
+</tr>
+<tr>
+<td><code>types_parse_int(s: string, dflt: int) -&gt; int</code></td>
+<td>Integer value of <code>s</code>, or <code>dflt</code> when it is not an integer.</td>
+</tr>
+<tr>
+<td><code>types_parse_bool(s: string, dflt: bool) -&gt; bool</code></td>
+<td>"true"/"yes"/"1"/"on" -&gt; true, "false"/"no"/"0"/"off" -&gt; false, anything else -&gt; <code>dflt</code>.</td>
+</tr>
+<tr>
+<td><code>types_is_upper(c: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_is_lower(c: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_to_upper(c: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_to_lower(c: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_upper(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_lower(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>types_isqrt(n: int) -&gt; int</code></td>
+<td>Integer square root (floor).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="url"><code>url</code></h3>
+<p>URL parsing and percent-encoding<br />
+<code>use std.url</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url_is_unreserved(c: int) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_encode(s: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_hex_value(c: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_decode(s: string) -&gt; string</code></td>
+<td><code>+</code> becomes a space (form encoding).</td>
+</tr>
+<tr>
+<td><code>url_scheme(u: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_authority(u: string) -&gt; string</code></td>
+<td>Text after <code>scheme://</code> up to the first <code>/</code>, <code>?</code> or <code>#</code> (userinfo and port included).</td>
+</tr>
+<tr>
+<td><code>url_host(u: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_port(u: string, dflt: int) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_last_colon(a: string) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_path(u: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_query(u: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>url_query_get(query: string, key: string, dflt: string) -&gt; string</code></td>
+<td>Decoded value of <code>key</code> in a query string (<code>a=1&amp;b=two</code>), or <code>dflt</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="utf8"><code>utf8</code></h3>
+<p>UTF-8 aware helpers: code point counting, validation, splitting<br />
+<code>use std.utf8</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>utf8_char_len(b: int) -&gt; int</code></td>
+<td>utf8 -- strings are byte strings; these helpers look at them as UTF-8 text. Length in bytes of the character starting with lead byte <code>b</code> (1 for an invalid lead).</td>
+</tr>
+<tr>
+<td><code>utf8_len(s: string) -&gt; int</code></td>
+<td>Number of code points.</td>
+</tr>
+<tr>
+<td><code>utf8_valid(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>utf8_chars(s: string) -&gt; [string]</code></td>
+<td>Each code point as its own string.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="uuid"><code>uuid</code></h3>
+<p>random (version 4) UUIDs<br />
+<code>use std.uuid</code> · version 0.4.9</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uuid_v4(r: Rng) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>uuid_is_valid(s: string) -&gt; bool</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="community-pieces">Community pieces</h2>
+<h3 id="diff"><code>diff</code></h3>
+<p>line-by-line text differences (LCS)<br />
+<code>use diff</code> · version 0.1.0</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>diff_lines(a: [string], b: [string]) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>diff_changed(a: [string], b: [string]) -&gt; bool</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="ini"><code>ini</code></h3>
+<p>read INI configuration text<br />
+<code>use ini</code> · version 0.1.0</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ini_strip(line: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ini_get(text: string, section: string, key: string, dflt: string) -&gt; string</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ini_sections(text: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ini_keys(text: string, section: string) -&gt; [string]</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="progress"><code>progress</code></h3>
+<p>text progress bars<br />
+<code>use progress</code> · version 0.1.0</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>progress_bar(done: int, total: int, width: int) -&gt; string</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="table"><code>table</code></h3>
+<p>plain-text tables with aligned columns<br />
+<code>use table</code> · version 0.1.0</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>table_new(cols: int) -&gt; Table</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>table_add_row(t: Table, row: [string])</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>table_rows(t: Table) -&gt; int</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>table_widths(t: Table) -&gt; [int]</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>table_render(t: Table) -&gt; string</code></td>
+<td>Rows separated by newlines, columns by two spaces, the first row underlined.</td>
+</tr>
+</tbody>
+</table>
+</article>
+<footer class="pager"><a class="prev" href="/es/reference/builtins/"><small>Anterior</small>← Funciones integradas</a><a class="next" href="/es/reference/cli/"><small>Siguiente</small>El comando kite →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/pieces">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#default-pieces">Default pieces</a></li><li class="l3"><a href="#args">args</a></li><li class="l3"><a href="#base64">base64</a></li><li class="l3"><a href="#bits">bits</a></li><li class="l3"><a href="#collections">collections</a></li><li class="l3"><a href="#crc32">crc32</a></li><li class="l3"><a href="#csv">csv</a></li><li class="l3"><a href="#datetime">datetime</a></li><li class="l3"><a href="#error">error</a></li><li class="l3"><a href="#fmt">fmt</a></li><li class="l3"><a href="#fs">fs</a></li><li class="l3"><a href="#git">git</a></li><li class="l3"><a href="#glob">glob</a></li><li class="l3"><a href="#hex">hex</a></li><li class="l3"><a href="#http">http</a></li><li class="l3"><a href="#io">io</a></li><li class="l3"><a href="#json">json</a></li><li class="l3"><a href="#log">log</a></li><li class="l3"><a href="#math">math</a></li><li class="l3"><a href="#mem">mem</a></li><li class="l3"><a href="#option">option</a></li><li class="l3"><a href="#path">path</a></li><li class="l3"><a href="#process">process</a></li><li class="l3"><a href="#random">random</a></li><li class="l3"><a href="#result">result</a></li><li class="l3"><a href="#semver">semver</a></li><li class="l3"><a href="#sha256">sha256</a></li><li class="l3"><a href="#stats">stats</a></li><li class="l3"><a href="#strings">strings</a></li><li class="l3"><a href="#sys">sys</a></li><li class="l3"><a href="#term">term</a></li><li class="l3"><a href="#test">test</a></li><li class="l3"><a href="#threads">threads</a></li><li class="l3"><a href="#time">time</a></li><li class="l3"><a href="#toml">toml</a></li><li class="l3"><a href="#types">types</a></li><li class="l3"><a href="#url">url</a></li><li class="l3"><a href="#utf8">utf8</a></li><li class="l3"><a href="#uuid">uuid</a></li><li class="l2"><a href="#community-pieces">Community pieces</a></li><li class="l3"><a href="#diff">diff</a></li><li class="l3"><a href="#ini">ini</a></li><li class="l3"><a href="#progress">progress</a></li><li class="l3"><a href="#table">table</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

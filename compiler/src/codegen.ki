@@ -1110,6 +1110,10 @@ make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
     mod.w("@.kite.argc = global i32 0")
     mod.w("@.kite.argv = global i8** null")
     mod.w("")
+    // Windows: `timespec_get` is defined further down (shim), so it must not also be declared.
+    win = contains_str(triple, "windows")
+    if len(triple) == 0:
+        win = sys.is_windows()
     if len(prog.ex_names) > 0:
         mod.w("; extern declarations (implemented outside Kite, e.g. in C)")
         k = 0
@@ -1117,7 +1121,8 @@ make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
             ps: [string] = []
             for t2 in prog.ex_ptys[k].items:
                 append(ps, llvm_type(t2))
-            mod.w("declare " + llvm_type(prog.ex_rets[k]) + " @" + prog.ex_names[k] + "(" + join(ps, ", ") + ")")
+            if not (win and prog.ex_names[k] == "timespec_get"):
+                mod.w("declare " + llvm_type(prog.ex_rets[k]) + " @" + prog.ex_names[k] + "(" + join(ps, ", ") + ")")
             k += 1
         mod.w("")
     mod.w(global_string("@.fmt.int", "%lld\\0A\\00"))
@@ -1146,13 +1151,10 @@ make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
         mod.w("")
     // Windows: `timespec_get` is an inline function of the UCRT headers, not a library symbol; provide it (through
     // kernel32) for programs that declare it, e.g. through `std.time`. Same text as the Rust backend.
-    win = contains_str(triple, "windows")
-    if len(triple) == 0:
-        win = sys.is_windows()
     if win and index_of_name_ex(prog.ex_names, "timespec_get") >= 0:
         mod.w("declare void @GetSystemTimePreciseAsFileTime(i64*)")
         mod.w("")
-        mod.w("define i32 @timespec_get(i64* %ts, i32 %base) {")
+        mod.w("define i64 @timespec_get(i64* %ts, i64 %base) {")
         mod.w("entry:")
         mod.w("  %ft = alloca i64")
         mod.w("  call void @GetSystemTimePreciseAsFileTime(i64* %ft)")
@@ -1164,7 +1166,7 @@ make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
         mod.w("  store i64 %sec, i64* %ts")
         mod.w("  %p = getelementptr i64, i64* %ts, i64 1")
         mod.w("  store i64 %nsec, i64* %p")
-        mod.w("  ret i32 1")
+        mod.w("  ret i64 1")
         mod.w("}")
     // declarations and entry wrappers that only some programs need (kept out of the common header so
     // programs that do not use them are byte-identical to the Rust backend's output)

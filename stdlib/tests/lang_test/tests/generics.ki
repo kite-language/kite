@@ -1,0 +1,49 @@
+use std.test
+
+type Point:
+    x: int
+    y: int
+
+make first<T>(xs: [T]) -> T:
+    return xs[0]
+
+make last<T>(xs: [T]) -> T:
+    return xs[len(xs) - 1]
+
+make id<T>(x: T) -> T:
+    return x
+
+make twice<T>(x: T) -> T:
+    return id(id(x))
+
+make pick<A, B>(a: A, b: B) -> A:
+    return a
+
+make count_of<T>(xs: [T], x: T) -> int:
+    n = 0
+    for item in xs:
+        if item == x:
+            n.incr()
+    return n
+
+make fill<T>(p: ptr<T>, v: T):
+    *p = v
+
+make main():
+    t = test_new("generic functions")
+    nums = [4, 5, 6]
+    words = ["a", "b", "c"]
+    test_eq_int(t, "first int", first(nums), 4)
+    test_eq_str(t, "last string", last(words), "c")
+    test_eq_str(t, "two instances of one function", first(words) + last(words), "ac")
+    test_eq_int(t, "two type parameters", pick(7, "x"), 7)
+    test_eq_str(t, "second parameter", pick("k", 1), "k")
+    test_eq_int(t, "count", count_of(nums, 5), 1)
+    p = Point()
+    p.x = 9
+    q = twice(p)
+    test_eq_int(t, "struct value", q.x, 9)
+    cell = alloc(int)
+    fill(cell, 11)
+    test_eq_int(t, "ptr<T>", *cell, 11)
+    exit(test_finish(t))

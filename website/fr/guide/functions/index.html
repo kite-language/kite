@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fonctions et constantes — Kite</title>
+<meta name="description" content="Une constante se lit comme une variable et ne peut pas être réassignée. (En interne c&#x27;est une fonction sans argument : ce peut donc être n&#x27;importe quelle expression.)">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/guide/functions/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/functions/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/functions/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/functions/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/functions/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/guide/functions/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/functions/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/functions/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a class="cur" aria-current="page" href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Fonctions et constantes</div>
+<article>
+<h1 id="fonctions-et-constantes">Fonctions et constantes</h1>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> w * h
+
+<span class="k">make</span> greet(name: <span class="t">string</span>):          <span class="c">// pas de `-&gt;` : ne retourne rien</span>
+    print(<span class="s">f&quot;Hello, {name}!&quot;</span>)
+</code></pre></div>
+<ul>
+<li>Les paramètres sont typés ; le type de retour peut être omis, il est alors inféré depuis le premier <code>return</code>.</li>
+<li>Les fonctions récursives et mutuellement récursives demandent un <code>-&gt; Type</code> explicite.</li>
+<li>Valeurs par défaut et arguments nommés : <code>make connect(host: string, port: int = 80)</code> s'appelle <code>connect("a")</code> ou
+  <code>connect("a", port = 8080)</code>.</li>
+<li><code>*items: int</code> rassemble les arguments supplémentaires dans une liste <code>items</code> de ce type d'élément (<code>total(1, 2, 3)</code>).</li>
+<li>Retournez plusieurs valeurs avec un tuple : <code>return (1, "one")</code>, recevez-les avec <code>n, word = pair()</code>.</li>
+</ul>
+<h2 id="constantes">Constantes</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">const</span> LIMIT = <span class="n">100</span>
+<span class="k">const</span> GREETING: <span class="t">string</span> = <span class="s">&quot;hello&quot;</span>
+</code></pre></div>
+<p>Une constante se lit comme une variable et ne peut pas être réassignée. (En interne c'est une fonction sans argument : ce peut donc être
+n'importe quelle expression.)</p>
+<p>Une constante peut aussi être déclarée <strong>dans une fonction</strong>, et toute constante est en lecture seule : lui assigner une valeur (<code>LIMIT = 9</code>,
+<code>LIMIT += 1</code>, <code>LIMIT.incr()</code>, ou modifier un champ d'un record constant) est l'erreur <code>E0124</code>.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">const</span> LIMIT = <span class="n">100</span>                  <span class="c">// globale : visible partout</span>
+
+<span class="k">make</span> main():
+    <span class="k">const</span> STEP = LIMIT / <span class="n">4</span>         <span class="c">// locale à cette fonction</span>
+    total = <span class="n">0</span>
+    total += STEP                  <span class="c">// correct : `total` est une variable ordinaire</span>
+</code></pre></div>
+<h2 id="appeler-des-fonctions">Appeler des fonctions</h2>
+<p>Deux écritures équivalentes ; utilisez celle qui se lit le mieux :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>len(text)           <span class="c">// appel simple</span>
+text.len()          <span class="c">// syntaxe d&#x27;appel uniforme : value.f(args) vaut f(value, args)</span>
+</code></pre></div>
+<p>La syntaxe d'appel uniforme fait lire les chaînes d'appels de gauche à droite, et une chaîne peut continuer à la ligne suivante :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>words = <span class="s">&quot;  one, two ,three  &quot;</span>
+    .trim()
+    .split(<span class="s">&quot;,&quot;</span>)
+</code></pre></div>
+<p>Elle s'applique à toute valeur qui n'est pas une instance de classe (les méthodes de classe gardent leur propre sens).</p>
+<h2 id="commentaires-de-documentation">Commentaires de documentation</h2>
+<p>Les commentaires <code>//</code> placés juste au-dessus d'une fonction, d'un type ou d'une classe sont collectés par <code>kite doc</code>.</p>
+<h2 id="fonctions-generiques">Fonctions génériques</h2>
+<p>Une fonction peut prendre des <strong>paramètres de type</strong> entre chevrons. Le compilateur les déduit des arguments et produit une copie
+spécialisée pour chaque combinaison de types : une fonction générique est aussi rapide qu'une fonction écrite à la main.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+<span class="k">make</span> pick&lt;A, B&gt;(a: A, b: B) -&gt; A:
+    <span class="k">return</span> a
+
+<span class="k">make</span> main():
+    print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))        <span class="c">// 4      (T = int)</span>
+    print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))       <span class="c">// a      (T = string)</span>
+    print(pick(<span class="n">7</span>, <span class="s">&quot;x&quot;</span>))            <span class="c">// 7      (A = int, B = string)</span>
+</code></pre></div>
+<ul>
+<li>Un paramètre de type peut apparaître dans un type de paramètre sous la forme <code>T</code>, <code>[T]</code> ou <code>ptr&lt;T&gt;</code>, ainsi que dans le type de retour et le corps.</li>
+<li>Chaque paramètre de type doit pouvoir être déduit des arguments (<code>E0123</code> sinon) ; deux paramètres du même <code>T</code> doivent s'accorder (<code>E0122</code>).</li>
+<li>Les fonctions génériques sont de premier niveau uniquement (pas de méthodes génériques) et demandent <code>-&gt; Type</code> quand elles retournent une valeur.</li>
+<li>Les records génériques (<code>Box&lt;T&gt;</code>) et les <code>Option&lt;T&gt;</code> / <code>Result&lt;T, E&gt;</code> prêts à l'emploi sont dans le chapitre <a href="/fr/guide/generics/">Génériques</a>.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/control-flow/"><small>Précédent</small>← Structures de contrôle</a><a class="next" href="/fr/guide/collections/"><small>Suivant</small>Collections →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/04-functions.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#constantes">Constantes</a></li><li class="l2"><a href="#appeler-des-fonctions">Appeler des fonctions</a></li><li class="l2"><a href="#commentaires-de-documentation">Commentaires de documentation</a></li><li class="l2"><a href="#fonctions-generiques">Fonctions génériques</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

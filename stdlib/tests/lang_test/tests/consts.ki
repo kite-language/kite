@@ -1,0 +1,21 @@
+use std.test
+
+const LIMIT = 3
+const NAME = "kite"
+const DOUBLE = LIMIT * 2
+const GREETING = f"hello {NAME}"
+const NUMS = [1, 2, 3]
+
+make main():
+    t = test_new("constants")
+    const LOCAL = 4
+    const TAG: string = "x"
+    total = 0
+    for i = 0 to LIMIT:
+        total += LOCAL
+    test_eq_int(t, "local and global const", total, 12)
+    test_eq_int(t, "const from const", DOUBLE, 6)
+    test_eq_str(t, "const f-string", GREETING, "hello kite")
+    test_eq_str(t, "typed local const", TAG, "x")
+    test_eq_int(t, "const list", NUMS[1], 2)
+    exit(test_finish(t))

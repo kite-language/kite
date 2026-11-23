@@ -1,0 +1,18 @@
+use vis_inner
+
+pub type Point:
+    x: int
+    y: int
+
+type Secret:
+    v: int
+
+pub const LIMIT = 10
+
+const HIDDEN = 5
+
+pub make vis_add(a: int, b: int) -> int:
+    return helper(a) + b + vis_inner_two()
+
+make helper(a: int) -> int:
+    return a * 2

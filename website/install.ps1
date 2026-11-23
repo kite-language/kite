@@ -3,7 +3,7 @@
   install.ps1 -- installs the latest (or a pinned) `kite` release on Windows.
 
     irm https://kite-lang.pages.dev/install.ps1 | iex
-    $env:KITE_VERSION="0.3.1"; irm https://kite-lang.pages.dev/install.ps1 | iex
+    $env:KITE_VERSION="0.4.9"; irm https://kite-lang.pages.dev/install.ps1 | iex
     irm https://kite-lang.pages.dev/install.ps1 -OutFile install.ps1; ./install.ps1 -Uninstall
 
   Env / param overrides:

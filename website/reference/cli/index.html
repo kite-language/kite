@@ -4,56 +4,68 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The kite command — Kite</title>
+<meta name="description" content="kite.toml sets the same options: [build] opt_level, target, runtime, heap_size.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/reference/cli/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/cli/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/cli/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/cli/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/cli/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/reference/cli/" hreflang="en" lang="en">EN</a><a href="/fr/reference/cli/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/cli/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
-<li><a class="cur" href="/reference/cli/">The kite command</a></li>
+<li><a class="cur" aria-current="page" href="/reference/cli/">The kite command</a></li>
 <li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
 <li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Reference › The kite command</div>
 <article>
 <h1 id="the-kite-command">The <code>kite</code> command</h1>
-<pre class="code"><code>kite &lt;command&gt; [options]
-</code></pre>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite &lt;command&gt; [options]
+</code></pre></div>
 <table>
 <thead>
 <tr>
@@ -177,14 +189,18 @@
 <td><code>--heap-size N</code></td>
 <td>heap of that runtime in bytes (default 1048576)</td>
 </tr>
+<tr>
+<td><code>--backend native</code></td>
+<td>experimental x86-64 generator with no clang (integer subset)</td>
+</tr>
 </tbody>
 </table>
 <p><code>kite.toml</code> sets the same options: <code>[build] opt_level</code>, <code>target</code>, <code>runtime</code>, <code>heap_size</code>.</p>
 <h2 id="build-output">Build output</h2>
-<pre class="code"><code>   Compiling sha256 v0.<span class="n">4.4</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.4</span>.<span class="n">4</span>)
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">4.9</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.4</span>.<span class="n">9</span>)
    Compiling hello v0.<span class="n">1.0</span> (/home/me/hello)
     Finished dev [unoptimized] target(s) <span class="k">in</span> <span class="n">0</span>.42s
-</code></pre>
+</code></pre></div>
 <p><code>Fresh</code> replaces <code>Compiling</code> when nothing changed. Layout: <code>target/debug/&lt;name&gt;</code>, <code>target/release/&lt;name&gt;</code>, with the
 LLVM IR (<code>&lt;name&gt;.ll</code>) next to the binary and the cache fingerprint in <code>.fingerprint/</code>.</p>
 <h2 id="environment">Environment</h2>
@@ -207,9 +223,12 @@ LLVM IR (<code>&lt;name&gt;.ll</code>) next to the binary and the cache fingerpr
 </tbody>
 </table>
 </article>
-<footer class="pager"><a class="prev" href="/reference/std-pieces/">← Standard pieces</a><a class="next" href="/reference/pieces-registry/">Pieces and the registry →</a></footer>
+<footer class="pager"><a class="prev" href="/reference/std-pieces/"><small>Previous</small>← Standard pieces</a><a class="next" href="/reference/pieces-registry/"><small>Next</small>Pieces and the registry →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/10-cli.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#build-output">Build output</a></li><li class="l2"><a href="#environment">Environment</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

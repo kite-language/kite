@@ -64,6 +64,13 @@ class Parser:
         self.diags.add("E0010", "expected " + shown + ", found " + self.found(), self.peek_span(), "expected " + shown + " here")
         return -1
 
+    // `>` closing a generic type; a `>>` token (as in `Box<Box<int>>`) closes two levels, one at a time.
+    make expect_gt(self) -> int:
+        if self.at("Shr"):
+            self.toks[self.pos].kind = "Gt"
+            return self.pos
+        return self.expect("Gt")
+
     make expect_identifier(self) -> int:
         if self.at("Identifier"):
             return self.advance()
@@ -116,6 +123,13 @@ class Parser:
         while not self.at("Eof"):
             k = self.peek()
             ok = true
+            item = -1
+            pubflag = false
+            if k == "Identifier" and self.ttext(self.cur()) == "pub":
+                // `pub` is not a reserved word: it only means something in front of an item
+                self.advance()
+                pubflag = true
+                k = self.peek()
             if k == "Use" or k == "From":
                 r = self.parse_import()
                 if r < 0:
@@ -128,6 +142,7 @@ class Parser:
                     ok = false
                 else:
                     append(structs, r)
+                    item = r
             orif k == "Class":
                 clear(self.pending_fns)
                 r = self.parse_class_def()
@@ -135,6 +150,7 @@ class Parser:
                     ok = false
                 else:
                     append(structs, r)
+                    item = r
                     for f in self.pending_fns:
                         append(functions, f)
             orif k == "Enum":
@@ -143,21 +159,26 @@ class Parser:
                     ok = false
                 else:
                     append(enums, r)
+                    item = r
             orif k == "Identifier" and self.ttext(self.cur()) == "const":
                 r = self.parse_const()
                 if r < 0:
                     ok = false
                 else:
                     append(functions, r)
+                    item = r
             orif k == "Async" or k == "Make" or k == "Extern":
                 r = self.parse_function()
                 if r < 0:
                     ok = false
                 else:
                     append(functions, r)
+                    item = r
             else:
                 self.diags.add("E0010", "expected `use`, `from`, `type`, `class`, `enum`, `extern`, or `make`, found " + self.found(), self.peek_span())
                 ok = false
+            if ok and pubflag and item >= 0:
+                append(self.ast.pubs, self.ast.nodes[item].text)
             if not ok:
                 self.synchronize_to_top_level()
             self.skip_blank_newlines()
@@ -284,6 +305,23 @@ class Parser:
         if nt < 0:
             return -1
         name = self.ttext(nt)
+        // generic records: `type Box<T>:` (the parameters are kept in a Flags node as the third child)
+        tparams = ""
+        if self.at("Lt"):
+            self.advance()
+            while true:
+                tt = self.expect_identifier()
+                if tt < 0:
+                    return -1
+                if len(tparams) > 0:
+                    tparams = tparams + ","
+                tparams = tparams + self.ttext(tt)
+                if self.at("Comma"):
+                    self.advance()
+                else:
+                    break
+            if self.expect_gt() < 0:
+                return -1
         if self.expect("Colon") < 0:
             return -1
         if self.expect("Newline") < 0:
@@ -310,6 +348,10 @@ class Parser:
         if et < 0:
             return -1
         fl = self.ast.addl("List", "", start, fields)
+        if len(tparams) > 0:
+            gf = self.ast.add0("Flags", "generic:" + tparams, start)
+            sk: [int] = [-1, fl, gf]
+            return self.ast.addl("Struct", name, span_to(start, self.tspan(et)), sk)
         return self.ast.add2("Struct", name, span_to(start, self.tspan(et)), -1, fl)
 
     make parse_enum_def(self) -> int:
@@ -396,6 +438,26 @@ class Parser:
             return self.ast.add0("Type", "ptr<" + self.ast.text_of(inner) + ">", span)
         if k == "Identifier":
             t = self.advance()
+            if self.at("Lt"):
+                // a generic type: `Box<int>`, `Pair<string, [int]>`
+                self.advance()
+                text = self.ttext(t) + "<"
+                first_arg = true
+                while true:
+                    a = self.parse_type()
+                    if a < 0:
+                        return -1
+                    if not first_arg:
+                        text = text + ","
+                    text = text + self.ast.text_of(a)
+                    first_arg = false
+                    if self.at("Comma"):
+                        self.advance()
+                    else:
+                        break
+                if self.expect_gt() < 0:
+                    return -1
+                return self.ast.add0("Type", text + ">", span)
             return self.ast.add0("Type", self.ttext(t), span)
         if k == "LBracket":
             self.advance()
@@ -473,6 +535,27 @@ class Parser:
         if nt < 0:
             return -1
         name = self.ttext(nt)
+        // generic functions: `make first<T>(xs: [T]) -> T`
+        tparams = ""
+        if self.at("Lt"):
+            lt_span = self.peek_span()
+            self.advance()
+            while true:
+                tt = self.expect_identifier()
+                if tt < 0:
+                    return -1
+                if len(tparams) > 0:
+                    tparams = tparams + ","
+                tparams = tparams + self.ttext(tt)
+                if self.at("Comma"):
+                    self.advance()
+                else:
+                    break
+            if self.expect("Gt") < 0:
+                return -1
+            if len(self.current_class) > 0:
+                self.diags.add("E0120", "methods cannot have type parameters (generic functions must be top-level)", lt_span)
+                return -1
         if self.expect("LParen") < 0:
             return -1
         params: [int] = []
@@ -525,6 +608,10 @@ class Parser:
             flags = "extern"
         orif is_async:
             flags = "async"
+        if len(tparams) > 0:
+            if len(flags) > 0:
+                flags = flags + " "
+            flags = flags + "generic:" + tparams
         fl2 = self.ast.add0("Flags", flags, start)
         pl = self.ast.addl("List", "", start, params)
         if is_extern:
@@ -592,6 +679,8 @@ class Parser:
             return self.parse_try()
         if k == "Thread":
             return self.parse_body_stmt("Thread")
+        if k == "Identifier" and self.ttext(self.cur()) == "const" and self.peek_at(1) == "Identifier":
+            return self.parse_local_const()
         if k == "Identifier" and self.looks_like_unpack():
             return self.parse_unpack()
         if k == "Identifier" and self.looks_like_assignment():
@@ -744,6 +833,30 @@ class Parser:
         if k == "ShrEq":
             return "Shr"
         return ""
+
+    // `const NAME = expr` / `const NAME: type = expr` inside a function: an assignment that can never be repeated.
+    // The Assign node's text is "const" (sema rejects later assignments to the name).
+    make parse_local_const(self) -> int:
+        ct = self.advance()
+        start = self.tspan(ct)
+        nt = self.expect_identifier()
+        if nt < 0:
+            return -1
+        target = self.ast.add0("LIdent", self.ttext(nt), self.tspan(nt))
+        annotated = -1
+        if self.at("Colon"):
+            self.advance()
+            annotated = self.parse_type()
+            if annotated < 0:
+                return -1
+        if self.expect("Eq") < 0:
+            return -1
+        value = self.parse_expr()
+        if value < 0:
+            return -1
+        if self.expect("Newline") < 0:
+            return -1
+        return self.ast.add3("Assign", "const", span_to(start, self.ast.span_of(value)), target, annotated, value)
 
     make parse_assign(self) -> int:
         start = self.peek_span()
@@ -1066,6 +1179,7 @@ class Parser:
                 saved_toks = self.toks
                 saved_pos = self.pos
                 before = len(self.diags.items)
+                soften_expr_keywords(sub_toks)
                 self.toks = sub_toks
                 self.pos = 0
                 inner = self.parse_expr()
@@ -1478,10 +1592,129 @@ class Parser:
             return -1
         return first
 
+// Reserved words that may also be used as ordinary names (`from = 1`, `print(type)`, `make f(case: int)`).
+// `to` and `in` stay reserved (they are part of `for` loops), as do the type names and `null`.
+make is_soft_keyword(kind: string) -> bool:
+    return kind == "Use" or kind == "From" or kind == "Type" or kind == "Class" or kind == "Match" or kind == "Case" or kind == "Enum" or kind == "Thread" or kind == "Try" or kind == "Failed" or kind == "Finally"
+
+// Token kinds after which an expression operand (and so a name) is expected.
+make expects_operand(kind: string) -> bool:
+    return kind == "Eq" or kind == "LParen" or kind == "Comma" or kind == "LBracket" or kind == "Plus" or kind == "Minus" or kind == "Star" or kind == "Slash" or kind == "Percent" or kind == "EqEq" or kind == "NotEq" or kind == "Lt" or kind == "Gt" or kind == "LtEq" or kind == "GtEq" or kind == "And" or kind == "Or" or kind == "Not" or kind == "Return" or kind == "Amp" or kind == "Pipe" or kind == "Caret" or kind == "Tilde" or kind == "Shl" or kind == "Shr" or kind == "If" or kind == "Orif" or kind == "While" or kind == "Until" or kind == "PlusEq" or kind == "MinusEq" or kind == "StarEq" or kind == "SlashEq" or kind == "PercentEq" or kind == "AmpEq" or kind == "PipeEq" or kind == "CaretEq" or kind == "ShlEq" or kind == "ShrEq" or kind == "For"
+
+make is_stmt_start(kind: string) -> bool:
+    return kind == "Newline" or kind == "Indent" or kind == "Dedent"
+
+make is_assign_follow(kind: string) -> bool:
+    return kind == "Eq" or kind == "PlusEq" or kind == "MinusEq" or kind == "StarEq" or kind == "SlashEq" or kind == "PercentEq" or kind == "AmpEq" or kind == "PipeEq" or kind == "CaretEq" or kind == "ShlEq" or kind == "ShrEq" or kind == "Dot" or kind == "LBracket"
+
+// Turns reserved words used as names into plain identifiers before parsing. A word is a name where its keyword meaning cannot
+// apply: where an operand is expected (after `=`, `(`, `,`, an operator, `return`, `if`, ...), or at the start of a statement
+// that goes on with `=`, `.` or `[` (an assignment).
+make soften_keywords(toks: [Token]):
+    i = 1
+    while i < len(toks):
+        k = toks[i].kind
+        if is_soft_keyword(k):
+            prev = toks[i - 1].kind
+            next_k = ""
+            if i + 1 < len(toks):
+                next_k = toks[i + 1].kind
+            name = false
+            if expects_operand(prev):
+                name = true
+            orif is_stmt_start(prev) and is_assign_follow(next_k):
+                name = true
+            if name:
+                toks[i].text = keyword_word(k)
+                toks[i].kind = "Identifier"
+        i += 1
+
+// The tokens of an expression on its own (an f-string `{...}`): the first token is an operand too.
+make soften_expr_keywords(toks: [Token]):
+    if len(toks) > 0 and is_soft_keyword(toks[0].kind):
+        toks[0].text = keyword_word(toks[0].kind)
+        toks[0].kind = "Identifier"
+    soften_keywords(toks)
+
+// `Box<int>(...)` in an expression: merge the name and its type arguments into one identifier token `Box<int>` (the
+// sema pass turns it into the instance). Only an uppercase name followed by a balanced `<...>` of type tokens and `(`.
+make type_token_text(k: string, text: string) -> string:
+    if k == "Identifier":
+        return text
+    if k == "KwInt":
+        return "int"
+    if k == "KwFloat":
+        return "float"
+    if k == "KwBool":
+        return "bool"
+    if k == "KwString":
+        return "string"
+    if k == "KwPtr":
+        return "ptr"
+    if k == "LBracket":
+        return "["
+    if k == "RBracket":
+        return "]"
+    if k == "Comma":
+        return ","
+    if k == "Lt":
+        return "<"
+    if k == "Gt":
+        return ">"
+    if k == "Shr":
+        return ">>"
+    return ""
+
+make merge_generic_names(toks: [Token]) -> [Token]:
+    out: [Token] = []
+    i = 0
+    while i < len(toks):
+        tk = toks[i]
+        merged = false
+        if tk.kind == "Identifier" and i + 1 < len(toks) and toks[i + 1].kind == "Lt" and len(tk.text) > 0:
+            c0 = char_at(tk.text, 0)
+            if c0 >= 65 and c0 <= 90:
+                depth = 0
+                j = i + 1
+                text = tk.text
+                good = true
+                while j < len(toks) and good:
+                    kk = toks[j].kind
+                    piece = type_token_text(kk, toks[j].text)
+                    if len(piece) == 0:
+                        good = false
+                    else:
+                        if kk == "Lt":
+                            depth += 1
+                        orif kk == "Gt":
+                            depth -= 1
+                        orif kk == "Shr":
+                            depth -= 2
+                        text = text + piece
+                        j += 1
+                        if depth <= 0:
+                            break
+                if good and depth == 0 and j < len(toks) and toks[j].kind == "LParen":
+                    nt = Token()
+                    nt.kind = "Identifier"
+                    nt.text = text
+                    nt.ival = tk.ival
+                    nt.span = tk.span
+                    append(out, nt)
+                    i = j
+                    merged = true
+        if not merged:
+            append(out, tk)
+            i += 1
+    return out
+
 // Parse a token stream into an AST rooted at the returned id (-1 on error).
 make parse_tokens(toks: [Token], ast: Ast, diags: Diags) -> int:
+    soften_keywords(toks)
+    toks = merge_generic_names(toks)
     p = Parser(toks)
     root = p.parse_program()
     diags.extend(p.diags)
     ast.nodes = p.ast.nodes
+    ast.pubs = p.ast.pubs
     return root

@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Changelog — Kite</title>
+<meta name="description" content="Editor repositories have their own changelogs: see docs/versions.md.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/project/changelog/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/project/changelog/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/project/changelog/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/project/changelog/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/project/changelog/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/project/changelog/" hreflang="en" lang="en">EN</a><a href="/fr/project/changelog/" hreflang="fr" lang="fr">FR</a><a href="/es/project/changelog/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,18 +52,67 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
-<li><a class="cur" href="/project/changelog/">Changelog</a></li>
+<li><a class="cur" aria-current="page" href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Project › Changelog</div>
 <article>
 <h1 id="changelog-kite-repository">Changelog (kite repository)</h1>
 <p>Editor repositories have their own changelogs: see docs/versions.md.</p>
+<h2 id="049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code></h2>
+<ul>
+<li><strong>Generic records</strong>: <code>type Box&lt;T&gt;:</code> / <code>type Pair&lt;A, B&gt;:</code>; applied as <code>Box&lt;int&gt;</code> in any type position (<code>[Box&lt;int&gt;]</code>, <code>ptr&lt;Box&lt;int&gt;&gt;</code>, <code>Box&lt;Box&lt;int&gt;&gt;</code>)
+  and as a constructor <code>Box&lt;int&gt;()</code>. The compiler makes one instance per type arguments (<code>Box__int</code>), also from inside generic functions
+  (<code>make wrap&lt;T&gt;(x: T) -&gt; Box&lt;T&gt;</code>, inferred through <code>Box&lt;T&gt;</code> parameters). Errors <code>E0125</code> (wrong number of type arguments), <code>E0067</code> for an unsupported field type.
+  Lexer note: <code>Box&lt;int&gt;(</code> is merged into one identifier token before parsing (uppercase name + <code>&lt;...&gt;</code> + <code>(</code>), <code>&gt;&gt;</code> closes two levels.</li>
+<li><strong>New default pieces</strong> <code>std.option</code> (<code>Option&lt;T&gt;</code>: <code>some</code>, <code>is_some</code>, <code>is_none</code>, <code>unwrap</code>, <code>unwrap_or</code>) and <code>std.result</code>
+  (<code>Result&lt;T, E&gt;</code>: <code>ok</code>, <code>err</code>, <code>is_ok</code>, <code>is_err</code>, <code>unwrap</code>, <code>unwrap_or</code>, <code>error</code>): 40 default pieces.</li>
+<li>Docs: new guide chapter "Generics" (EN/FR/ES); test <code>lang_test/tests/generic_types.ki</code>. Kite compiler only (the seed cannot parse <code>&lt;T&gt;</code>).</li>
+</ul>
+<h2 id="048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</h2>
+<ul>
+<li><strong>Constants</strong>: <code>const NAME = expr</code> also inside functions (<code>const STEP = LIMIT / 4</code>), with an optional type; any constant is read-only:
+  assigning to it, <code>+=</code>, <code>.incr()</code>, or changing a field of a constant record is error <code>E0124</code>. Global constants already accepted any type and other constants.</li>
+<li><strong>Words usable as names</strong>: <code>from use type class match case enum thread try failed finally</code> are keywords only where their meaning applies
+  (a token pass turns them into names after <code>=</code>, <code>(</code>, <code>,</code>, operators, <code>return</code>, <code>if</code>..., or at the start of an assignment), so
+  <code>from = 3</code>, <code>print(type)</code>, <code>make span(from: int, case: int)</code>, <code>for finally in xs</code>, <code>f"{try}"</code> work. Still reserved: <code>to</code>, <code>in</code>, type names, <code>null</code>.</li>
+<li>Tests: <code>lang_test/tests/consts.ki</code>, <code>names.ki</code>; <code>build.sh test</code> checks <code>E0124</code>. Kite compiler only (the seed keeps the old rules).</li>
+</ul>
+<h2 id="047-nested-collections">0.4.7 -- nested collections</h2>
+<ul>
+<li>Lists of lists to any depth (<code>[[int]]</code>, <code>[[string]]</code>, <code>[[Cell]]</code>), nested list literals (<code>[[1, 2], [3]]</code>), struct fields of nested
+  list types (<code>cells: [[int]]</code>), <code>len(grid[0])</code> on an element that is a list (it was lowered as a string length), lists of maps (<code>[StrMap_int]</code>).
+  Checked with AddressSanitizer. Kite compiler only. Tuples still hold scalars only.</li>
+<li>Test: <code>stdlib/tests/lang_test/tests/nested.ki</code>. Docs: guide chapter 5 (EN/FR/ES).</li>
+</ul>
+<h2 id="046-generic-functions">0.4.6 -- generic functions</h2>
+<ul>
+<li><strong>Generic functions</strong>: <code>make first&lt;T&gt;(xs: [T]) -&gt; T:</code>. Type parameters are inferred from the argument types (<code>T</code>, <code>[T]</code>, <code>ptr&lt;T&gt;</code>);
+  the compiler instantiates one specialised function per combination (<code>first__int</code>, <code>first__Lstring</code>) while checking calls, so there is
+  no run-time cost. Errors <code>E0120</code> (generic methods), <code>E0121</code> (argument count), <code>E0122</code> (type mismatch), <code>E0123</code> (cannot infer).
+  Kite compiler only (the Rust seed cannot parse type parameters, so the compiler sources do not use them).</li>
+<li>Tests: <code>stdlib/tests/lang_test/tests/generics.ki</code>. Docs: guide chapter 4, language reference, cheat sheet (EN/FR/ES).</li>
+</ul>
+<h2 id="045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (<code>pub</code>), a site in three languages, Windows fixes</h2>
+<ul>
+<li><strong>Visibility</strong>: <code>pub</code> before <code>make</code>, <code>type</code>, <code>class</code>, <code>enum</code> or <code>const</code> exports an item. A file that uses <code>pub</code> is in explicit mode: its
+  other top-level items are private to their piece (the <code>src/</code> tree). Files without <code>pub</code> stay open, so existing pieces keep working.
+  Using a private function, type, class, enum or constant of another piece is error <code>E0080</code>. <code>pub</code> is not a reserved word.
+  The standard-pieces reference lists only the <code>pub</code> items of a piece that uses <code>pub</code>.</li>
+<li><strong>Windows (CI)</strong>: the <code>timespec_get</code> shim was declared and defined (<code>invalid redefinition of function</code>): the extern declaration is now
+  skipped when the shim is emitted, in both back ends, with matching <code>i64</code> types; the end-to-end CLI test looks for <code>hello.exe</code>.
+  <code>build.sh test</code> compiles the Windows IR of a <code>std.time</code> program to an object as a regression check.</li>
+<li><strong>Site</strong>: English at <code>/</code>, French at <code>/fr/</code>, Spanish at <code>/es/</code> (language switcher, <code>hreflang</code>, sitemap); the install page is now a docs page;
+  outline of the page on the right, grouped collapsible menu, copy buttons, callouts, previous/next links, new cheat sheet and
+  troubleshooting pages. A page without translation shows the English text with a notice.</li>
+<li>Tests: <code>stdlib/tests/visibility/</code> (fixture piece with public and private items), run by <code>build.sh test</code>.</li>
+</ul>
 <h2 id="044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</h2>
 <ul>
 <li><strong>Language</strong> (Kite compiler only; the Rust seed cannot parse these): <code>.incr()</code> / <code>.decr()</code>; method chains continued on lines
@@ -186,9 +246,12 @@
 <li><strong>Fixes</strong>: Rust crate self-contained for <code>cross</code> builds; temporaries renamed <code>%.tN</code>; Windows zip packaging.</li>
 </ul>
 </article>
-<footer class="pager"><a class="prev" href="/project/roadmap/">← Roadmap</a><a class="next" href="/project/architecture/">Architecture →</a></footer>
+<footer class="pager"><a class="prev" href="/project/roadmap/"><small>Previous</small>← Roadmap</a><a class="next" href="/project/architecture/"><small>Next</small>Architecture →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/CHANGELOG.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cibles, OS et freestanding — Kite</title>
+<meta name="description" content="[build] target = &quot;...&quot; in kite.toml sets a default.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/reference/targets/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/targets/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/targets/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/targets/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/targets/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/reference/targets/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/targets/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/targets/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a class="cur" aria-current="page" href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Référence › Cibles, OS et freestanding</div>
+<div class="callout note notice">Cette page n'est pas encore traduite ; la version anglaise est affichée.</div>
+<article>
+<h1 id="targets">Targets</h1>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite target list                      # known targets <span class="k">and</span> which are installed
+kite target add x86_64-unknown-none   # install a target (checks clang <span class="k">and</span> LLD, writes its linker script)
+kite target show x86_64-unknown-none
+kite target remove x86_64-unknown-none
+kite build --target x86_64-unknown-none [--release]
+</code></pre></div>
+<p><code>[build] target = "..."</code> in <code>kite.toml</code> sets a default.</p>
+<p><strong>Hosted targets</strong> (<code>x86_64-unknown-linux-gnu</code>, <code>aarch64-unknown-linux-gnu</code>, <code>x86_64-pc-windows-msvc</code>,
+<code>aarch64-apple-darwin</code>, <code>x86_64-apple-darwin</code>) are passed to clang as they are (cross-linking needs a toolchain for
+them). Any other triple is also forwarded to clang.</p>
+<p><strong>Bare-metal targets</strong> (<code>x86_64-unknown-none</code>, <code>aarch64-unknown-none</code>, <code>riscv64-unknown-none</code>) are for writing an
+operating system. <code>kite target add</code> installs <code>~/.kite/targets/&lt;name&gt;/{target.toml,link.ld}</code> (<code>$KITE_HOME</code> overrides
+<code>~/.kite</code>); it needs a clang with that backend and <code>ld.lld</code>. The build is freestanding (no libc, no <code>main</code> special
+case), links with the target's linker script (entry <code>_start</code>, base address 0x100000 / 0x40080000 / 0x80000000)
+and writes <code>target/&lt;name&gt;/&lt;profile&gt;/&lt;package&gt;.elf</code>:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> _start():
+    ...        # your kernel entry point
+</code></pre></div>
+<p>Memory primitives (<code>alloc</code>, strings, lists) need a libc: in a kernel provide <code>malloc</code>, <code>free</code>, <code>memcpy</code>, <code>memmove</code>,
+<code>strlen</code>, <code>strcmp</code>, <code>snprintf</code>, <code>realloc</code> yourself (extern C or Kite), or stay with integers and pointer arithmetic.</p>
+<h2 id="freestanding-builds-and-the-built-in-runtime-044">Freestanding builds and the built-in runtime (0.4.4)</h2>
+<p><code>kite build --freestanding</code> (an object file) and every bare-metal target produce a module that declares and defines
+<strong>only what the program uses</strong>: no <code>argc</code>/<code>argv</code>, no format strings, no libc declarations.</p>
+<p>Generated code still needs <code>malloc</code>, <code>memcpy</code>, <code>strlen</code>... for lists, strings and structs. For code with no libc at all,
+add the <strong>core runtime</strong>: <code>--runtime core</code> (the default for bare-metal targets) or <code>[build] runtime = "core"</code>:</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>malloc</code>, <code>realloc</code></td>
+<td>bump allocator over a static heap (<code>--heap-size</code>, default 1 MiB); returns <code>null</code> when full</td>
+</tr>
+<tr>
+<td><code>free</code></td>
+<td>does nothing (the heap is never reused)</td>
+</tr>
+<tr>
+<td><code>memcpy</code>, <code>memmove</code>, <code>memset</code>, <code>memcmp</code>, <code>strlen</code>, <code>strcmp</code></td>
+<td>plain loops</td>
+</tr>
+<tr>
+<td><code>printf</code></td>
+<td>does nothing (a kernel prints through its own device code)</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td>halts in a loop (also what a failed list bounds check ends in)</td>
+</tr>
+</tbody>
+</table>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="c">// kernel: no libc, entry point _start, writes &quot;kite-boot&quot; to the VGA text buffer</span>
+<span class="k">make</span> _start():
+    vga = int_to_ptr(<span class="n">753664</span>)                 <span class="c">// 0xB8000</span>
+    names = [<span class="s">&quot;kite&quot;</span>, <span class="s">&quot;os&quot;</span>]
+    append(names, <span class="s">&quot;boot&quot;</span>)
+    msg = names[<span class="n">0</span>] + <span class="s">&quot;-&quot;</span> + names[<span class="n">2</span>]
+    i = <span class="n">0</span>
+    <span class="k">while</span> i &lt; len(msg):
+        cell = vga + i
+        *cell = char_at(msg, i) + <span class="n">3840</span>
+        i.incr()
+</code></pre></div>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite target add x86_64-unknown-none
+kite build --target x86_64-unknown-none      # target/x86_64-unknown-none/debug/&lt;name&gt;.elf, no undefined symbols
+</code></pre></div>
+<p>To provide your own allocator instead, build with <code>--runtime none</code> and define <code>malloc</code>, <code>free</code>, ... as C functions.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/reference/pieces-registry/"><small>Précédent</small>← Pièces et registre</a><a class="next" href="/fr/reference/c-interop/"><small>Suivant</small>Appeler du C →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/targets.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#freestanding-builds-and-the-built-in-runtime-044">Freestanding builds and the built-in runtime (0.4.4)</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

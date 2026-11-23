@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colecciones — Kite</title>
+<meta name="description" content="Leer fuera de la lista detiene el programa con un mensaje claro. Todos los elementos comparten un único tipo.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/collections/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/collections/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/collections/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/collections/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/collections/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/collections/" hreflang="en" lang="en">EN</a><a href="/fr/guide/collections/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/collections/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Colecciones</div>
+<article>
+<h1 id="colecciones">Colecciones</h1>
+<h2 id="listas">Listas</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>nums = [<span class="n">3</span>, <span class="n">1</span>, <span class="n">2</span>]
+append(nums, <span class="n">9</span>)             <span class="c">// o nums.append(9)</span>
+print(nums[<span class="n">0</span>])              <span class="c">// los índices empiezan en 0</span>
+nums[<span class="n">1</span>] = <span class="n">10</span>
+x = pop(nums)               <span class="c">// quita y devuelve el último elemento</span>
+insert(nums, <span class="n">0</span>, <span class="n">7</span>)          <span class="c">// insert(lista, índice, valor)</span>
+remove(nums, <span class="n">1</span>)             <span class="c">// remove(lista, índice) devuelve el valor quitado</span>
+clear(nums)
+print(len(nums))
+
+empty: [<span class="t">string</span>] = []        <span class="c">// una lista vacía necesita un tipo</span>
+</code></pre></div>
+<p>Leer fuera de la lista detiene el programa con un mensaje claro. Todos los elementos comparten un único tipo.</p>
+<h2 id="cadenas">Cadenas</h2>
+<p>Las cadenas son cadenas de bytes.</p>
+<table>
+<thead>
+<tr>
+<th>función</th>
+<th>ejemplo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>len(s)</code></td>
+<td><code>len("abc")</code> es 3</td>
+</tr>
+<tr>
+<td><code>substr(s, from, to)</code></td>
+<td><code>substr("hello", 1, 3)</code> es <code>"el"</code></td>
+</tr>
+<tr>
+<td><code>char_at(s, i)</code></td>
+<td>el byte en <code>i</code>, como int</td>
+</tr>
+<tr>
+<td><code>find(s, sub)</code></td>
+<td>índice de <code>sub</code> o -1</td>
+</tr>
+<tr>
+<td><code>contains_str</code>, <code>starts_with</code>, <code>ends_with</code></td>
+<td>comprobaciones</td>
+</tr>
+<tr>
+<td><code>trim</code>, <code>split(s, sep)</code>, <code>join(list, sep)</code>, <code>replace_all(s, a, b)</code>, <code>repeat(s, n)</code></td>
+<td>transformaciones</td>
+</tr>
+<tr>
+<td><code>str(x)</code>, <code>chr(n)</code>, <code>to_int(s)</code></td>
+<td>conversiones</td>
+</tr>
+</tbody>
+</table>
+<p>Más ayudas (mayúsculas, ajuste de línea, conteo, UTF-8) están en <code>std.strings</code> y <code>std.utf8</code>.</p>
+<h2 id="tuplas-y-diccionarios">Tuplas y diccionarios</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>pair = (<span class="n">1</span>, <span class="s">&quot;one&quot;</span>)
+print(pair[<span class="n">0</span>])                    <span class="c">// el índice de una tupla debe ser un literal</span>
+
+person = {<span class="s">&quot;name&quot;</span>: <span class="s">&quot;Ada&quot;</span>, <span class="s">&quot;age&quot;</span>: <span class="n">36</span>}
+print(person[<span class="s">&quot;name&quot;</span>])             <span class="c">// las claves son cadenas literales</span>
+</code></pre></div>
+<h2 id="tablas-hash">Tablas hash</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>ages = StrMap_int()            <span class="c">// claves de cadena; también StrMap_string, StrMap_float, StrMap_bool</span>
+ages.set(<span class="s">&quot;ada&quot;</span>, <span class="n">36</span>)
+print(ages.get(<span class="s">&quot;ada&quot;</span>))         <span class="c">// 36</span>
+print(ages.has(<span class="s">&quot;bob&quot;</span>))         <span class="c">// false</span>
+print(ages.size())
+<span class="k">for</span> key <span class="k">in</span> ages.keys:          <span class="c">// orden de inserción</span>
+    print(key)
+</code></pre></div>
+<h2 id="colecciones-anidadas">Colecciones anidadas</h2>
+<p>Las listas pueden contener listas, a cualquier profundidad, y los campos de los registros también:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Board:
+    cells: [[<span class="t">int</span>]]
+    names: [[<span class="t">string</span>]]
+
+<span class="k">make</span> main():
+    grid = [[<span class="n">1</span>, <span class="n">2</span>], [<span class="n">3</span>, <span class="n">4</span>]]
+    append(grid, [<span class="n">5</span>])
+    grid[<span class="n">0</span>][<span class="n">1</span>] = <span class="n">7</span>
+    print(len(grid[<span class="n">0</span>]))              <span class="c">// 2</span>
+    <span class="k">for</span> row <span class="k">in</span> grid:
+        <span class="k">for</span> v <span class="k">in</span> row:
+            print(v)
+
+    b = Board()
+    append(b.cells, [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>])
+    print(b.cells[<span class="n">0</span>][<span class="n">2</span>])             <span class="c">// 3</span>
+</code></pre></div>
+<p>Una lista anidada vacía necesita un tipo: <code>rows: [[int]] = []</code>. Las listas de registros (<code>[Cell]</code>) y de tablas (<code>[StrMap_int]</code>) funcionan igual.
+Las tuplas todavía solo contienen escalares.</p>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/functions/"><small>Anterior</small>← Funciones y constantes</a><a class="next" href="/es/guide/records/"><small>Siguiente</small>Registros, clases y enums →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/05-collections.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#listas">Listas</a></li><li class="l2"><a href="#cadenas">Cadenas</a></li><li class="l2"><a href="#tuplas-y-diccionarios">Tuplas y diccionarios</a></li><li class="l2"><a href="#tablas-hash">Tablas hash</a></li><li class="l2"><a href="#colecciones-anidadas">Colecciones anidadas</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

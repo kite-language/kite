@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoja de referencia rápida — Kite</title>
+<meta name="description" content="Una página con la sintaxis de cada día.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/cheatsheet/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/cheatsheet/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/cheatsheet/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/cheatsheet/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/cheatsheet/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/cheatsheet/" hreflang="en" lang="en">EN</a><a href="/fr/guide/cheatsheet/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/cheatsheet/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Hoja de referencia rápida</div>
+<article>
+<h1 id="hoja-de-referencia-rapida">Hoja de referencia rápida</h1>
+<p>Una página con la sintaxis de cada día.</p>
+<h2 id="lo-basico">Lo básico</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="c">// un comentario</span>
+name = <span class="s">&quot;Kite&quot;</span>            <span class="c">// una variable se crea al asignarla</span>
+count: <span class="t">int</span> = <span class="n">0</span>           <span class="c">// tipo opcional</span>
+<span class="k">const</span> LIMIT = <span class="n">10</span>         <span class="c">// una constante</span>
+print(<span class="s">f&quot;{name} has {count} items, limit {LIMIT}&quot;</span>)
+</code></pre></div>
+<h2 id="control-de-flujo">Control de flujo</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">if</span> x &gt; <span class="n">0</span>:
+    print(<span class="s">&quot;positive&quot;</span>)
+<span class="k">orif</span> x == <span class="n">0</span>:
+    print(<span class="s">&quot;zero&quot;</span>)
+<span class="k">else</span>:
+    print(<span class="s">&quot;negative&quot;</span>)
+
+<span class="k">for</span> i = <span class="n">0</span> <span class="k">to</span> <span class="n">5</span>:          <span class="c">// 0, 1, 2, 3, 4 (el final se excluye)</span>
+    print(i)
+<span class="k">for</span> item <span class="k">in</span> items:
+    print(item)
+<span class="k">while</span> n &gt; <span class="n">0</span>:
+    n -= <span class="n">1</span>
+</code></pre></div>
+<h2 id="funciones">Funciones</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span> = <span class="n">1</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> w * h
+
+print(area(<span class="n">3</span>))
+print(area(<span class="n">3</span>, h = <span class="n">4</span>))
+</code></pre></div>
+<h2 id="colecciones">Colecciones</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>xs = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>]
+append(xs, <span class="n">4</span>)
+person = {<span class="s">&quot;name&quot;</span>: <span class="s">&quot;Ada&quot;</span>, <span class="s">&quot;age&quot;</span>: <span class="n">36</span>}     <span class="c">// las claves son cadenas literales</span>
+ages = StrMap_int()                    <span class="c">// tabla hash con claves de cadena</span>
+ages.set(<span class="s">&quot;ada&quot;</span>, <span class="n">36</span>)
+</code></pre></div>
+<h2 id="registros-clases-enums">Registros, clases, enums</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Point:
+    x: <span class="t">int</span>
+    y: <span class="t">int</span>
+
+<span class="k">class</span> Counter:
+    n: <span class="t">int</span>
+    <span class="k">make</span> bump(self):
+        self.n += <span class="n">1</span>
+
+<span class="k">enum</span> Shape:
+    Circle(r: <span class="t">int</span>)
+    Square(side: <span class="t">int</span>)
+</code></pre></div>
+<h2 id="visibilidad-en-piezas">Visibilidad en piezas</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>pub <span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span>) -&gt; <span class="t">int</span>:    <span class="c">// se puede usar desde otras piezas</span>
+    <span class="k">return</span> w * h
+
+<span class="k">make</span> helper() -&gt; <span class="t">int</span>:                    <span class="c">// privado de la pieza (cuando el archivo usa `pub`)</span>
+    <span class="k">return</span> <span class="n">1</span>
+</code></pre></div>
+<h2 id="funciones-genericas">Funciones genéricas</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))
+print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))
+</code></pre></div>
+<h2 id="comandos">Comandos</h2>
+<table>
+<thead>
+<tr>
+<th>comando</th>
+<th>qué hace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kite init NOMBRE</code></td>
+<td>crea un proyecto (<code>--lib</code> para una pieza)</td>
+</tr>
+<tr>
+<td><code>kite run</code></td>
+<td>compila y ejecuta</td>
+</tr>
+<tr>
+<td><code>kite build --release</code></td>
+<td>compilación optimizada</td>
+</tr>
+<tr>
+<td><code>kite check</code></td>
+<td>solo comprueba los tipos</td>
+</tr>
+<tr>
+<td><code>kite test</code></td>
+<td>ejecuta <code>tests/*.ki</code></td>
+</tr>
+<tr>
+<td><code>kite add NOMBRE</code></td>
+<td>añade una pieza a <code>[dependencies]</code></td>
+</tr>
+<tr>
+<td><code>kite fmt</code></td>
+<td>corrige los espacios</td>
+</tr>
+</tbody>
+</table>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/style/"><small>Anterior</small>← Escribir Kite legible</a><a class="next" href="/es/guide/troubleshooting/"><small>Siguiente</small>Solución de problemas →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/11-cheatsheet.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#lo-basico">Lo básico</a></li><li class="l2"><a href="#control-de-flujo">Control de flujo</a></li><li class="l2"><a href="#funciones">Funciones</a></li><li class="l2"><a href="#colecciones">Colecciones</a></li><li class="l2"><a href="#registros-clases-enums">Registros, clases, enums</a></li><li class="l2"><a href="#visibilidad-en-piezas">Visibilidad en piezas</a></li><li class="l2"><a href="#funciones-genericas">Funciones genéricas</a></li><li class="l2"><a href="#comandos">Comandos</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

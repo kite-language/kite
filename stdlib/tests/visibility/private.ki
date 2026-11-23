@@ -1,0 +1,6 @@
+use vis
+
+make main():
+    print(helper(1))
+    s = Secret()
+    print(HIDDEN)

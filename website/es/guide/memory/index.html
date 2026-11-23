@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memoria, punteros e hilos — Kite</title>
+<meta name="description" content="&amp;amp;x toma la dirección de un escalar local. null es el puntero vacío (p == null). ptr_to_int(p) e int_to_ptr(n) convierten entre un puntero y su dirección.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/memory/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/memory/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/memory/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/memory/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/memory/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/memory/" hreflang="en" lang="en">EN</a><a href="/fr/guide/memory/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/memory/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Memoria, punteros e hilos</div>
+<article>
+<h1 id="memoria-punteros-e-hilos">Memoria, punteros e hilos</h1>
+<h2 id="punteros">Punteros</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>p = <span class="k">alloc</span>(<span class="t">int</span>)            <span class="c">// un int en el heap, puesto a cero</span>
+*p = <span class="n">42</span>                   <span class="c">// escribir a través del puntero</span>
+print(*p)
+<span class="k">free</span>(p)
+
+buf = <span class="k">alloc_n</span>(<span class="t">int</span>, <span class="n">8</span>)     <span class="c">// ocho ints</span>
+buf[<span class="n">0</span>] = <span class="n">7</span>                <span class="c">// p[i] ...</span>
+*(buf + <span class="n">1</span>) = <span class="n">8</span>            <span class="c">// ... o aritmética de punteros</span>
+buf = realloc_n(buf, <span class="n">16</span>)  <span class="c">// redimensionar (conserva el contenido)</span>
+zero_n(buf, <span class="n">16</span>)           <span class="c">// limpiar</span>
+copy_n(dst, src, <span class="n">8</span>)       <span class="c">// copiar 8 elementos</span>
+<span class="k">free</span>(buf)
+</code></pre></div>
+<p><code>&amp;x</code> toma la dirección de un escalar local. <code>null</code> es el puntero vacío (<code>p == null</code>). <code>ptr_to_int(p)</code> e <code>int_to_ptr(n)</code>
+convierten entre un puntero y su dirección.</p>
+<h2 id="hilos">Hilos</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> worker(id: <span class="t">int</span>):
+    print(<span class="s">f&quot;worker {id}&quot;</span>)
+
+<span class="k">make</span> main():
+    h = spawn(worker, <span class="n">1</span>)      <span class="c">// ejecuta worker(1) en un hilo nuevo</span>
+    thread_join(h)
+</code></pre></div>
+<p>Comparte datos pasando <code>ptr_to_int(block)</code> y reconstruyendo el puntero en el hilo; protégelos con la pieza <code>threads</code>
+(<code>mutex_new</code>, <code>mutex_lock</code>, <code>atomic_add</code>, ...).</p>
+<h2 id="hablar-con-c">Hablar con C</h2>
+<p>Declara una función de C y llámala:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">extern</span> <span class="k">make</span> abs(n: <span class="t">int</span>) -&gt; <span class="t">int</span>
+</code></pre></div>
+<p>Los parámetros y resultados pueden ser <code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code> y <code>ptr&lt;T&gt;</code>. Compila con <code>--link lib.a</code> para añadir objetos.</p>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/pieces/"><small>Anterior</small>← Piezas (paquetes)</a><a class="next" href="/es/guide/style/"><small>Siguiente</small>Escribir Kite legible →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/08-memory.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#punteros">Punteros</a></li><li class="l2"><a href="#hilos">Hilos</a></li><li class="l2"><a href="#hablar-con-c">Hablar con C</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

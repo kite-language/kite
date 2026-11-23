@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écrire du Kite lisible — Kite</title>
+<meta name="description" content="Kite">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/guide/style/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/style/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/style/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/style/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/style/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/guide/style/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/style/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/style/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a class="cur" aria-current="page" href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Écrire du Kite lisible</div>
+<article>
+<h1 id="ecrire-du-kite-lisible">Écrire du Kite lisible</h1>
+<ul>
+<li><strong>4 espaces</strong>, pas de tabulations (<code>kite fmt</code> corrige les espaces).</li>
+<li>Des <strong>f-strings</strong> plutôt que des chaînes de <code>+</code> : <code>f"{name}: {count}"</code>.</li>
+<li>Des <strong>chaînes d'appels</strong> plutôt que des variables temporaires quand chaque étape se lit naturellement :
+  <code>kite
+  names = text
+      .trim()
+      .split(",")</code></li>
+<li><code>x.incr()</code> / <code>x.decr()</code> plutôt que <code>x += 1</code> quand l'intention est « un de plus ».</li>
+<li>Nommez les fonctions d'une pièce <code>&lt;pièce&gt;_&lt;fonction&gt;</code> et appelez-les <code>piece.function()</code>.</li>
+<li>Mettez un commentaire <code>//</code> au-dessus de chaque fonction que vous voulez dans <code>kite doc</code>.</li>
+<li>Préférez <code>const</code> aux nombres magiques.</li>
+<li>Gardez les fonctions courtes ; retournez tôt.</li>
+<li>Marquez <code>pub</code> seulement l'interface d'une pièce ; le reste reste privé.</li>
+<li>Noms à éviter pour les variables et les fonctions (réservés) : <code>to in int float string bool ptr null</code>, et les fonctions intégrées (<code>len</code>, <code>print</code>, ...).
+  Les autres mots-clés (<code>from</code>, <code>type</code>, <code>match</code>, ...) passent comme noms, mais un nom plus clair se lit mieux.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/memory/"><small>Précédent</small>← Mémoire, pointeurs et threads</a><a class="next" href="/fr/guide/cheatsheet/"><small>Suivant</small>Aide-mémoire →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/09-style.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

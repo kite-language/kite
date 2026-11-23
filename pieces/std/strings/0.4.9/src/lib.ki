@@ -1,0 +1,160 @@
+// strings -- helpers on top of the prelude (split, join, trim, find, replace_all, repeat). Byte strings (ASCII case).
+
+make strings_lines(s: string) -> [string]:
+    out: [string] = []
+    for l in split(s, "\n"):
+        t = l
+        if ends_with(t, chr(13)):
+            t = substr(t, 0, len(t) - 1)
+        append(out, t)
+    if len(out) > 0 and len(out[len(out) - 1]) == 0:
+        pop(out)
+    return out
+
+make strings_chars(s: string) -> [string]:
+    out: [string] = []
+    i = 0
+    while i < len(s):
+        append(out, substr(s, i, i + 1))
+        i += 1
+    return out
+
+make strings_reverse(s: string) -> string:
+    parts: [string] = []
+    i = len(s)
+    while i > 0:
+        append(parts, substr(s, i - 1, i))
+        i -= 1
+    return join(parts, "")
+
+// Non-overlapping occurrences of `sub`.
+make strings_count(s: string, sub: string) -> int:
+    if len(sub) == 0:
+        return 0
+    n = 0
+    pos = 0
+    while true:
+        i = find_from(s, sub, pos)
+        if i < 0:
+            break
+        n += 1
+        pos = i + len(sub)
+    return n
+
+make strings_last_index(s: string, sub: string) -> int:
+    last = -1
+    pos = 0
+    while true:
+        i = find_from(s, sub, pos)
+        if i < 0:
+            break
+        last = i
+        pos = i + 1
+    return last
+
+make strings_ltrim(s: string) -> string:
+    i = 0
+    while i < len(s) and is_space(char_at(s, i)):
+        i += 1
+    return substr(s, i, len(s))
+
+make strings_rtrim(s: string) -> string:
+    e = len(s)
+    while e > 0 and is_space(char_at(s, e - 1)):
+        e -= 1
+    return substr(s, 0, e)
+
+make strings_is_blank(s: string) -> bool:
+    return len(trim(s)) == 0
+
+make strings_upper(s: string) -> string:
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c >= 97 and c <= 122:
+            c = c - 32
+        append(parts, chr(c))
+        i += 1
+    return join(parts, "")
+
+make strings_lower(s: string) -> string:
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c >= 65 and c <= 90:
+            c = c + 32
+        append(parts, chr(c))
+        i += 1
+    return join(parts, "")
+
+make strings_capitalize(s: string) -> string:
+    if len(s) == 0:
+        return s
+    return strings_upper(substr(s, 0, 1)) + substr(s, 1, len(s))
+
+make strings_title(s: string) -> string:
+    out: [string] = []
+    for w in split(s, " "):
+        append(out, strings_capitalize(strings_lower(w)))
+    return join(out, " ")
+
+make strings_pad_center(s: string, width: int) -> string:
+    if len(s) >= width:
+        return s
+    total = width - len(s)
+    left = total / 2
+    return repeat(" ", left) + s + repeat(" ", total - left)
+
+// Text before / after the first `sep` ("" / the whole text when absent).
+make strings_before(s: string, sep: string) -> string:
+    i = find(s, sep)
+    if i < 0:
+        return s
+    return substr(s, 0, i)
+
+make strings_after(s: string, sep: string) -> string:
+    i = find(s, sep)
+    if i < 0:
+        return ""
+    return substr(s, i + len(sep), len(s))
+
+make strings_replace_first(s: string, a: string, b: string) -> string:
+    i = find(s, a)
+    if i < 0:
+        return s
+    return substr(s, 0, i) + b + substr(s, i + len(a), len(s))
+
+// `s` cut to `n` characters, ending with `ellipsis` when shortened.
+make strings_truncate(s: string, n: int, ellipsis: string) -> string:
+    if len(s) <= n:
+        return s
+    keep = n - len(ellipsis)
+    if keep < 0:
+        keep = 0
+    return substr(s, 0, keep) + ellipsis
+
+// Greedy word wrap into lines of at most `width` characters.
+make strings_wrap(text: string, width: int) -> [string]:
+    lines: [string] = []
+    cur = ""
+    for w in split(text, " "):
+        if len(w) == 0:
+            continue
+        if len(cur) == 0:
+            cur = w
+        orif len(cur) + 1 + len(w) <= width:
+            cur = cur + " " + w
+        else:
+            append(lines, cur)
+            cur = w
+    if len(cur) > 0:
+        append(lines, cur)
+    return lines
+
+make strings_join_ints(xs: [int], sep: string) -> string:
+    parts: [string] = []
+    for x in xs:
+        append(parts, str(x))
+    return join(parts, sep)

@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Records, classes and enums — Kite</title>
+<meta name="description" content="Records are copied when assigned (q = p copies). Fields may be ints, floats, bools, strings, lists, pointers and other records. Field names may be reserved words (job.thread).">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/records/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/records/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/records/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/records/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/records/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/records/" hreflang="en" lang="en">EN</a><a href="/fr/guide/records/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/records/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
-<li><a class="cur" href="/guide/records/">Records, classes and enums</a></li>
+<li><a class="cur" aria-current="page" href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,19 +52,20 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Guide › Records, classes and enums</div>
 <article>
 <h1 id="records-classes-and-enums">Records, classes and enums</h1>
 <h2 id="type-a-record">type: a record</h2>
-<pre class="code"><code><span class="k">type</span> Point:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Point:
     x: <span class="t">int</span>
     y: <span class="t">int</span>
 
@@ -62,11 +74,11 @@
     p.x = <span class="n">3</span>
     p.y = <span class="n">4</span>
     print(p.x + p.y)
-</code></pre>
+</code></pre></div>
 <p>Records are copied when assigned (<code>q = p</code> copies). Fields may be ints, floats, bools, strings, lists, pointers and other
 records. Field names may be reserved words (<code>job.thread</code>).</p>
 <h2 id="class-a-record-with-methods">class: a record with methods</h2>
-<pre class="code"><code><span class="k">class</span> Counter:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">class</span> Counter:
     n: <span class="t">int</span>
     <span class="k">make</span> init(self):             <span class="c">// runs on `Counter()`</span>
         self.n = <span class="n">0</span>
@@ -80,11 +92,11 @@ records. Field names may be reserved words (<code>job.thread</code>).</p>
     c.bump()
     c.bump()
     print(c.value())             <span class="c">// 2</span>
-</code></pre>
+</code></pre></div>
 <p>A class may extend another (<code>class Dog(Animal):</code>) and override its methods (dispatch is by the object's real class).
 Classes are passed by reference to functions; records and ints are passed by value.</p>
 <h2 id="enum">enum</h2>
-<pre class="code"><code><span class="k">enum</span> Color:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">enum</span> Color:
     Red
     Green
     Blue
@@ -93,10 +105,10 @@ Classes are passed by reference to functions; records and ints are passed by val
     c = Color.Green
     <span class="k">if</span> c == Color.Green:
         print(<span class="s">&quot;green&quot;</span>)
-</code></pre>
+</code></pre></div>
 <p>Enums with data list their fields per variant. Construct a value as <code>Shape.Circle(2)</code> and take it apart with <code>match</code>
 (add <code>else:</code> for the remaining variants, and when every arm returns):</p>
-<pre class="code"><code><span class="k">enum</span> Shape:
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">enum</span> Shape:
     Circle(r: <span class="t">int</span>)
     Rect(w: <span class="t">int</span>, h: <span class="t">int</span>)
 
@@ -111,12 +123,15 @@ Classes are passed by reference to functions; records and ints are passed by val
 
 <span class="k">make</span> main():
     print(area(Shape.Rect(<span class="n">2</span>, <span class="n">5</span>)))
-</code></pre>
+</code></pre></div>
 <p>Recursive data holds pointers to itself: <code>Add(l: ptr&lt;Expr&gt;, r: ptr&lt;Expr&gt;)</code>.</p>
 </article>
-<footer class="pager"><a class="prev" href="/guide/collections/">← Collections</a><a class="next" href="/guide/pieces/">Pieces (packages) →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/collections/"><small>Previous</small>← Collections</a><a class="next" href="/guide/generics/"><small>Next</small>Generics →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/06-records.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#type-a-record">type: a record</a></li><li class="l2"><a href="#class-a-record-with-methods">class: a record with methods</a></li><li class="l2"><a href="#enum">enum</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

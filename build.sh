@@ -118,6 +118,11 @@ if [ "${1:-}" = "test" ]; then
     "$KC" build -q >/dev/null; "$KC" inspect target/debug/sig | grep -q "language=Kite" && echo "inspect: ok"
     [ "$(./target/debug/sig)" = "6765" ] && echo "llvm back end: ok"
     "$KC" build --release --backend native -q >/dev/null; [ "$(./target/release/sig)" = "6765" ] && echo "native back end: ok"
+    # Windows IR regression (timespec_get declared and defined twice): the IR must at least compile to an object
+    cd .. && "$KC" init win >/dev/null && cd win
+    printf 'use std.time\nmake main():\n    print(time.now_ms())\n' > src/main.ki
+    "$KC" build -q --target x86_64-pc-windows-msvc >/dev/null 2>&1 || true
+    clang -c --target=x86_64-pc-windows-msvc -x ir target/x86_64-pc-windows-msvc/debug/win.ll -o win.obj 2>/dev/null && echo "windows IR: ok"
     cd .. && "$KC" init os >/dev/null && cd os
     printf 'make _start():\n    names = ["kite", "os"]\n    append(names, "boot")\n    i = 0\n    i.incr()\n' > src/main.ki
     if command -v ld.lld >/dev/null 2>&1; then
@@ -125,6 +130,24 @@ if [ "${1:-}" = "test" ]; then
       "$KC" build --target x86_64-unknown-none -q >/dev/null
       [ "$(nm -u target/x86_64-unknown-none/debug/os.elf | wc -l)" = "0" ] && echo "freestanding core runtime: ok"
     else echo "freestanding core runtime: skipped (no ld.lld)"; fi
+  )
+  bold "==> visibility (pub / private)"
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
+    cp -r "$ROOT/pieces" "$W/reg"; mkdir -p "$W/reg/community"; cp -r "$ROOT/stdlib/tests/visibility/vis" "$W/reg/community/vis"
+    export KITE_PIECES="$W/reg"; cd "$W"; "$KC" init app >/dev/null; cd app; "$KC" add vis >/dev/null
+    cp "$ROOT/stdlib/tests/visibility/ok.ki" src/main.ki
+    [ "$("$KC" run -q 2>/dev/null)" = "18" ] && echo "pub items usable from another piece: ok"
+    cp "$ROOT/stdlib/tests/visibility/private.ki" src/main.ki
+    N=$("$KC" check 2>&1 | grep -c "E0080" || true); [ "$N" = "3" ] && echo "private items rejected (function, type, const): ok"
+  )
+  bold "==> constants cannot be assigned"
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init cst >/dev/null; cd cst
+    printf 'const LIMIT = 3\n\nmake main():\n    const LOCAL = 4\n    LOCAL = 5\n    LOCAL += 1\n    LIMIT = 9\n    ok = 1\n    ok = 2\n' > src/main.ki
+    N=$("$KC" check 2>&1 | grep -c "E0124" || true); [ "$N" = "3" ] && echo "assignments to constants rejected (E0124): ok"
   )
   bold "==> piece registry verification"
   KITE="$(exe "$ROOT/stage2/target/release/kitec")" scripts/verify-pieces.sh

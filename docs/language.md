@@ -82,3 +82,44 @@ Construct with `Expr.Num(3)`. Plain enums (`enum Color: Red, Green`) stay intege
 ## Not in 0.2
 `**kwargs`, generic user types, struct value-copy-vs-alias parity with Python for `b = a`,
 dict literals with keys added at run time (use `StrMap_T`), map key deletion.
+
+## Visibility (`pub`)
+
+`pub` before `make`, `type`, `class`, `enum` or `const` exports the item. A file that uses `pub` at least once is in explicit mode:
+its other top-level items are private to the piece (the `src/` tree they live in). Files without `pub` keep everything public.
+Class methods follow their class. `pub` is only a keyword in front of an item: it can still be used as a variable name.
+Using a private item of another piece is error `E0080`.
+
+## Generic functions (0.4.6)
+
+A function can take **type parameters** in angle brackets. The compiler infers them from the arguments and makes one specialised copy
+per combination of types, so a generic function is as fast as one you wrote by hand.
+
+```kite
+make first<T>(xs: [T]) -> T:
+    return xs[0]
+
+make pick<A, B>(a: A, b: B) -> A:
+    return a
+
+make main():
+    print(first([4, 5, 6]))        // 4      (T = int)
+    print(first(["a", "b"]))       // a      (T = string)
+    print(pick(7, "x"))            // 7      (A = int, B = string)
+```
+
+- A type parameter can appear in a parameter type as `T`, `[T]` or `ptr<T>`, and in the return type and the body.
+- Every type parameter must be deducible from the arguments (`E0123` otherwise); two parameters of the same `T` must agree (`E0122`).
+- Generic functions are top-level only (no generic methods) and need `-> Type` when they return a value.
+- Generic records (`Box<T>`) and the ready-made `Option<T>` / `Result<T, E>` are in the chapter [Generics](/guide/generics/).
+
+## Constants (0.4.8)
+
+`const NAME = expr` (or `const NAME: type = expr`) works at the top level and inside functions, with any type (numbers, strings,
+f-strings, lists, records) and may use other constants. Constants are read-only: assigning to one, or changing a field of a constant record, is error `E0124`.
+
+## Words usable as names (0.4.8)
+
+`from use type class match case enum thread try failed finally` are keywords only where their keyword meaning applies; elsewhere they are
+ordinary names: `from = 3`, `print(type)`, `make span(from: int, case: int)`, `for finally in xs`, f-strings `f"{try}"`.
+Still reserved: `to`, `in`, the type names (`int float string bool ptr`) and `null`.

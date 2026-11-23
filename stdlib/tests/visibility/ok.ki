@@ -1,0 +1,6 @@
+use vis
+
+make main():
+    p = Point()
+    p.x = 3
+    print(vis.add(p.x, LIMIT))

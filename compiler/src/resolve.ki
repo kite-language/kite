@@ -80,6 +80,8 @@ class Loader:
     org_names: [string]
     org_files: [string]
     org_srcs: [string]
+    org_roots: [string]
+    org_priv: [bool]
     imports: [int]
     structs: [int]
     enums: [int]
@@ -92,10 +94,12 @@ class Loader:
     std_cache: StrMap_string
     found_root: string
 
-    make add_origin(self, name: string, file: string, src: string):
+    make add_origin(self, name: string, file: string, src: string, root: string, private: bool):
         append(self.org_names, name)
         append(self.org_files, file)
         append(self.org_srcs, src)
+        append(self.org_roots, root)
+        append(self.org_priv, private)
         self.org_idx.set(name, len(self.org_names))
 
     make error(self, code: string, msg: string, span: Span, file: string, src: string, help: string):
@@ -217,6 +221,82 @@ class Loader:
                 ok = false
         return ok
 
+    // Visibility. A file that marks at least one top-level item `pub` is in explicit mode: its other items are
+    // private to their piece (the `src/` tree they live in). A file without `pub` stays open (everything public).
+    // Methods (`Class__method`) follow their class.
+    make is_private(self, fa: Ast, name: string) -> bool:
+        if len(fa.pubs) == 0:
+            return false
+        if contains_str(name, "__"):
+            return false
+        return index_of_name(fa.pubs, name) < 0
+
+    make check_name(self, name: string, span: Span, cur_root: string, display: string, source: string) -> bool:
+        if not self.org_idx.has(name):
+            return true
+        i = self.org_idx.get(name) - 1
+        if not self.org_priv[i]:
+            return true
+        if self.org_roots[i] == cur_root:
+            return true
+        self.error("E0080", f"`{name}` is private to the piece that defines it (in `{self.org_files[i]}`)", span, display, source, "mark it `pub` in that piece to use it from other pieces: `pub make ...`, `pub type ...`, `pub class ...`, `pub enum ...`, `pub const ...`")
+        return false
+
+    // Words of a type text such as `[Point]` or `ptr<Expr>`.
+    make type_words(self, text: string) -> [string]:
+        s = text
+        for ch in ["[", "]", "<", ">", "(", ")", ","]:
+            s = replace_all(s, ch, " ")
+        out: [string] = []
+        for w in split(s, " "):
+            if len(w) > 0:
+                append(out, w)
+        return out
+
+    make private_walk(self, fa: Ast, id: int, fid: int, cur_root: string, display: string, source: string) -> bool:
+        if id < 0:
+            return true
+        ok = true
+        kind = fa.nodes[id].kind
+        text = fa.nodes[id].text
+        if kind == "Call":
+            if not self.check_name(text, fa.nodes[id].span, cur_root, display, source):
+                ok = false
+        orif kind == "Ident":
+            if fid < 0 or not fn_binds(fa, fid, text):
+                if not self.check_name(text, fa.nodes[id].span, cur_root, display, source):
+                    ok = false
+        orif kind == "Type":
+            for w in self.type_words(text):
+                if not self.check_name(w, fa.nodes[id].span, cur_root, display, source):
+                    ok = false
+        kl = fa.nodes[id].kids
+        for c in kl:
+            if not self.private_walk(fa, c, fid, cur_root, display, source):
+                ok = false
+        return ok
+
+    // Private items of other pieces used by this file (checked after its imports are loaded).
+    make check_private(self, fa: Ast, root: int, cur_root: string, display: string, source: string) -> bool:
+        ok = true
+        fl = fa.nodes[fa.nodes[root].kids[3]].kids
+        for f in fl:
+            if not self.private_walk(fa, f, f, cur_root, display, source):
+                ok = false
+        sl = fa.nodes[fa.nodes[root].kids[1]].kids
+        for s in sl:
+            sk = fa.nodes[s].kids
+            if len(sk) > 0 and sk[0] >= 0:
+                if not self.check_name(fa.nodes[sk[0]].text, fa.nodes[sk[0]].span, cur_root, display, source):
+                    ok = false
+            if not self.private_walk(fa, s, -1, cur_root, display, source):
+                ok = false
+        el = fa.nodes[fa.nodes[root].kids[2]].kids
+        for e in el:
+            if not self.private_walk(fa, e, -1, cur_root, display, source):
+                ok = false
+        return ok
+
     make load_file(self, path: string, cur_root: string) -> bool:
         canonical = path_norm(path)
         if self.visited.has(canonical):
@@ -282,6 +362,9 @@ class Loader:
         if not self.qualify_calls(fa, root, scope_names, scope_roots, display, source):
             all_ok = false
 
+        if not self.check_private(fa, root, cur_root, display, source):
+            all_ok = false
+
         fl = fa.nodes[fa.nodes[root].kids[3]].kids
         for f in fl:
             name = fa.nodes[f].text
@@ -289,7 +372,7 @@ class Loader:
                 self.error("E0036", f"function `{name}` is defined multiple times across the project", fa.nodes[f].span, display, source, "")
                 all_ok = false
                 continue
-            self.add_origin(name, display, source)
+            self.add_origin(name, display, source, cur_root, self.is_private(fa, name))
             append(self.fns, import_tree(self.ast, fa, f))
         sl = fa.nodes[fa.nodes[root].kids[1]].kids
         for s in sl:
@@ -298,7 +381,7 @@ class Loader:
                 self.error("E0061", f"struct `{sname}` is defined multiple times across the project", fa.nodes[s].span, display, source, "")
                 all_ok = false
                 continue
-            self.add_origin(sname, display, source)
+            self.add_origin(sname, display, source, cur_root, self.is_private(fa, sname))
             append(self.structs, import_tree(self.ast, fa, s))
         el = fa.nodes[fa.nodes[root].kids[2]].kids
         for e in el:
@@ -307,7 +390,7 @@ class Loader:
                 self.error("E0069", f"enum `{ename}` is defined multiple times across the project", fa.nodes[e].span, display, source, "")
                 all_ok = false
                 continue
-            self.add_origin(ename, display, source)
+            self.add_origin(ename, display, source, cur_root, self.is_private(fa, ename))
             append(self.enums, import_tree(self.ast, fa, e))
         return all_ok
 

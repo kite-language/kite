@@ -428,7 +428,7 @@ class Lower:
             return len(st) > 0 and has_layout_of_ir_type(st)
         if k == "Index":
             st2 = self.static_ir_type(e)
-            return len(st2) > 0 and irt_is_struct(st2)
+            return len(st2) > 0 and (irt_is_struct(st2) or irt_is_list(st2))
         if k == "Ident":
             if not self.local_declared(n.text):
                 return false

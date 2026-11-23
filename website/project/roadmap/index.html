@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roadmap — Kite</title>
+<meta name="description" content="Versions are 0.x until 1.0.0. The compiler is written in Kite and compiles itself since 0.4.0. &quot;Planned&quot; means decided but not started; dates are deliberately left open.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/project/roadmap/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/project/roadmap/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/project/roadmap/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/project/roadmap/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/project/roadmap/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/project/roadmap/" hreflang="en" lang="en">EN</a><a href="/fr/project/roadmap/" hreflang="fr" lang="fr">FR</a><a href="/es/project/roadmap/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,15 +52,16 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
-<li><a class="cur" href="/project/roadmap/">Roadmap</a></li>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
+<li><a class="cur" aria-current="page" href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Project › Roadmap</div>
 <article>
 <h1 id="kite-roadmap">Kite roadmap</h1>
 <p>Versions are <code>0.x</code> until 1.0.0. The compiler is written in Kite and compiles itself since 0.4.0.
@@ -83,6 +95,26 @@
 <td>0.4.4</td>
 <td><code>.incr()</code>/<code>.decr()</code>, multi-line method chains, uniform call syntax, keyword member names, string escapes; freestanding <code>--runtime core</code> (libc-free); binary signature and <code>kite inspect</code>; experimental native x86-64 back end (<code>--backend native</code>, integer subset); Windows link and portability fixes; the guide and the new site</td>
 </tr>
+<tr>
+<td>0.4.5</td>
+<td><code>pub</code> / private items for pieces (E0080); site in English, French and Spanish with a clearer layout; cheat sheet and troubleshooting pages; Windows <code>timespec_get</code> and CLI test fixes</td>
+</tr>
+<tr>
+<td>0.4.6</td>
+<td>generic functions (<code>make first&lt;T&gt;(xs: [T]) -&gt; T</code>), inferred and specialised per type</td>
+</tr>
+<tr>
+<td>0.4.7</td>
+<td>nested collections: lists of lists, nested literals, struct fields of nested lists, <code>len</code> of list elements</td>
+</tr>
+<tr>
+<td>0.4.8</td>
+<td>general <code>const</code> (local, read-only, E0124); reserved words usable as variable, parameter and field names</td>
+</tr>
+<tr>
+<td>0.4.9</td>
+<td>generic records (<code>Box&lt;T&gt;</code>), <code>std.option</code> / <code>std.result</code> (<code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>)</td>
+</tr>
 </tbody>
 </table>
 <h2 id="road-to-100">Road to 1.0.0</h2>
@@ -93,9 +125,11 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
 <ul>
 <li>[ ] <strong>Real namespaces</strong>: functions of a piece live in <code>piece::function</code>, no global prefixes, <code>use piece.{a, b}</code></li>
 <li>[ ] <strong>Generics</strong>: <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>, <code>Map&lt;K, V&gt;</code> as ordinary library code (replaces the internal <code>StrMap_&lt;T&gt;</code> template)</li>
-<li>[ ] <strong>Nested collections</strong>: lists of lists, dictionaries of lists, structs holding collections</li>
-<li>[ ] <strong>Free the reserved words</strong> for variable and function names too (member names are already free)</li>
+<li>done in 0.4.6 / 0.4.9: generic functions, generic records (<code>Box&lt;T&gt;</code>), <code>std.option</code>, <code>std.result</code>; still to do: <code>Map&lt;K, V&gt;</code> as library code, generic classes and enums</li>
+<li>[x] <strong>Nested collections</strong>: lists of lists, structs holding collections (0.4.7); tuples still hold scalars only</li>
+<li>[x] <strong>Free the reserved words</strong> for variable and function names too (0.4.8; <code>to</code>, <code>in</code>, the type names and <code>null</code> stay reserved)</li>
 <li>[ ] <code>const</code> for any expression, evaluated once; compile-time constants in types (<code>[int; 8]</code>)</li>
+<li>done in 0.4.8: local constants and read-only checks; still to do: evaluate once, <code>[int; 8]</code></li>
 </ul>
 <h3 id="06-functions-and-concurrency">0.6 -- functions and concurrency</h3>
 <ul>
@@ -152,9 +186,12 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
   register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.</li>
 </ul>
 </article>
-<footer class="pager"><a class="prev" href="/reference/editors/">← Editors</a><a class="next" href="/project/changelog/">Changelog →</a></footer>
+<footer class="pager"><a class="prev" href="/reference/editors/"><small>Previous</small>← Editors</a><a class="next" href="/project/changelog/"><small>Next</small>Changelog →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/ROADMAP.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#done">Done</a></li><li class="l2"><a href="#road-to-100">Road to 1.0.0</a></li><li class="l3"><a href="#05-language-foundations">0.5 -- language foundations</a></li><li class="l3"><a href="#06-functions-and-concurrency">0.6 -- functions and concurrency</a></li><li class="l3"><a href="#07-safety">0.7 -- safety</a></li><li class="l3"><a href="#08-systems-and-portability">0.8 -- systems and portability</a></li><li class="l3"><a href="#09-ecosystem-and-tooling">0.9 -- ecosystem and tooling</a></li><li class="l3"><a href="#100-stability">1.0.0 -- stability</a></li><li class="l3"><a href="#small-finishing-touches-before-100-10-polish">Small finishing touches before 1.0.0 (1.0 polish)</a></li><li class="l2"><a href="#not-scheduled-no-date-no-stage">Not scheduled (no date, no stage)</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

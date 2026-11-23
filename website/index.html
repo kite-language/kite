@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Introduction — Kite</title>
+<meta name="description" content="Kite is a compiled language that reads like Python and runs like C. It has indentation-based blocks, static types that are inferred, and no garbage collector pauses: your program i">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/" hreflang="en" lang="en">EN</a><a href="/fr/" hreflang="fr" lang="fr">FR</a><a href="/es/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
-<li><a class="cur" href="/">Introduction</a></li>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
+<li><a class="cur" aria-current="page" href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,27 +52,28 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Getting started › Introduction</div>
 <article>
 <h1 id="kite">Kite</h1>
 <p>Kite is a compiled language that reads like Python and runs like C. It has indentation-based blocks, static types
 that are inferred, and no garbage collector pauses: your program is turned into native code by <code>kite build</code>.</p>
-<pre class="code"><code><span class="k">make</span> main():
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> main():
     name = <span class="s">&quot;Kite&quot;</span>
     print(<span class="s">f&quot;Hello from {name}!&quot;</span>)
-</code></pre>
+</code></pre></div>
 <p><strong>What you get</strong></p>
 <ul>
 <li>A compiler written in Kite itself (it compiles itself: stage 1 = stage 2 = stage 3).</li>
-<li><strong>Pieces</strong>: Kite's packages. The language ships with 38 default pieces (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) and a
+<li><strong>Pieces</strong>: Kite's packages. The language ships with 40 default pieces (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) and a
   community registry that lives in the repository.</li>
 <li>Threads, pointers and manual memory when you need them; strings, lists, tuples and dictionaries when you do not.</li>
 <li><code>kite</code> does everything: <code>init</code>, <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>fmt</code>, <code>doc</code>, <code>add</code>, <code>publish</code>, <code>target</code>, ...</li>
@@ -75,9 +87,12 @@ that are inferred, and no garbage collector pauses: your program is turned into 
 <li><a href="/guide/pieces/">Pieces</a> when you want a library, <a href="/reference/std-pieces/">the standard pieces</a> for what is included.</li>
 </ol>
 </article>
-<footer class="pager"><a class="next" href="/installation/">Installation →</a></footer>
+<footer class="pager"><a class="next" href="/installation/"><small>Next</small>Installation →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/00-introduction.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

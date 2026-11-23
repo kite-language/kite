@@ -1,0 +1,49 @@
+use std.test
+
+type Cell:
+    v: int
+
+type Board:
+    cells: [[int]]
+    tags: [[string]]
+    all: [Cell]
+    cube: [[[int]]]
+
+make fill(b: Board):
+    append(b.cells, [1, 2])
+    append(b.tags, ["a", "b"])
+
+make total(g: [[int]]) -> int:
+    t = 0
+    for row in g:
+        for v in row:
+            t += v
+    return t
+
+make main():
+    t = test_new("nested collections")
+    grid = [[1, 2], [3, 4]]
+    append(grid, [5])
+    grid[0][1] = 7
+    test_eq_int(t, "nested index", grid[1][0], 3)
+    test_eq_int(t, "len of an element", len(grid[0]), 2)
+    test_eq_int(t, "sum over rows", total(grid), 20)
+    words = [["a"], ["b", "c"]]
+    test_eq_str(t, "nested strings", words[1][1], "c")
+    b = Board()
+    fill(b)
+    fill(b)
+    test_eq_int(t, "field of lists", len(b.cells), 2)
+    test_eq_int(t, "len through a field", len(b.tags[1]), 2)
+    c = Cell()
+    c.v = 8
+    append(b.all, c)
+    ll: [[Cell]] = []
+    append(ll, b.all)
+    test_eq_int(t, "list of lists of structs", ll[0][0].v, 8)
+    mm: [StrMap_int] = []
+    m = StrMap_int()
+    m.set("k", 3)
+    append(mm, m)
+    test_eq_int(t, "list of maps", mm[0].get("k"), 3)
+    exit(test_finish(t))

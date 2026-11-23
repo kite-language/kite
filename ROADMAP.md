@@ -11,6 +11,11 @@ Versions are `0.x` until 1.0.0. The compiler is written in Kite and compiles its
 | 0.4.2 | the compiler's own source uses the default pieces instead of private copies; the Rust seed resolves `use std.<piece>`; default pieces are versioned with the language |
 | 0.4.3 | the compiler calls pieces as `piece.function()` itself; 17 new default pieces (`random strings collections bits stats hex base64 crc32 url csv datetime log io glob http uuid utf8`) and 4 community pieces (`table ini progress diff`); reserved words allowed as member names (`random.string`, `glob.match`); portable low-level layer (no shell for environment, cwd, mkdir, clock, file tests; Windows-aware quoting); `build.sh` always rebuilds from clean caches; CI repaired (rustfmt, clippy, Windows link, macOS on the current runner) |
 | 0.4.4 | `.incr()`/`.decr()`, multi-line method chains, uniform call syntax, keyword member names, string escapes; freestanding `--runtime core` (libc-free); binary signature and `kite inspect`; experimental native x86-64 back end (`--backend native`, integer subset); Windows link and portability fixes; the guide and the new site |
+| 0.4.5 | `pub` / private items for pieces (E0080); site in English, French and Spanish with a clearer layout; cheat sheet and troubleshooting pages; Windows `timespec_get` and CLI test fixes |
+| 0.4.6 | generic functions (`make first<T>(xs: [T]) -> T`), inferred and specialised per type |
+| 0.4.7 | nested collections: lists of lists, nested literals, struct fields of nested lists, `len` of list elements |
+| 0.4.8 | general `const` (local, read-only, E0124); reserved words usable as variable, parameter and field names |
+| 0.4.9 | generic records (`Box<T>`), `std.option` / `std.result` (`Option<T>`, `Result<T, E>`) |
 
 ## Road to 1.0.0
 Each stage is ordered by how much it unlocks; version numbers are indicative. **1.0.0 is declared when every
@@ -20,9 +25,11 @@ compiler, and the syntax and the default pieces' API are frozen.**
 ### 0.5 -- language foundations
 - [ ] **Real namespaces**: functions of a piece live in `piece::function`, no global prefixes, `use piece.{a, b}`
 - [ ] **Generics**: `Vec<T>`, `Option<T>`, `Result<T, E>`, `Map<K, V>` as ordinary library code (replaces the internal `StrMap_<T>` template)
-- [ ] **Nested collections**: lists of lists, dictionaries of lists, structs holding collections
-- [ ] **Free the reserved words** for variable and function names too (member names are already free)
+  - done in 0.4.6 / 0.4.9: generic functions, generic records (`Box<T>`), `std.option`, `std.result`; still to do: `Map<K, V>` as library code, generic classes and enums
+- [x] **Nested collections**: lists of lists, structs holding collections (0.4.7); tuples still hold scalars only
+- [x] **Free the reserved words** for variable and function names too (0.4.8; `to`, `in`, the type names and `null` stay reserved)
 - [ ] `const` for any expression, evaluated once; compile-time constants in types (`[int; 8]`)
+  - done in 0.4.8: local constants and read-only checks; still to do: evaluate once, `[int; 8]`
 
 ### 0.6 -- functions and concurrency
 - [ ] **Function values and closures**: callbacks, `spawn(|| ...)` capturing variables, iterators with `map` / `filter`

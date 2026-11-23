@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Éditeurs — Kite</title>
+<meta name="description" content="Editor support lives in separate repositories of the kite-language organization, each with its own version (see versions.md).">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/reference/editors/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/editors/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/editors/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/editors/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/editors/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/reference/editors/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/editors/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/editors/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a class="cur" aria-current="page" href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Référence › Éditeurs</div>
+<div class="callout note notice">Cette page n'est pas encore traduite ; la version anglaise est affichée.</div>
+<article>
+<h1 id="editors">Editors</h1>
+<p>Editor support lives in separate repositories of the <a href="https://github.com/kite-language">kite-language</a> organization,
+each with its <strong>own version</strong> (see <code>versions.md</code>).</p>
+<table>
+<thead>
+<tr>
+<th>editor</th>
+<th>repository / path</th>
+<th>how to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VS Code</td>
+<td><a href="https://github.com/kite-language/vscode-kite"><code>vscode-kite</code></a></td>
+<td>install the <code>.vsix</code> (<code>kite-language.kite-language-vscode</code>)</td>
+</tr>
+<tr>
+<td>Zed</td>
+<td><a href="https://github.com/kite-language/zed-kite"><code>zed-kite</code></a> (grammar from <a href="https://github.com/kite-language/tree-sitter-kite"><code>tree-sitter-kite</code></a>)</td>
+<td><code>zed: install dev extension</code>, or the registry once published</td>
+</tr>
+<tr>
+<td>Neovim, Helix</td>
+<td><a href="https://github.com/kite-language/tree-sitter-kite"><code>tree-sitter-kite</code></a></td>
+<td>tree-sitter grammar + <code>queries/</code></td>
+</tr>
+<tr>
+<td>Kate, KWrite, KDevelop</td>
+<td><a href="https://github.com/kite-language/kate-kite"><code>kate-kite</code></a></td>
+<td><code>scripts/install.sh</code> (copies <code>kite.xml</code> to <code>~/.local/share/org.kde.syntax-highlighting/syntax/</code>)</td>
+</tr>
+<tr>
+<td>Notepad++</td>
+<td><a href="https://github.com/kite-language/notepadpp-kite"><code>notepadpp-kite</code></a></td>
+<td>run <code>install.ps1</code> or import <code>Kite.xml</code></td>
+</tr>
+<tr>
+<td>GitHub</td>
+<td><code>linguist/</code> (this repo)</td>
+<td>material for a pull request to <code>github-linguist/linguist</code></td>
+</tr>
+</tbody>
+</table>
+<p>Local development of everything at once: <code>scripts/dev-install.sh --help</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/reference/memory/"><small>Précédent</small>← Modèle mémoire</a><a class="next" href="/fr/project/roadmap/"><small>Suivant</small>Feuille de route →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/editors.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

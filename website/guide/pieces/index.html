@@ -4,34 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pieces (packages) — Kite</title>
+<meta name="description" content="A piece is a library: a folder with kite.toml and src/lib.ki.">
 <link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/pieces/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/pieces/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/pieces/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/pieces/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/pieces/">
 <link rel="stylesheet" href="/docs.css">
 </head>
 <body>
+<a class="skip" href="#content">Skip to the content</a>
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.4</span>
+  <span class="ver">v0.4.9</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/pieces/" hreflang="en" lang="en">EN</a><a href="/fr/guide/pieces/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/pieces/" hreflang="es" lang="es">ES</a></div>
 </header>
 <div class="layout">
-<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages">
-<h4>Getting started</h4><ul>
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
 <li><a href="/">Introduction</a></li>
 <li><a href="/installation/">Installation</a></li>
-</ul>
-<h4>Guide</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
 <li><a href="/guide/first-project/">Your first project</a></li>
 <li><a href="/guide/variables/">Variables and types</a></li>
 <li><a href="/guide/control-flow/">Control flow</a></li>
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
-<li><a class="cur" href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
+<li><a class="cur" aria-current="page" href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
-</ul>
-<h4>Reference</h4><ul>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
 <li><a href="/reference/language/">Language reference</a></li>
 <li><a href="/reference/builtins/">Built-in functions</a></li>
 <li><a href="/reference/std-pieces/">Standard pieces</a></li>
@@ -41,28 +52,29 @@
 <li><a href="/reference/c-interop/">Calling C</a></li>
 <li><a href="/reference/memory/">Memory model</a></li>
 <li><a href="/reference/editors/">Editors</a></li>
-</ul>
-<h4>Project</h4><ul>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
 <li><a href="/project/roadmap/">Roadmap</a></li>
 <li><a href="/project/changelog/">Changelog</a></li>
 <li><a href="/project/architecture/">Architecture</a></li>
 <li><a href="/project/bootstrap/">Bootstrap</a></li>
-</ul>
+</ul></details>
 </aside>
-<main>
+<main id="content">
+<div class="crumbs">Guide › Pieces (packages)</div>
 <article>
 <h1 id="pieces-packages">Pieces (packages)</h1>
 <p>A <strong>piece</strong> is a library: a folder with <code>kite.toml</code> and <code>src/lib.ki</code>.</p>
-<pre class="code"><code>kite init --lib shapes     <span class="c">// create one</span>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite init --lib shapes     <span class="c">// create one</span>
 kite add sha256            <span class="c">// use one (see below)</span>
-</code></pre>
+</code></pre></div>
 <h2 id="two-kinds">Two kinds</h2>
 <ul>
 <li><strong>Default pieces</strong> (<code>std.*</code>) ship with Kite and need no declaration: <code>use std.fs</code>.</li>
 <li><strong>Community pieces</strong> live in the repository's registry. Declare them in <code>[dependencies]</code> (<code>kite add table</code>) and
   import them by name: <code>use table</code>.</li>
 </ul>
-<pre class="code"><code><span class="k">use</span> std.strings         <span class="c">// a default piece</span>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.strings         <span class="c">// a default piece</span>
 <span class="k">use</span> table               <span class="c">// a community piece (listed in kite.toml)</span>
 
 <span class="k">make</span> main():
@@ -70,30 +82,50 @@ kite add sha256            <span class="c">// use one (see below)</span>
     table_add_row(t, [<span class="s">&quot;name&quot;</span>, <span class="s">&quot;qty&quot;</span>])
     print(table_render(t))
     print(strings.upper(<span class="s">&quot;kite&quot;</span>))     <span class="c">// piece.function(...) calls</span>
-</code></pre>
+</code></pre></div>
 <h2 id="calling-pieces">Calling pieces</h2>
 <p><code>piece.function(args)</code> is the readable way to call a piece. It means the function called <code>&lt;piece&gt;_&lt;function&gt;</code>:
 <code>fs.read(path)</code> is <code>fs_read(path)</code>, <code>strings.upper(s)</code> is <code>strings_upper(s)</code>. If a local variable has the same name as the
 piece, the variable wins (use the long name).</p>
 <p>Functions of all pieces share one namespace under the hood, so name yours <code>&lt;piece&gt;_&lt;function&gt;</code>.</p>
 <h2 id="managing-dependencies">Managing dependencies</h2>
-<pre class="code"><code>kite search json       # find pieces
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite search json       # find pieces
 kite info semver       # metadata <span class="k">and</span> versions
 kite add sha256@^<span class="n">1.2</span>   # add with a requirement (^ ~ &gt;= &lt; =)
 kite tree              # dependency tree (sub-dependencies included)
 kite update            # re-resolve kite.lock
 kite remove sha256
-</code></pre>
+</code></pre></div>
 <p><code>kite.lock</code> records exact versions and checksums; if a registry copy changes, the build stops.</p>
 <h2 id="publishing">Publishing</h2>
-<pre class="code"><code>kite verify            # same checks as the registry CI
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite verify            # same checks as the registry CI
 kite publish           # prepares pieces/community/&lt;name&gt;/&lt;version&gt;/ <span class="k">and</span> prints the git commands
-</code></pre>
+</code></pre></div>
 <p><code>kite publish</code> never runs git: you run the printed commands and open a pull request; CI compiles every changed piece.</p>
+<h2 id="public-and-private-items">Public and private items</h2>
+<p>By default everything is public. As soon as a file marks one top-level item <code>pub</code>, that file is in <em>explicit mode</em>:
+the items without <code>pub</code> are <strong>private to their piece</strong> (every file under the piece's <code>src/</code>).</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>pub <span class="k">type</span> Point:
+    x: <span class="t">int</span>
+    y: <span class="t">int</span>
+
+pub <span class="k">make</span> dist(a: Point, b: Point) -&gt; <span class="t">int</span>:     <span class="c">// part of the interface</span>
+    <span class="k">return</span> abs(a.x - b.x) + abs(a.y - b.y)
+
+<span class="k">make</span> helper(n: <span class="t">int</span>) -&gt; <span class="t">int</span>:                   <span class="c">// private: other pieces cannot call it</span>
+    <span class="k">return</span> n * <span class="n">2</span>
+</code></pre></div>
+<p><code>pub</code> works on <code>make</code>, <code>type</code>, <code>class</code>, <code>enum</code> and <code>const</code>. A class's methods follow the class. Using a private item
+from another piece is error <code>E0080</code>. The <a href="/reference/std-pieces/">standard pieces</a> reference lists only the <code>pub</code> items of a piece that uses <code>pub</code>.</p>
+<blockquote class="callout tip"><p><strong>Tip:</strong> start private, and mark <code>pub</code> only what users of your piece need: it keeps the interface small and lets you change the rest freely.</p>
+</blockquote>
 </article>
-<footer class="pager"><a class="prev" href="/guide/records/">← Records, classes and enums</a><a class="next" href="/guide/memory/">Memory, pointers and threads →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/generics/"><small>Previous</small>← Generics</a><a class="next" href="/guide/memory/"><small>Next</small>Memory, pointers and threads →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/07-pieces.md">Edit this page on GitHub</a></p>
 </main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#two-kinds">Two kinds</a></li><li class="l2"><a href="#calling-pieces">Calling pieces</a></li><li class="l2"><a href="#managing-dependencies">Managing dependencies</a></li><li class="l2"><a href="#publishing">Publishing</a></li><li class="l2"><a href="#public-and-private-items">Public and private items</a></li></ul></nav>
 </div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>
 </body>
 </html>

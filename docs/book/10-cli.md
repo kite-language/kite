@@ -37,13 +37,14 @@ kite <command> [options]
 | `--freestanding` | an object file with no libc requirement, no `main` |
 | `--runtime core` | add the built-in libc-free runtime (bump allocator, memory and string functions) |
 | `--heap-size N` | heap of that runtime in bytes (default 1048576) |
+| `--backend native` | experimental x86-64 generator with no clang (integer subset) |
 
 `kite.toml` sets the same options: `[build] opt_level`, `target`, `runtime`, `heap_size`.
 
 ## Build output
 
 ```
-   Compiling sha256 v0.4.4 (/home/me/kite/pieces/std/sha256/0.4.4)
+   Compiling sha256 v0.4.9 (/home/me/kite/pieces/std/sha256/0.4.9)
    Compiling hello v0.1.0 (/home/me/hello)
     Finished dev [unoptimized] target(s) in 0.42s
 ```

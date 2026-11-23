@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de cambios — Kite</title>
+<meta name="description" content="Editor repositories have their own changelogs: see docs/versions.md.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/project/changelog/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/project/changelog/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/project/changelog/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/project/changelog/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/project/changelog/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/project/changelog/" hreflang="en" lang="en">EN</a><a href="/fr/project/changelog/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/project/changelog/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a class="cur" aria-current="page" href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Proyecto › Registro de cambios</div>
+<article>
+<h1 id="changelog-kite-repository">Changelog (kite repository)</h1>
+<p>Editor repositories have their own changelogs: see docs/versions.md.</p>
+<h2 id="049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code></h2>
+<ul>
+<li><strong>Generic records</strong>: <code>type Box&lt;T&gt;:</code> / <code>type Pair&lt;A, B&gt;:</code>; applied as <code>Box&lt;int&gt;</code> in any type position (<code>[Box&lt;int&gt;]</code>, <code>ptr&lt;Box&lt;int&gt;&gt;</code>, <code>Box&lt;Box&lt;int&gt;&gt;</code>)
+  and as a constructor <code>Box&lt;int&gt;()</code>. The compiler makes one instance per type arguments (<code>Box__int</code>), also from inside generic functions
+  (<code>make wrap&lt;T&gt;(x: T) -&gt; Box&lt;T&gt;</code>, inferred through <code>Box&lt;T&gt;</code> parameters). Errors <code>E0125</code> (wrong number of type arguments), <code>E0067</code> for an unsupported field type.
+  Lexer note: <code>Box&lt;int&gt;(</code> is merged into one identifier token before parsing (uppercase name + <code>&lt;...&gt;</code> + <code>(</code>), <code>&gt;&gt;</code> closes two levels.</li>
+<li><strong>New default pieces</strong> <code>std.option</code> (<code>Option&lt;T&gt;</code>: <code>some</code>, <code>is_some</code>, <code>is_none</code>, <code>unwrap</code>, <code>unwrap_or</code>) and <code>std.result</code>
+  (<code>Result&lt;T, E&gt;</code>: <code>ok</code>, <code>err</code>, <code>is_ok</code>, <code>is_err</code>, <code>unwrap</code>, <code>unwrap_or</code>, <code>error</code>): 40 default pieces.</li>
+<li>Docs: new guide chapter "Generics" (EN/FR/ES); test <code>lang_test/tests/generic_types.ki</code>. Kite compiler only (the seed cannot parse <code>&lt;T&gt;</code>).</li>
+</ul>
+<h2 id="048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</h2>
+<ul>
+<li><strong>Constants</strong>: <code>const NAME = expr</code> also inside functions (<code>const STEP = LIMIT / 4</code>), with an optional type; any constant is read-only:
+  assigning to it, <code>+=</code>, <code>.incr()</code>, or changing a field of a constant record is error <code>E0124</code>. Global constants already accepted any type and other constants.</li>
+<li><strong>Words usable as names</strong>: <code>from use type class match case enum thread try failed finally</code> are keywords only where their meaning applies
+  (a token pass turns them into names after <code>=</code>, <code>(</code>, <code>,</code>, operators, <code>return</code>, <code>if</code>..., or at the start of an assignment), so
+  <code>from = 3</code>, <code>print(type)</code>, <code>make span(from: int, case: int)</code>, <code>for finally in xs</code>, <code>f"{try}"</code> work. Still reserved: <code>to</code>, <code>in</code>, type names, <code>null</code>.</li>
+<li>Tests: <code>lang_test/tests/consts.ki</code>, <code>names.ki</code>; <code>build.sh test</code> checks <code>E0124</code>. Kite compiler only (the seed keeps the old rules).</li>
+</ul>
+<h2 id="047-nested-collections">0.4.7 -- nested collections</h2>
+<ul>
+<li>Lists of lists to any depth (<code>[[int]]</code>, <code>[[string]]</code>, <code>[[Cell]]</code>), nested list literals (<code>[[1, 2], [3]]</code>), struct fields of nested
+  list types (<code>cells: [[int]]</code>), <code>len(grid[0])</code> on an element that is a list (it was lowered as a string length), lists of maps (<code>[StrMap_int]</code>).
+  Checked with AddressSanitizer. Kite compiler only. Tuples still hold scalars only.</li>
+<li>Test: <code>stdlib/tests/lang_test/tests/nested.ki</code>. Docs: guide chapter 5 (EN/FR/ES).</li>
+</ul>
+<h2 id="046-generic-functions">0.4.6 -- generic functions</h2>
+<ul>
+<li><strong>Generic functions</strong>: <code>make first&lt;T&gt;(xs: [T]) -&gt; T:</code>. Type parameters are inferred from the argument types (<code>T</code>, <code>[T]</code>, <code>ptr&lt;T&gt;</code>);
+  the compiler instantiates one specialised function per combination (<code>first__int</code>, <code>first__Lstring</code>) while checking calls, so there is
+  no run-time cost. Errors <code>E0120</code> (generic methods), <code>E0121</code> (argument count), <code>E0122</code> (type mismatch), <code>E0123</code> (cannot infer).
+  Kite compiler only (the Rust seed cannot parse type parameters, so the compiler sources do not use them).</li>
+<li>Tests: <code>stdlib/tests/lang_test/tests/generics.ki</code>. Docs: guide chapter 4, language reference, cheat sheet (EN/FR/ES).</li>
+</ul>
+<h2 id="045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (<code>pub</code>), a site in three languages, Windows fixes</h2>
+<ul>
+<li><strong>Visibility</strong>: <code>pub</code> before <code>make</code>, <code>type</code>, <code>class</code>, <code>enum</code> or <code>const</code> exports an item. A file that uses <code>pub</code> is in explicit mode: its
+  other top-level items are private to their piece (the <code>src/</code> tree). Files without <code>pub</code> stay open, so existing pieces keep working.
+  Using a private function, type, class, enum or constant of another piece is error <code>E0080</code>. <code>pub</code> is not a reserved word.
+  The standard-pieces reference lists only the <code>pub</code> items of a piece that uses <code>pub</code>.</li>
+<li><strong>Windows (CI)</strong>: the <code>timespec_get</code> shim was declared and defined (<code>invalid redefinition of function</code>): the extern declaration is now
+  skipped when the shim is emitted, in both back ends, with matching <code>i64</code> types; the end-to-end CLI test looks for <code>hello.exe</code>.
+  <code>build.sh test</code> compiles the Windows IR of a <code>std.time</code> program to an object as a regression check.</li>
+<li><strong>Site</strong>: English at <code>/</code>, French at <code>/fr/</code>, Spanish at <code>/es/</code> (language switcher, <code>hreflang</code>, sitemap); the install page is now a docs page;
+  outline of the page on the right, grouped collapsible menu, copy buttons, callouts, previous/next links, new cheat sheet and
+  troubleshooting pages. A page without translation shows the English text with a notice.</li>
+<li>Tests: <code>stdlib/tests/visibility/</code> (fixture piece with public and private items), run by <code>build.sh test</code>.</li>
+</ul>
+<h2 id="044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</h2>
+<ul>
+<li><strong>Language</strong> (Kite compiler only; the Rust seed cannot parse these): <code>.incr()</code> / <code>.decr()</code>; method chains continued on lines
+  starting with <code>.name</code>; <strong>uniform call syntax</strong> <code>value.f(args)</code> = <code>f(value, args)</code> when the receiver is not a class instance;
+  reserved words allowed as member and field names; string escapes <code>\x41 \e \r \0</code>; <code>const NAME = expr</code>; <code>p[i]</code> on pointers;
+  <code>bool == bool</code> (invalid LLVM before 0.4.3); builtins <code>float_of</code>, <code>int_of</code>, <code>spawn</code>, <code>thread_join</code>, <code>realloc_n</code>, <code>copy_n</code>,
+  <code>zero_n</code>, <code>ptr_to_int</code>, <code>int_to_ptr</code>, <code>panic</code>, <code>assert</code>; f-strings in both lexers (about 200 compiler messages rewritten).</li>
+<li><strong>Freestanding</strong>: only used declarations and globals are emitted; <code>--runtime core</code> (default for bare targets) links a libc-free
+  runtime written in LLVM IR (bump allocator, <code>mem*</code>/<code>str*</code>, no-op <code>printf</code>, halting <code>exit</code>), <code>--heap-size N</code>,
+  <code>[build] runtime</code> / <code>heap_size</code>. A kernel for <code>x86_64-unknown-none</code> links with no undefined symbol (not run in QEMU).</li>
+<li><strong>Signature</strong>: every binary carries <code>KITE-META|language=Kite|compiler=...|package=...|KITE-END</code>; <code>kite inspect FILE</code> prints it.</li>
+<li><strong>Native back end (experimental)</strong>: <code>kite build --backend native</code>, own x86-64 code generator and ELF writer (no clang, no linker),
+  constant folding; integer, bool and string-literal programs (arithmetic, if/while/for, functions, recursion, print, exit).
+  Unsupported programs are rejected with the reason.</li>
+<li><strong>Windows</strong>: <code>timespec_get</code> shim, <code>-llegacy_stdio_definitions</code>, portable <code>std.sys/fs/path/process/time</code> (not run here: CI is the check).</li>
+<li><strong>Docs and site</strong>: the guide (<code>docs/book</code>), <code>docs/targets.md</code>, docs at <code>/</code>, install page at <code>/installation/</code>.</li>
+<li>Tests: <code>stdlib/tests/lang_test/tests/features2.ki</code>; <code>build.sh test</code> no longer compares the non-injected <code>desugar</code> dump (the uniform-call
+  rewrite differs from the seed there, <code>inject</code> agrees) and checks <code>kite inspect</code>, <code>--runtime core</code> and <code>--backend native</code>.</li>
+</ul>
+<h2 id="043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</h2>
+<ul>
+<li><strong>The compiler calls pieces as <code>piece.function()</code></strong> (<code>fs.is_dir(p)</code>, <code>path.join(a, b)</code>, <code>sys.quote(s)</code>, 254 call sites);
+  the Rust seed resolves those calls too (desugarer), shadowed names stay prefixed.</li>
+<li><strong>Reserved words are valid member names</strong>: <code>random.string(r, 8)</code>, <code>glob.match(p, t)</code>, <code>job.thread</code>, and record fields
+  named after reserved words.</li>
+<li><strong>17 new default pieces</strong>: <code>random strings collections bits stats hex base64 crc32 url csv datetime log io glob http
+  uuid utf8</code>; <strong>4 community pieces</strong>: <code>table ini progress diff</code> (65 assertions in <code>stdlib/tests/pieces2_test</code>).</li>
+<li><strong>Portable runtime layer</strong> (<code>std.sys/fs/path/process/time</code>): environment, working directory, <code>mkdir</code>, clock and file
+  tests through the C library instead of the shell; Windows-aware quoting, temp dir and null device; drive-letter
+  paths; <code>std.sha256</code> computes the build fingerprint (no <code>sha256sum</code>). The compiler links <code>legacy_stdio_definitions</code>
+  on Windows and no longer passes <code>-pthread -lm</code> there.</li>
+<li><strong>Workflows repaired</strong>: the Rust seed is rustfmt-formatted and clippy-clean (<code>-D warnings</code>); the Windows ARM64 link error
+  (<code>undefined symbol: printf</code>) and the Windows x64 stage-2 failure (POSIX shell commands run by <code>cmd.exe</code>) are fixed; macOS
+  uses the current Apple-silicon runner (the Intel archive is cross-compiled; the job is non-blocking), Windows and macOS
+  never block the Linux release; <code>clang --target=&lt;triple&gt;</code> spelling.</li>
+<li><strong><code>build.sh</code> clears its caches</strong>: <code>compiler/target</code>, <code>stage2/</code>, <code>stage3/</code> and their <code>.fingerprint</code> caches are removed on every
+  run (<code>./build.sh --fresh</code> also rebuilds the Rust seed); <code>.exe</code> suffixes are handled for Windows.</li>
+<li><code>ROADMAP.md</code>: the road to 1.0.0 (stages 0.5 to 0.9, the 1.0 stability criteria) and, last and unscheduled, the LLVM-free
+  multi-architecture back end.</li>
+</ul>
+<h2 id="042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</h2>
+<ul>
+<li><code>compiler/src/</code> now imports the default pieces instead of private copies: shell and process helpers (<code>std.sys</code>,
+  <code>std.process</code>), files and directories (<code>std.fs</code>), paths (<code>std.path</code>), colours (<code>std.term</code>), clock and durations
+  (<code>std.time</code>), formatting (<code>std.fmt</code>), integer helpers (<code>std.types</code>), TOML values (<code>std.toml</code>) and version
+  requirements (<code>std.semver</code>). <code>sysx.ki</code> shrank to the cargo-style status lines; <code>project.ki</code> and <code>pieces.ki</code> lost their
+  TOML and semver code.</li>
+<li>The Rust seed resolves <code>use std.&lt;piece&gt;</code> (registry: <code>$KITE_PIECES</code> or the nearest <code>pieces/</code>), so stage 1 still builds.</li>
+<li>Pieces gained what the compiler needed: <code>path_has_extension</code>, <code>path_display</code>, <code>toml_array_join</code>, <code>toml_inline_get</code>,
+  <code>toml_strip_comment</code>, <code>toml_quote_list</code>, <code>semver_best</code>, <code>types_isqrt</code>, <code>time_fmt_secs</code>, <code>term_paint_if</code>,
+  <code>term_is_tty_fd</code>, <code>term_esc</code>. <code>term</code> no longer uses a <code>\x1b</code> literal (the seed's lexer has none).</li>
+<li>Default pieces are versioned with the language (<code>pieces/std/&lt;name&gt;/0.4.2</code>); only community versions are immutable.</li>
+<li>Everything is 0.4.2: compiler, seed, default pieces, site, install scripts.</li>
+</ul>
+<h2 id="041-pieces">0.4.1 -- pieces</h2>
+<ul>
+<li><strong>Pieces</strong>: Kite's packages ("crates"). The registry is <code>pieces/&lt;name&gt;/&lt;version&gt;/</code> in the repository, verified by
+  CI (<code>scripts/verify-pieces.sh</code>, <code>.github/workflows/pieces.yml</code>): metadata, names, compilation, immutability.
+  CLI: <code>kite init --lib</code>, <code>add</code>, <code>remove</code>, <code>update</code>, <code>tree</code>, <code>search</code>, <code>info</code>, <code>verify</code>, <code>publish</code> (prepares the pull
+  request and prints the git/gh commands, never runs them). Transitive dependencies, semver requirements
+  (<code>^ ~ &gt;= &lt; =</code>), path dependencies, <code>kite.lock</code> with sha256 checksums. See <code>docs/pieces.md</code>.</li>
+<li><strong>Language</strong>: <code>const NAME = expr</code>, <code>bool == bool</code>, <code>p[i]</code> on <code>ptr&lt;T&gt;</code>, <code>float_of</code> / <code>int_of</code> (+ <code>std.math</code>),
+  string escapes <code>\x41 \e \r \0</code>, <code>panic</code> / <code>assert</code>.</li>
+<li><strong>Tools</strong>: <code>kite test</code> (runs <code>tests/*.ki</code>), <code>kite fmt [--check]</code>, <code>kite doc</code> (markdown from <code>//</code> comments).</li>
+<li><code>ROADMAP.md</code> and <code>docs/language-tour.md</code> (the planned work, ending with the LLVM-free multi-arch back end, has no date).</li>
+<li><strong>Qualified calls</strong>: <code>piece.function(...)</code> (<code>fs.read(p)</code>, <code>sha256.hex(t)</code>) for imported pieces; shadowed by locals.</li>
+<li><strong>Two registry tiers</strong>: <code>pieces/std/</code> (default pieces, <code>use std.&lt;name&gt;</code>, installed with the compiler) and
+  <code>pieces/community/</code> (declared dependencies, added by pull request); names cannot clash.</li>
+<li><strong>Releases ship stage3</strong> on Linux, macOS and Windows (<code>release.yml</code>); the install scripts (<code>install.sh</code>,
+  <code>install-macos.sh</code>, <code>install.ps1</code>) also install <code>~/.kite/pieces</code>; the site shows v0.4.1.</li>
+<li>Fix: diagnostics of multi-file projects were tagged with the wrong file (off-by-one in <code>Sema.tag_from</code>) and
+  could crash the renderer.</li>
+<li><strong>Default pieces</strong> replace <code>stdlib/std</code>: <code>sys path fs process term args fmt time toml json semver sha256 git test</code>
+  and the new <code>types</code>, <code>error</code>, <code>mem</code>, <code>threads</code> (<code>use std.&lt;piece&gt;</code>).</li>
+<li><strong>Language</strong>: <code>spawn(fn, arg)</code> / <code>thread_join(h)</code> (pthreads), <code>realloc_n</code>, <code>copy_n</code>, <code>zero_n</code>, <code>ptr_to_int</code>,
+  <code>int_to_ptr</code>. Code for programs that do not use them is unchanged (bootstrap IR still identical).</li>
+<li><strong>kite.toml</strong>: <code>description authors license repository homepage readme keywords</code>, <code>{ path = ... }</code> / <code>{ version = ... }</code>
+  dependencies; the values are readable from programs (<code>pkg_name()</code>, <code>pkg_version()</code>, <code>pkg_authors()</code>, ...).</li>
+<li><strong>Build output like cargo</strong>: <code>target/debug|release/&lt;name&gt;</code>, <code>Compiling</code>/<code>Fresh</code> per piece and package, a fingerprint
+  cache (compiler version, flags, all sources), <code>--target</code> builds into <code>target/&lt;triple&gt;/&lt;profile&gt;/</code>.</li>
+<li><strong>Targets</strong>: <code>kite target list|add|remove|show</code>; bare-metal targets (<code>x86_64-unknown-none</code>, <code>aarch64-unknown-none</code>,
+  <code>riscv64-unknown-none</code>) install a linker script and <code>kite build --target</code> produces a linked ELF for OS work
+  (<code>docs/targets.md</code>).</li>
+<li><strong>Fix</strong>: coloured status lines printed <code>?[1;32m</code> (the prelude's <code>chr</code> only knows printable characters); the ESC byte
+  now comes from the shell. <code>clang --target=</code> spelling.</li>
+<li><code>build.sh</code> is quieter (the Rust seed's warnings and the <code>-&gt; path</code> lines are gone).</li>
+</ul>
+<h2 id="040-self-hosted">0.4.0 -- self-hosted</h2>
+<ul>
+<li><strong>The compiler is written in Kite and compiles itself.</strong> Ported to Kite: sema, IR lowering, LLVM codegen, project
+  and <code>kite.toml</code> handling, import resolution, C header generation, the driver and the whole CLI
+  (<code>init build run check clean bench add remove update</code>). <code>./build.sh</code> runs stage1 (compiled by the Rust seed),
+  stage2 (compiled by kitec) and stage3 and requires identical LLVM IR before writing <code>compiler/BOOTSTRAPPED</code>.</li>
+<li>Verified against the Rust compiler: tokens, AST, desugar, inject, sema (typed program and diagnostics) and the
+  generated <code>.ll</code> on every example and on the compiler's own sources; recorded example outputs pass with the
+  self-hosted compiler (<code>scripts/runexamples.sh</code>).</li>
+<li><code>package-release.sh --compiler auto</code> now ships the self-hosted <code>kite</code> (it needs only libc and clang).</li>
+<li>Standard library <code>stdlib/std/</code> (<code>use std.&lt;name&gt;</code>): sys path fs process term args fmt time toml json semver sha256 git
+  test (<code>docs/stdlib.md</code>); the resolver finds it via <code>$KITE_STDLIB</code>, a neighbouring <code>stdlib/</code>, or the installed copy.</li>
+<li>Prelude: <code>join</code> merges pairwise (O(n log n)); the quadratic version exhausted memory on large outputs.</li>
+<li>Prelude injection (<code>compiler/src/prelude.ki</code>, embedded by <code>scripts/gen-prelude.sh</code>).</li>
+<li><strong>Fix</strong>: the desugar crash on large inputs: <code>for x in ast.nodes[i].kids</code> read the list through the arena slot, which
+  moves when the arena is reallocated inside the loop body; headers are now copied to a local first. Also
+  <code>kids[1] = self.mk_type(...)</code> evaluated the target before the call that can reallocate the arena.</li>
+<li>New: <code>docs/packages.md</code> (design of the Git-based package system, planned for 0.5.0).</li>
+</ul>
+<h2 id="031">0.3.1</h2>
+<ul>
+<li><strong>Bootstrap</strong>: the desugar pass (classes, virtual dispatch, <code>match</code>, data enums, defaults, named args, <code>*args</code>,
+  unpacking) is ported to Kite: <code>kitec desugar FILE</code> is identical to the Rust desugar on all 37 sample files,
+  diagnostics included. <code>./build.sh test</code> now runs this comparison too.</li>
+<li><strong>Rust stage0 fixes</strong> needed by the port: the LLVM entry label is <code>kite.entry</code> so a variable named <code>entry</code>
+  cannot collide with it.</li>
+<li><strong>Editors</strong>: all integrations are 1.0.0 and live in their own repositories: <code>tree-sitter-kite</code>, <code>vscode-kite</code>,
+  <code>zed-kite</code>, <code>kate-kite</code>, <code>notepadpp-kite</code> (see docs/versions.md). Target of 0.4.0: complete bootstrap.</li>
+</ul>
+<h2 id="030">0.3.0</h2>
+<ul>
+<li><strong>Language</strong>: f-strings, <code>str()</code>, compound operators, 0-based indexes, default / named / variadic parameters,
+  tuple unpacking, aggregates passed to and returned from functions, classes with inheritance and virtual dispatch,
+  data enums with <code>match</code>, pointers with auto-dereference and typed <code>null</code>, lists of structs, structs containing
+  lists, <code>pop/remove/insert/clear</code>, string ordering, <code>exit</code>, prelude (string helpers, <code>StrMap_T</code> hash maps).</li>
+<li><strong>Bootstrap</strong>: the Rust compiler is archived in <code>archive/rust-stage0/</code>; <code>compiler/</code> holds the lexer and parser
+  written in Kite (identical to Rust on every sample). <code>build.sh</code> runs stage0 → stage1 and the differential tests.</li>
+<li><strong>Packaging</strong>: <code>scripts/package-release.sh</code> (Linux/Windows archives, <code>.deb</code>, <code>.rpm</code>, checksums);
+  installers with SHA-256 verification, <code>--deb</code>, <code>--rpm</code>, <code>--version</code>, <code>--prefix</code>; release workflow for
+  Linux, Windows and macOS (one job builds both macOS architectures).</li>
+<li><strong>Repositories</strong>: editor support moved to <code>tree-sitter-kite</code>, <code>vscode-kite</code>, <code>zed-kite</code>;
+  Kate and Notepad++ definitions added under <code>editors/</code>; <code>scripts/dev-install.sh</code>.</li>
+<li><strong>Removed</strong>: the GUI installer.</li>
+<li><strong>Fixes</strong>: Rust crate self-contained for <code>cross</code> builds; temporaries renamed <code>%.tN</code>; Windows zip packaging.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/es/project/roadmap/"><small>Anterior</small>← Hoja de ruta</a><a class="next" href="/es/project/architecture/"><small>Siguiente</small>Arquitectura →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/CHANGELOG.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

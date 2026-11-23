@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Référence du langage — Kite</title>
+<meta name="description" content="Kite reads like Python, compiles through LLVM to C-class machine code and keeps a minimum of Rust-style safety (bounds-checked lists, typed pointers).">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/reference/language/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/reference/language/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/reference/language/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/reference/language/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/reference/language/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/reference/language/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/language/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/language/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a class="cur" aria-current="page" href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Référence › Référence du langage</div>
+<div class="callout note notice">Cette page n'est pas encore traduite ; la version anglaise est affichée.</div>
+<article>
+<h1 id="kite-language-reference-03">Kite language reference (0.3)</h1>
+<p>Kite reads like Python, compiles through LLVM to C-class machine code and
+keeps a minimum of Rust-style safety (bounds-checked lists, typed pointers).</p>
+<h2 id="basics">Basics</h2>
+<ul>
+<li>Blocks are indented. Comments start with <code>//</code>.</li>
+<li>Everything is 0-based: lists, <code>char_at</code>, <code>substr(s, start, end)</code> (end exclusive),
+  <code>arg(0)</code> is the first command-line argument.</li>
+<li>Loops: <code>while cond:</code> / <code>until cond:</code> (stop when true) / <code>for x in xs:</code> /
+  <code>for i = a to b:</code> (end exclusive) / <code>infinit:</code>.</li>
+<li>Operators: <code>+ - * / %</code>, comparisons (also on strings), <code>and or not</code>,
+  bit ops <code>&amp; | ^ &lt;&lt; &gt;&gt; ~</code>, and <strong>every compound form</strong>: <code>+= -= *= /= %= &amp;= |= ^= &lt;&lt;= &gt;&gt;=</code>.</li>
+</ul>
+<h2 id="strings">Strings</h2>
+<ul>
+<li>f-strings: <code>f"hello {name}, {n + 1} {{literal braces}}"</code>.</li>
+<li><code>str(x)</code> converts <code>int</code>/<code>float</code>/<code>bool</code>; <code>+</code> concatenates.</li>
+<li>Prelude helpers (compiled in only when used): <code>split join find trim
+  starts_with ends_with contains_str replace_all repeat chr to_int is_space
+  is_alpha is_digit is_alnum min max abs</code>.</li>
+</ul>
+<h2 id="functions">Functions</h2>
+<ul>
+<li>Defaults, named arguments, variadics:
+  <code>make f(a: int, b: int = 2, *rest: int)</code>, <code>f(1, b=5)</code>.</li>
+<li>Any value can be passed and returned: lists, tuples, structs, classes.
+  Aggregates are passed by reference (callee mutations are visible), unless
+  the callee reassigns the parameter name (then it works on a copy).</li>
+<li>Types in signatures: <code>int float bool string [T] (A, B) ptr&lt;T&gt; StructName</code>.</li>
+<li>Tuple unpacking: <code>a, b = pair()</code>.</li>
+</ul>
+<h2 id="collections">Collections</h2>
+<ul>
+<li>Lists of scalars, strings, structs: <code>append pop remove(xs, i) insert(xs, i, v) clear len</code>.</li>
+<li>Typed empty list: <code>xs: [Tok] = []</code>.</li>
+<li>Structs can hold lists and other structs; <code>obj.items</code> aliases the real field,
+  <code>append(obj.items, x)</code> mutates it.</li>
+<li>Hash maps: <code>m = StrMap_int()</code> (string keys; <code>StrMap_string</code>, <code>StrMap_float</code>,
+  <code>StrMap_bool</code>, or <code>StrMap_&lt;YourStruct&gt;</code>): <code>m.set(k, v)</code>, <code>m.get(k)</code>, <code>m.has(k)</code>,
+  <code>m.size()</code>, <code>m.keys</code> (insertion order).</li>
+</ul>
+<h2 id="classes">Classes</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">class</span> Animal:
+    name: <span class="t">string</span>
+    <span class="k">make</span> init(self, name: <span class="t">string</span>):
+        self.name = name
+    <span class="k">make</span> speak(self) -&gt; <span class="t">string</span>:
+        <span class="k">return</span> <span class="s">&quot;...&quot;</span>
+
+<span class="k">class</span> Dog(Animal):
+    <span class="k">make</span> speak(self) -&gt; <span class="t">string</span>:
+        <span class="k">return</span> <span class="s">&quot;woof&quot;</span>
+</code></pre></div>
+<ul>
+<li><code>Dog("Rex")</code> calls <code>init</code>; <code>Animal.init(self, name)</code> calls the base version.</li>
+<li>Single inheritance; methods overridden in subclasses are dispatched
+  dynamically (hidden class tag), so <code>a.speak()</code> on an <code>Animal</code> parameter that
+  holds a <code>Dog</code> calls <code>Dog.speak</code>. A <code>Dog</code> can be passed where an <code>Animal</code> is expected.</li>
+<li>The receiver's class is inferred from assignments, annotated parameters and
+  function return types.</li>
+</ul>
+<h2 id="data-enums-and-match">Data enums and <code>match</code></h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">enum</span> Expr:
+    Num(v: <span class="t">int</span>)
+    Add(l: <span class="t">ptr</span>&lt;Expr&gt;, r: <span class="t">ptr</span>&lt;Expr&gt;)
+    Nil
+
+<span class="k">match</span> x:
+    <span class="k">case</span> Num(v):
+        ...
+    <span class="k">case</span> Add(l, r):
+        ...
+    <span class="k">else</span>:
+        ...
+</code></pre></div>
+<p>Construct with <code>Expr.Num(3)</code>. Plain enums (<code>enum Color: Red, Green</code>) stay integer tags.</p>
+<h2 id="pointers-and-null">Pointers and <code>null</code></h2>
+<ul>
+<li><code>p = alloc(T)</code>, <code>*p = value</code>, <code>v = *p</code>, <code>p.field</code> / <code>p.field = x</code> (auto-deref).</li>
+<li><code>null</code> takes its type from context (assignment target, argument, return type).</li>
+<li>Recursive data = data enums / structs holding <code>ptr&lt;Self&gt;</code>.</li>
+</ul>
+<h2 id="not-in-02">Not in 0.2</h2>
+<p><code>**kwargs</code>, generic user types, struct value-copy-vs-alias parity with Python for <code>b = a</code>,
+dict literals with keys added at run time (use <code>StrMap_T</code>), map key deletion.</p>
+<h2 id="visibility-pub">Visibility (<code>pub</code>)</h2>
+<p><code>pub</code> before <code>make</code>, <code>type</code>, <code>class</code>, <code>enum</code> or <code>const</code> exports the item. A file that uses <code>pub</code> at least once is in explicit mode:
+its other top-level items are private to the piece (the <code>src/</code> tree they live in). Files without <code>pub</code> keep everything public.
+Class methods follow their class. <code>pub</code> is only a keyword in front of an item: it can still be used as a variable name.
+Using a private item of another piece is error <code>E0080</code>.</p>
+<h2 id="generic-functions-046">Generic functions (0.4.6)</h2>
+<p>A function can take <strong>type parameters</strong> in angle brackets. The compiler infers them from the arguments and makes one specialised copy
+per combination of types, so a generic function is as fast as one you wrote by hand.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+<span class="k">make</span> pick&lt;A, B&gt;(a: A, b: B) -&gt; A:
+    <span class="k">return</span> a
+
+<span class="k">make</span> main():
+    print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))        <span class="c">// 4      (T = int)</span>
+    print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))       <span class="c">// a      (T = string)</span>
+    print(pick(<span class="n">7</span>, <span class="s">&quot;x&quot;</span>))            <span class="c">// 7      (A = int, B = string)</span>
+</code></pre></div>
+<ul>
+<li>A type parameter can appear in a parameter type as <code>T</code>, <code>[T]</code> or <code>ptr&lt;T&gt;</code>, and in the return type and the body.</li>
+<li>Every type parameter must be deducible from the arguments (<code>E0123</code> otherwise); two parameters of the same <code>T</code> must agree (<code>E0122</code>).</li>
+<li>Generic functions are top-level only (no generic methods) and need <code>-&gt; Type</code> when they return a value.</li>
+<li>Generic records (<code>Box&lt;T&gt;</code>) and the ready-made <code>Option&lt;T&gt;</code> / <code>Result&lt;T, E&gt;</code> are in the chapter <a href="/fr/guide/generics/">Generics</a>.</li>
+</ul>
+<h2 id="constants-048">Constants (0.4.8)</h2>
+<p><code>const NAME = expr</code> (or <code>const NAME: type = expr</code>) works at the top level and inside functions, with any type (numbers, strings,
+f-strings, lists, records) and may use other constants. Constants are read-only: assigning to one, or changing a field of a constant record, is error <code>E0124</code>.</p>
+<h2 id="words-usable-as-names-048">Words usable as names (0.4.8)</h2>
+<p><code>from use type class match case enum thread try failed finally</code> are keywords only where their keyword meaning applies; elsewhere they are
+ordinary names: <code>from = 3</code>, <code>print(type)</code>, <code>make span(from: int, case: int)</code>, <code>for finally in xs</code>, f-strings <code>f"{try}"</code>.
+Still reserved: <code>to</code>, <code>in</code>, the type names (<code>int float string bool ptr</code>) and <code>null</code>.</p>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/troubleshooting/"><small>Précédent</small>← Dépannage</a><a class="next" href="/fr/reference/builtins/"><small>Suivant</small>Fonctions intégrées →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/language.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#basics">Basics</a></li><li class="l2"><a href="#strings">Strings</a></li><li class="l2"><a href="#functions">Functions</a></li><li class="l2"><a href="#collections">Collections</a></li><li class="l2"><a href="#classes">Classes</a></li><li class="l2"><a href="#data-enums-and-match">Data enums and match</a></li><li class="l2"><a href="#pointers-and-null">Pointers and null</a></li><li class="l2"><a href="#not-in-02">Not in 0.2</a></li><li class="l2"><a href="#visibility-pub">Visibility (pub)</a></li><li class="l2"><a href="#generic-functions-046">Generic functions (0.4.6)</a></li><li class="l2"><a href="#constants-048">Constants (0.4.8)</a></li><li class="l2"><a href="#words-usable-as-names-048">Words usable as names (0.4.8)</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

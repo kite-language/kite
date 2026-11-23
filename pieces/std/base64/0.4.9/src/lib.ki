@@ -1,0 +1,78 @@
+// base64 -- standard alphabet with `=` padding.
+
+make base64_alphabet() -> string:
+    return "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+make base64_encode(s: string) -> string:
+    a = base64_alphabet()
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        b0 = char_at(s, i)
+        b1 = 0
+        b2 = 0
+        have1 = i + 1 < len(s)
+        have2 = i + 2 < len(s)
+        if have1:
+            b1 = char_at(s, i + 1)
+        if have2:
+            b2 = char_at(s, i + 2)
+        n = (b0 << 16) | (b1 << 8) | b2
+        append(parts, substr(a, (n >> 18) & 63, ((n >> 18) & 63) + 1))
+        append(parts, substr(a, (n >> 12) & 63, ((n >> 12) & 63) + 1))
+        if have1:
+            append(parts, substr(a, (n >> 6) & 63, ((n >> 6) & 63) + 1))
+        else:
+            append(parts, "=")
+        if have2:
+            append(parts, substr(a, n & 63, (n & 63) + 1))
+        else:
+            append(parts, "=")
+        i += 3
+    return join(parts, "")
+
+make base64_value(c: int) -> int:
+    if c >= 65 and c <= 90:
+        return c - 65
+    if c >= 97 and c <= 122:
+        return c - 71
+    if c >= 48 and c <= 57:
+        return c + 4
+    if c == 43:
+        return 62
+    if c == 47:
+        return 63
+    return -1
+
+// "" on malformed input.
+make base64_decode(s: string) -> string:
+    parts: [string] = []
+    i = 0
+    n = len(s)
+    while i < n:
+        if i + 4 > n:
+            return ""
+        v0 = base64_value(char_at(s, i))
+        v1 = base64_value(char_at(s, i + 1))
+        c2 = char_at(s, i + 2)
+        c3 = char_at(s, i + 3)
+        v2 = base64_value(c2)
+        v3 = base64_value(c3)
+        if v0 < 0 or v1 < 0:
+            return ""
+        if c2 == 61:
+            v2 = 0
+        orif v2 < 0:
+            return ""
+        if c3 == 61:
+            v3 = 0
+        orif v3 < 0:
+            return ""
+        x = (v0 << 18) | (v1 << 12) | (v2 << 6) | v3
+        append(parts, chr_byte((x >> 16) & 255))
+        if c2 != 61:
+            append(parts, chr_byte((x >> 8) & 255))
+        if c3 != 61:
+            append(parts, chr_byte(x & 255))
+        i += 4
+    return join(parts, "")

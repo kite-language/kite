@@ -13,5 +13,6 @@
 - Put a `//` comment above every function you want in `kite doc`.
 - Prefer `const` over magic numbers.
 - Keep functions short; return early.
-- Names to avoid for variables and functions (reserved): `to in from use type class match case enum thread try failed finally
-  int float string bool ptr null`. Member names after a dot and record fields may use them.
+- Mark only a piece's interface `pub`; everything else stays private.
+- Names to avoid for variables and functions (reserved): `to in int float string bool ptr null`, and the built-ins (`len`, `print`, ...).
+  Other keywords (`from`, `type`, `match`, ...) work as names, but a clearer name reads better.

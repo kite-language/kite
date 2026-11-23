@@ -56,6 +56,28 @@ for key in ages.keys:          // insertion order
     print(key)
 ```
 
-## Lists of lists?
+## Nested collections
 
-Nested collections are on the [roadmap](/project/roadmap/); today use a flat list with an index formula, or a record.
+Lists can hold lists, to any depth, and so can struct fields:
+
+```kite
+type Board:
+    cells: [[int]]
+    names: [[string]]
+
+make main():
+    grid = [[1, 2], [3, 4]]
+    append(grid, [5])
+    grid[0][1] = 7
+    print(len(grid[0]))              // 2
+    for row in grid:
+        for v in row:
+            print(v)
+
+    b = Board()
+    append(b.cells, [1, 2, 3])
+    print(b.cells[0][2])             // 3
+```
+
+An empty nested list needs a type: `rows: [[int]] = []`. Lists of structs (`[Cell]`) and of maps (`[StrMap_int]`) work the same way.
+Tuples still hold scalars only.

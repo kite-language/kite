@@ -1,0 +1,47 @@
+use std.test
+
+type Range:
+    from: int
+    thread: int
+
+make span(from: int, case: int) -> int:
+    return case - from
+
+make main():
+    t = test_new("reserved words as names")
+    from = 3
+    type = 10
+    match = span(from, type)
+    test_eq_int(t, "parameters and variables", match, 7)
+    class = [1, 2, 3]
+    class[0] = 7
+    test_eq_int(t, "list named class", class[0] + len(class), 10)
+    use = "u"
+    use = use + "v"
+    test_eq_str(t, "string named use", use, "uv")
+    try = 0
+    try += 5
+    test_eq_str(t, "f-string", f"{try} {from}", "5 3")
+    r = Range()
+    r.from = 4
+    r.thread = 9
+    test_eq_int(t, "record fields", r.from + r.thread, 13)
+    total = 0
+    for finally in [1, 2]:
+        total += finally
+    test_eq_int(t, "loop variable", total, 3)
+    thread = 1
+    failed = thread + 1
+    test_eq_int(t, "thread and failed", failed, 2)
+    // real keywords still work
+    v = Shape.Square(3)
+    match v:
+        case Square(side):
+            test_eq_int(t, "match still works", side, 3)
+        else:
+            test_eq_int(t, "match still works", 0, 3)
+    exit(test_finish(t))
+
+enum Shape:
+    Circle(r: int)
+    Square(side: int)

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cheat sheet — Kite</title>
+<meta name="description" content="One page with the syntax you use every day.">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/cheatsheet/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/cheatsheet/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/cheatsheet/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/cheatsheet/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/cheatsheet/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/cheatsheet/" hreflang="en" lang="en">EN</a><a href="/fr/guide/cheatsheet/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/cheatsheet/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+<li><a class="cur" aria-current="page" href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Cheat sheet</div>
+<article>
+<h1 id="cheat-sheet">Cheat sheet</h1>
+<p>One page with the syntax you use every day.</p>
+<h2 id="basics">Basics</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="c">// a comment</span>
+name = <span class="s">&quot;Kite&quot;</span>            <span class="c">// variables are created by assignment</span>
+count: <span class="t">int</span> = <span class="n">0</span>           <span class="c">// optional type</span>
+<span class="k">const</span> LIMIT = <span class="n">10</span>         <span class="c">// a constant</span>
+print(<span class="s">f&quot;{name} has {count} items, limit {LIMIT}&quot;</span>)
+</code></pre></div>
+<h2 id="control-flow">Control flow</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">if</span> x &gt; <span class="n">0</span>:
+    print(<span class="s">&quot;positive&quot;</span>)
+<span class="k">orif</span> x == <span class="n">0</span>:
+    print(<span class="s">&quot;zero&quot;</span>)
+<span class="k">else</span>:
+    print(<span class="s">&quot;negative&quot;</span>)
+
+<span class="k">for</span> i = <span class="n">0</span> <span class="k">to</span> <span class="n">5</span>:          <span class="c">// 0, 1, 2, 3, 4 (the end is excluded)</span>
+    print(i)
+<span class="k">for</span> item <span class="k">in</span> items:
+    print(item)
+<span class="k">while</span> n &gt; <span class="n">0</span>:
+    n -= <span class="n">1</span>
+</code></pre></div>
+<h2 id="functions">Functions</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span> = <span class="n">1</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> w * h
+
+print(area(<span class="n">3</span>))
+print(area(<span class="n">3</span>, h = <span class="n">4</span>))
+</code></pre></div>
+<h2 id="collections">Collections</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>xs = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>]
+append(xs, <span class="n">4</span>)
+person = {<span class="s">&quot;name&quot;</span>: <span class="s">&quot;Ada&quot;</span>, <span class="s">&quot;age&quot;</span>: <span class="n">36</span>}     <span class="c">// keys are string literals</span>
+ages = StrMap_int()                    <span class="c">// hash map with string keys</span>
+ages.set(<span class="s">&quot;ada&quot;</span>, <span class="n">36</span>)
+</code></pre></div>
+<h2 id="records-classes-enums">Records, classes, enums</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">type</span> Point:
+    x: <span class="t">int</span>
+    y: <span class="t">int</span>
+
+<span class="k">class</span> Counter:
+    n: <span class="t">int</span>
+    <span class="k">make</span> bump(self):
+        self.n += <span class="n">1</span>
+
+<span class="k">enum</span> Shape:
+    Circle(r: <span class="t">int</span>)
+    Square(side: <span class="t">int</span>)
+</code></pre></div>
+<h2 id="visibility-in-pieces">Visibility in pieces</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>pub <span class="k">make</span> area(w: <span class="t">int</span>, h: <span class="t">int</span>) -&gt; <span class="t">int</span>:    <span class="c">// usable from other pieces</span>
+    <span class="k">return</span> w * h
+
+<span class="k">make</span> helper() -&gt; <span class="t">int</span>:                    <span class="c">// private to the piece (when the file uses `pub`)</span>
+</code></pre></div>
+<h2 id="generic-functions">Generic functions</h2>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> first&lt;T&gt;(xs: [T]) -&gt; T:
+    <span class="k">return</span> xs[<span class="n">0</span>]
+
+print(first([<span class="n">4</span>, <span class="n">5</span>, <span class="n">6</span>]))
+print(first([<span class="s">&quot;a&quot;</span>, <span class="s">&quot;b&quot;</span>]))
+</code></pre></div>
+<h2 id="commands">Commands</h2>
+<table>
+<thead>
+<tr>
+<th>command</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kite init NAME</code></td>
+<td>create a project (<code>--lib</code> for a piece)</td>
+</tr>
+<tr>
+<td><code>kite run</code></td>
+<td>build and run</td>
+</tr>
+<tr>
+<td><code>kite build --release</code></td>
+<td>optimised build</td>
+</tr>
+<tr>
+<td><code>kite check</code></td>
+<td>type-check only</td>
+</tr>
+<tr>
+<td><code>kite test</code></td>
+<td>run <code>tests/*.ki</code></td>
+</tr>
+<tr>
+<td><code>kite add NAME</code></td>
+<td>add a piece to <code>[dependencies]</code></td>
+</tr>
+<tr>
+<td><code>kite fmt</code></td>
+<td>fix whitespace</td>
+</tr>
+</tbody>
+</table>
+</article>
+<footer class="pager"><a class="prev" href="/guide/style/"><small>Previous</small>← Writing readable Kite</a><a class="next" href="/guide/troubleshooting/"><small>Next</small>Troubleshooting →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/11-cheatsheet.md">Edit this page on GitHub</a></p>
+</main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#basics">Basics</a></li><li class="l2"><a href="#control-flow">Control flow</a></li><li class="l2"><a href="#functions">Functions</a></li><li class="l2"><a href="#collections">Collections</a></li><li class="l2"><a href="#records-classes-enums">Records, classes, enums</a></li><li class="l2"><a href="#visibility-in-pieces">Visibility in pieces</a></li><li class="l2"><a href="#generic-functions">Generic functions</a></li><li class="l2"><a href="#commands">Commands</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

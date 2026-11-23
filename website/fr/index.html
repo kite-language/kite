@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introduction — Kite</title>
+<meta name="description" content="Kite est un langage compilé, lisible comme Python et rapide comme C. Il a des blocs définis par l&#x27;indentation, des types statiques inférés et aucune pause de ramasse-miettes : kite">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.4.9</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/" hreflang="fr" lang="fr">FR</a><a href="/es/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a class="cur" aria-current="page" href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Pour commencer › Introduction</div>
+<article>
+<h1 id="kite">Kite</h1>
+<p>Kite est un langage compilé, lisible comme Python et rapide comme C. Il a des blocs définis par l'indentation, des types
+statiques inférés et aucune pause de ramasse-miettes : <code>kite build</code> transforme votre programme en code natif.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> main():
+    name = <span class="s">&quot;Kite&quot;</span>
+    print(<span class="s">f&quot;Hello from {name}!&quot;</span>)
+</code></pre></div>
+<p><strong>Ce que vous obtenez</strong></p>
+<ul>
+<li>Un compilateur écrit en Kite lui-même (il se compile : stage 1 = stage 2 = stage 3).</li>
+<li>Les <strong>pièces</strong> : les paquets de Kite. Le langage fournit 40 pièces par défaut (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) et un
+  registre communautaire hébergé dans le dépôt.</li>
+<li>Des threads, des pointeurs et de la mémoire manuelle quand vous en avez besoin ; des chaînes, listes, tuples et dictionnaires quand vous n'en avez pas besoin.</li>
+<li><code>kite</code> fait tout : <code>init</code>, <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>fmt</code>, <code>doc</code>, <code>add</code>, <code>publish</code>, <code>target</code>, ...</li>
+<li>Un mode freestanding avec son propre petit runtime, pour les noyaux et les microcontrôleurs.</li>
+</ul>
+<p><strong>Par où commencer</strong></p>
+<ol>
+<li><a href="/fr/installation/">Installer Kite</a> -- une commande sur Linux et macOS, une sur Windows.</li>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a> -- <code>kite init</code>, <code>kite run</code>.</li>
+<li><a href="/fr/guide/variables/">Variables et types</a>, <a href="/fr/guide/control-flow/">structures de contrôle</a>, <a href="/fr/guide/functions/">fonctions</a>.</li>
+<li><a href="/fr/guide/pieces/">Pièces</a> quand vous voulez une bibliothèque, <a href="/fr/reference/std-pieces/">les pièces standard</a> pour ce qui est inclus.</li>
+</ol>
+</article>
+<footer class="pager"><a class="next" href="/fr/installation/"><small>Suivant</small>Installation →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/00-introduction.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

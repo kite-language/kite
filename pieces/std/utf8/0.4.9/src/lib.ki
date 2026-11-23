@@ -1,0 +1,52 @@
+// utf8 -- strings are byte strings; these helpers look at them as UTF-8 text.
+
+// Length in bytes of the character starting with lead byte `b` (1 for an invalid lead).
+make utf8_char_len(b: int) -> int:
+    if b < 128:
+        return 1
+    if b >= 192 and b < 224:
+        return 2
+    if b >= 224 and b < 240:
+        return 3
+    if b >= 240 and b < 248:
+        return 4
+    return 1
+
+// Number of code points.
+make utf8_len(s: string) -> int:
+    n = 0
+    i = 0
+    while i < len(s):
+        i += utf8_char_len(char_at(s, i))
+        n += 1
+    return n
+
+make utf8_valid(s: string) -> bool:
+    i = 0
+    while i < len(s):
+        b = char_at(s, i)
+        k = utf8_char_len(b)
+        if b >= 128 and k == 1:
+            return false
+        if i + k > len(s):
+            return false
+        j = 1
+        while j < k:
+            c = char_at(s, i + j)
+            if c < 128 or c >= 192:
+                return false
+            j += 1
+        i += k
+    return true
+
+// Each code point as its own string.
+make utf8_chars(s: string) -> [string]:
+    out: [string] = []
+    i = 0
+    while i < len(s):
+        k = utf8_char_len(char_at(s, i))
+        if i + k > len(s):
+            k = len(s) - i
+        append(out, substr(s, i, i + k))
+        i += k
+    return out
