@@ -21,6 +21,7 @@ type Manifest:
     target: string
     heap_size: int
     runtime: string
+    storage: bool
     dep_names: [string]
     dep_vers: [string]
     dep_paths: [string]
@@ -89,6 +90,8 @@ make manifest_parse(text: string) -> Manifest:
                 m.heap_size = to_int(val)
             orif key == "runtime":
                 m.runtime = val
+            orif key == "storage":
+                m.storage = val == "true"
         orif section == "dependencies":
             append(m.dep_names, key)
             if starts_with(rawval, "{"):

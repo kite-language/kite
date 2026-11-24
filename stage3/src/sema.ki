@@ -522,7 +522,73 @@ class Sema:
                 return "int"
             self.err("E0091", "cannot infer the pointer type of `null` here -- annotate it, e.g. `p: ptr<int> = null`", span)
             return "int"
-        return self.check_expr(e)
+        ety = self.check_expr(e)
+        if expected == "num" and (ety == "int" or ety == "float"):
+            self.wrap_num(e, ety)
+            return "num"
+        return ety
+
+    // Replaces node `e` by a call of `fname` on a copy of the original node (the parent keeps pointing at `e`).
+    make wrap_in_call(self, e: int, fname: string):
+        n = self.ast.nodes[e]
+        orig = self.ast.addl(n.kind, n.text, n.span, n.kids)
+        kl: [int] = [orig]
+        self.ast.nodes[e].kind = "Call"
+        self.ast.nodes[e].text = fname
+        self.ast.nodes[e].kids = kl
+
+    // An `int` or `float` value used where a `num` is expected becomes a `num`.
+    make wrap_num(self, e: int, ty: string):
+        if ty == "float":
+            self.wrap_in_call(e, "num__from_float")
+        else:
+            self.wrap_in_call(e, "num__from_int")
+
+    // `a op b` where at least one side is a `num`: the node becomes a call of the matching `num__*` function.
+    make num_binary(self, e: int, op: string, lhs: int, rhs: int, lt: string, rt: string, span: Span) -> string:
+        fname = ""
+        res = "num"
+        if op == "Add":
+            fname = "num__add"
+        orif op == "Sub":
+            fname = "num__sub"
+        orif op == "Mul":
+            fname = "num__mul"
+        orif op == "Div":
+            fname = "num__div"
+        orif op == "Mod":
+            fname = "num__mod"
+        orif op == "Lt":
+            fname = "num__lt"
+            res = "bool"
+        orif op == "Gt":
+            fname = "num__gt"
+            res = "bool"
+        orif op == "LtEq":
+            fname = "num__le"
+            res = "bool"
+        orif op == "GtEq":
+            fname = "num__ge"
+            res = "bool"
+        orif op == "Eq":
+            fname = "num__eq"
+            res = "bool"
+        orif op == "NotEq":
+            fname = "num__ne"
+            res = "bool"
+        if len(fname) == 0:
+            self.err("E0101", f"cannot apply `{op_symbol(op)}` to `{ty_disp(lt)}` and `{ty_disp(rt)}` -- `int` only", span)
+            return "int"
+        if (lt != "num" and lt != "int" and lt != "float") or (rt != "num" and rt != "int" and rt != "float"):
+            self.err("E0126", f"cannot use `{op_symbol(op)}` on `{ty_disp(lt)}` and `{ty_disp(rt)}`: a `num` combines with `int`, `float` and `num` only", span)
+            return res
+        if lt != "num":
+            self.wrap_num(lhs, lt)
+        if rt != "num":
+            self.wrap_num(rhs, rt)
+        self.ast.nodes[e].kind = "Call"
+        self.ast.nodes[e].text = fname
+        return res
 
     make check_return(self, value: int, span: Span):
         expected_ret = ""
@@ -615,12 +681,29 @@ class Sema:
                 return "int"
             return r2
         if k == "Unary":
-            return self.check_unary(n.text, kids[0], span)
+            return self.check_unary(e, n.text, kids[0], span)
         if k == "Binary":
-            return self.check_binary(n.text, kids[0], kids[1], span)
+            return self.check_binary(e, n.text, kids[0], kids[1], span)
         if k == "Call":
             if self.gen_idx.has(n.text):
-                return self.check_generic_call(e, n.text, kids, span)
+                no_explicit: [string] = []
+                return self.check_generic_call(e, n.text, kids, span, no_explicit)
+            if contains_str(n.text, "<"):
+                gname = substr(n.text, 0, find(n.text, "<"))
+                if self.gen_idx.has(gname):
+                    // explicit type arguments: `first<int>(xs)`
+                    inner = substr(n.text, find(n.text, "<") + 1, len(n.text) - 1)
+                    targs: [string] = []
+                    for ta in split_top(inner):
+                        ra = self.resolve_type_text(ta, span)
+                        if self.enum_idx.has(ra):
+                            ra = "@" + ra
+                        append(targs, ra)
+                    return self.check_generic_call(e, gname, kids, span, targs)
+            if len(kids) == 1 and (n.text == "print" or n.text == "str"):
+                // a `num` is shown through `num__str`
+                if self.check_expr(kids[0]) == "num":
+                    self.wrap_in_call(kids[0], "num__str")
             return self.check_call(n.text, kids, span)
         if k == "Await":
             return self.check_expr(kids[0])
@@ -728,7 +811,7 @@ class Sema:
         self.err("E0058", f"cannot access field `{field}` on a value of type `{ty_disp(base_ty)}`", span)
         return ""
 
-    make check_unary(self, op: string, e: int, span: Span) -> string:
+    make check_unary(self, un: int, op: string, e: int, span: Span) -> string:
         if op == "AddrOf":
             if self.ast.nodes[e].kind != "Ident":
                 self.err("E0094", "`&` can only take the address of a local variable, e.g. `&x`", span)
@@ -742,6 +825,10 @@ class Sema:
                 self.err("E0095", f"cannot take the address of a `{ty_disp(t)}` yet -- only `int`/`float`/`bool`/`string` locals are addressable in v0.1.3", span)
             return ty_ptr_of(t)
         ty = self.check_expr(e)
+        if op == "Neg" and ty == "num":
+            self.ast.nodes[un].kind = "Call"
+            self.ast.nodes[un].text = "num__neg"
+            return "num"
         if op == "Neg":
             if ty != "int" and ty != "float":
                 self.err("E0025", f"cannot negate a value of type `{ty_disp(ty)}`", span)
@@ -760,7 +847,7 @@ class Sema:
         self.err("E0089", f"cannot dereference `{ty_disp(ty)}`: not a pointer", span)
         return "int"
 
-    make check_binary(self, op: string, lhs: int, rhs: int, span: Span) -> string:
+    make check_binary(self, e: int, op: string, lhs: int, rhs: int, span: Span) -> string:
         if op == "Eq" or op == "NotEq":
             lty = ""
             rty = ""
@@ -770,11 +857,15 @@ class Sema:
             else:
                 lty = self.check_expr(lhs)
                 rty = self.check_expr_expecting(rhs, lty)
+            if lty == "num" or rty == "num":
+                return self.num_binary(e, op, lhs, rhs, lty, rty, span)
             if lty != rty:
                 self.err("E0028", f"cannot compare `{ty_disp(lty)}` and `{ty_disp(rty)}` with `{op_symbol(op)}`", span)
             return "bool"
         lt = self.check_expr(lhs)
         rt = self.check_expr(rhs)
+        if lt == "num" or rt == "num":
+            return self.num_binary(e, op, lhs, rhs, lt, rt, span)
         if op == "Add" or op == "Sub":
             if op == "Add" and lt == "string" and rt == "string":
                 return "string"
@@ -978,7 +1069,7 @@ class Sema:
 
     // A call of a generic function: infer the type parameters from the argument types, instantiate the function
     // for them (once) and point the call at the instance.
-    make check_generic_call(self, e: int, name: string, args: [int], span: Span) -> string:
+    make check_generic_call(self, e: int, name: string, args: [int], span: Span, explicit: [string]) -> string:
         f = self.gen_nodes[self.gen_idx.get(name) - 1]
         fk = self.ast.nodes[f].kids
         flags = self.ast.nodes[fk[2]].text
@@ -992,6 +1083,16 @@ class Sema:
             return "()"
         clear(self.ub_names)
         clear(self.ub_vals)
+        if len(explicit) > 0:
+            // `first<int>(xs)`: the type arguments are given
+            if len(explicit) > len(tn):
+                self.err("E0127", f"`{name}` takes {str(len(tn))} type argument(s), found {str(len(explicit))}", span)
+                return "()"
+            q = 0
+            while q < len(explicit):
+                append(self.ub_names, tn[q])
+                append(self.ub_vals, explicit[q])
+                q += 1
         i = 0
         while i < len(pl):
             pty = self.ast.nodes[self.ast.nodes[pl[i]].kids[0]].text
@@ -1040,6 +1141,9 @@ class Sema:
                     self.err("E0111", f"list index must be `int`, found `{ty_disp(it)}`", self.ast.nodes[args[1]].span)
             if name == "insert":
                 vt = self.check_expr(args[2])
+                if elem == "num" and (vt == "int" or vt == "float"):
+                    self.wrap_num(args[2], vt)
+                    vt = "num"
                 if vt != elem:
                     self.err("E0063", f"cannot insert a `{ty_disp(vt)}` into a list of `{ty_disp(elem)}`", self.ast.nodes[args[2]].span)
             if name == "pop" or name == "remove":
@@ -1060,6 +1164,9 @@ class Sema:
                 return "()"
             lty2 = self.check_expr(args[0])
             vty = self.check_expr(args[1])
+            if ty_is_list(lty2) and ty_list_elem(lty2) == "num" and (vty == "int" or vty == "float"):
+                self.wrap_num(args[1], vty)
+                vty = "num"
             if ty_is_list(lty2):
                 if ty_list_elem(lty2) != vty:
                     self.err("E0063", f"cannot append a `{ty_disp(vty)}` to a list of `{ty_disp(ty_list_elem(lty2))}`", self.ast.nodes[args[1]].span)
@@ -1447,14 +1554,17 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
             continue
         before4 = len(s.diags.items)
         s.check_function(f)
-        s.tag_from(s.diags, before4, ast.nodes[f].text)
+        // (`ast` is a stale copy of the arena header once instances have been added: read through `s.ast`)
+        s.tag_from(s.diags, before4, s.ast.nodes[f].text)
     // instances of generic functions created while checking (they may create further instances)
+    ast.nodes = s.ast.nodes
     pk = 0
     while pk < len(s.pending):
         pf = s.pending[pk]
         before5 = len(s.diags.items)
         s.check_function(pf)
         s.tag_from(s.diags, before5, s.ast.nodes[pf].text)
+        ast.nodes = s.ast.nodes
         pk += 1
     for d in s.pre.items:
         append(s.diags.items, d)

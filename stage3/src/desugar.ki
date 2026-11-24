@@ -877,6 +877,15 @@ class Desugarer:
                 self.ast.nodes[e].kids = self.normalize_call(name, self.sig_idx.get(name) - 1, utaken, span)
             return
         owner = self.owner_of(cls, name)
+        if len(owner) == 0 and self.sig_idx.has(name):
+            // no such method, but a function of that name exists: `value.f(args)` is `f(value, args)`
+            ufcs2: [int] = [recv]
+            for ua2 in args:
+                append(ufcs2, ua2)
+            self.become_call(e, name, ufcs2)
+            utaken2 = self.ast.nodes[e].kids
+            self.ast.nodes[e].kids = self.normalize_call(name, self.sig_idx.get(name) - 1, utaken2, span)
+            return
         if len(owner) == 0:
             self.err("E0106", f"class `{cls}` has no method `{name}`", span)
             return

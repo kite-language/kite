@@ -23,7 +23,7 @@ use std.fmt
 use std.types
 
 make version_text() -> string:
-    return "0.4.9"
+    return "0.5.1"
 
 make usage() -> string:
     out = "The Kite programming language compiler and project manager\n\n"
@@ -82,6 +82,7 @@ class BuildOpts:
     runtime: string
     heap: int
     backend: string
+    storage: bool
 
 make git_config(key: string) -> string:
     return trim(sys.capture("git config " + key))
@@ -228,10 +229,13 @@ make build_run(o: BuildOpts) -> string:
         mode_label = " [lib]"
     orif mode == "bare-link":
         mode_label = f" [{target}]"
+    cx.triple = triple
+    shrink = o.storage or p.manifest.storage
+    cx.storage = shrink
     if mode == "exe":
         cx.fp_file = path.join(path.join(profile_dir, ".fingerprint"), p.manifest.name)
         cx.out_file = out_path
-        cx.flags = "kite " + version_text() + " opt=" + str(opt) + " target=" + triple + " static=" + str(o.static_link) + " links=" + join(o.links, ",") + f" rt={o.runtime}{str(o.heap)}"
+        cx.flags = "kite " + version_text() + " opt=" + str(opt) + " target=" + triple + " storage=" + str(shrink) + " static=" + str(o.static_link) + " links=" + join(o.links, ",") + f" rt={o.runtime}{str(o.heap)}"
     start = time.now_ns()
     meta = pkg_signature(p.manifest, mode, triple, opt)
     heap = 0
@@ -258,18 +262,18 @@ make build_run(o: BuildOpts) -> string:
             if not native_build(c.prog, out_path, meta):
                 die("the native back end failed to write the executable")
         orif mode == "exe":
-            out_path = build_from_ir(c.prog, out_path, opt, triple, "exe", o.static_link, o.links, meta, 0)
+            out_path = build_from_ir(c.prog, out_path, opt, triple, "exe", o.static_link, o.links, meta, 0, shrink)
             fs.mkdir_all(path.parent(cx.fp_file))
             write_file(cx.fp_file, c.fingerprint)
         orif mode == "freestanding":
-            build_from_ir(c.prog, out_path, opt, triple, "bare", false, o.links, meta, heap)
+            build_from_ir(c.prog, out_path, opt, triple, "bare", false, o.links, meta, heap, shrink)
         orif mode == "bare-link":
             obj = path.with_extension(out_path, "o")
-            build_from_ir(c.prog, obj, opt, triple, "bare", false, o.links, meta, heap)
+            build_from_ir(c.prog, obj, opt, triple, "bare", false, o.links, meta, heap, shrink)
             if not link_bare(obj, out_path, spec):
                 die(f"linking `{out_path}` failed")
         else:
-            build_from_ir(c.prog, out_path, opt, triple, "obj", false, o.links, meta, 0)
+            build_from_ir(c.prog, out_path, opt, triple, "obj", false, o.links, meta, 0, shrink)
             stem = path.file_name(out_path)
             dot = find(stem, ".")
             if dot > 0:
@@ -279,6 +283,8 @@ make build_run(o: BuildOpts) -> string:
             if not write_file(header_path, header):
                 die("failed to write C header to " + header_path)
     elapsed = time.now_ns() - start
+    if not o.quiet and shrink and c.total > 0:
+        status("Shrunk", f"removed {str(c.removed)} of {str(c.total)} functions the program never calls")
     if not o.quiet:
         extra = ""
         if mode == "freestanding":
@@ -363,6 +369,8 @@ make parse_build_args(a: Args, allow_all: bool) -> BuildOpts:
             o.out_dir = a.value(f)
         orif f == "--link" and allow_all:
             append(o.links, a.value(f))
+        orif f == "--storage" and allow_all:
+            o.storage = true
         orif f == "--backend" and allow_all:
             o.backend = a.value(f)
             if o.backend != "llvm" and o.backend != "native":

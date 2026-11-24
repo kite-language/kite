@@ -10,6 +10,7 @@ use prelude
 use sema
 use resolve
 use cheader
+use shake
 use sysx
 use std.sys
 use std.sha256
@@ -24,6 +25,8 @@ class Checked:
     prog: IrProg
     fingerprint: string
     files: [string]
+    removed: int
+    total: int
 
 // What the front end needs besides the entry file: where pieces live, the package metadata
 // accessors to inject, and (optionally) the cache files that make a build "fresh".
@@ -33,6 +36,8 @@ class Ctx:
     piece_roots: [string]
     meta_src: string
     flags: string
+    triple: string
+    storage: bool
     fp_file: string
     out_file: string
 
@@ -46,7 +51,7 @@ make sha256_of_files(flags: string, files: [string]) -> string:
 
 make check_project(entry_path: string, src_root: string, freestanding: bool, cx: Ctx) -> Checked:
     out = Checked()
-    m = load_and_merge(entry_path, src_root, cx.registry, cx.piece_names, cx.piece_roots)
+    m = load_and_merge(entry_path, src_root, cx.registry, cx.piece_names, cx.piece_roots, cx.triple)
     if not m.ok:
         return out
     out.files = m.files_loaded
@@ -74,6 +79,9 @@ make check_project(entry_path: string, src_root: string, freestanding: bool, cx:
     ni = ast.nodes[m.root].kids[0]
     no_imports: [int] = []
     ast.nodes[ni].kids = no_imports
+    if (cx.storage or sys.getenv("KITE_STORAGE") == "1") and not freestanding:
+        out.total = len(ast.nodes[ast.nodes[m.root].kids[3]].kids)
+        out.removed = shake_program(ast, m.root)
     out.prog = lower_program(ast, m.root)
     out.ast = ast
     out.root = m.root
@@ -94,7 +102,7 @@ make normalized_executable_path(p: string, target: string) -> string:
 // Writes the LLVM IR next to the output and runs clang. `kind`: "exe", "obj" (hosted lib) or
 // "bare" (freestanding object).
 // `meta`: build signature record kept in the binary; `heap`: >0 links the built-in freestanding runtime.
-make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string], meta: string, heap: int) -> string:
+make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string, kind: string, static_link: bool, extra: [string], meta: string, heap: int, shrink: bool) -> string:
     freestanding = kind != "exe"
     llvm = emit_module(prog, target, freestanding, meta, heap)
     out_path = output
@@ -107,8 +115,18 @@ make build_from_ir(prog: IrProg, output: string, opt_level: int, target: string,
     if not write_file(ir_path, llvm):
         die("failed to write LLVM IR to " + ir_path)
     cmd = f"clang {sys.quote(ir_path)} -O{str(opt_level)}"
+    if shrink:
+        // `--storage`: optimise for size, one section per function and datum so that the linker can drop what is unused
+        cmd = f"clang {sys.quote(ir_path)} -Os -ffunction-sections -fdata-sections"
     if kind == "exe":
         cmd = cmd + f" -o {sys.quote(out_path)} -Wno-override-module"
+        if shrink:
+            if is_windows_target(target):
+                cmd = cmd + " -Wl,/OPT:REF,/OPT:ICF"
+            orif contains_str(target, "apple") or (len(target) == 0 and starts_with(sys.capture("uname -s 2>/dev/null"), "Darwin")):
+                cmd = cmd + " -Wl,-dead_strip -Wl,-x"
+            else:
+                cmd = cmd + " -Wl,--gc-sections -Wl,--build-id=none -s"
         for e in extra:
             if not fs.is_file(e):
                 die(f"--link input `{e}` does not exist")

@@ -38,7 +38,7 @@ make cmd_test(filter: string):
             print("test " + n2 + " ... " + red_bold_err("FAILED") + " (does not compile)")
             bad += 1
             continue
-        exe = build_from_ir(c.prog, path.join(outdir, stem), 0, "", "exe", false, no_links, "", 0)
+        exe = build_from_ir(c.prog, path.join(outdir, stem), 0, "", "exe", false, no_links, "", 0, false)
         log = path.join(outdir, stem + ".log")
         code = sys.sh(sys.quote(exe) + f" > {sys.quote(log)} 2>&1")
         if code == 0:
