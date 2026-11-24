@@ -1673,7 +1673,11 @@ make merge_generic_names(toks: [Token]) -> [Token]:
         merged = false
         if tk.kind == "Identifier" and i + 1 < len(toks) and toks[i + 1].kind == "Lt" and len(tk.text) > 0:
             c0 = char_at(tk.text, 0)
-            if c0 >= 65 and c0 <= 90:
+            // `Box<int>(` (uppercase name: a generic record) or `first<int>(` (lowercase name: explicit type arguments of a
+            // generic function; then every named type argument must start with an uppercase letter or be `num`)
+            is_upper = c0 >= 65 and c0 <= 90
+            // (not in a definition: `make first<T>(...)`)
+            if i == 0 or toks[i - 1].kind != "Make":
                 depth = 0
                 j = i + 1
                 text = tk.text
@@ -1682,6 +1686,8 @@ make merge_generic_names(toks: [Token]) -> [Token]:
                     kk = toks[j].kind
                     piece = type_token_text(kk, toks[j].text)
                     if len(piece) == 0:
+                        good = false
+                    orif not is_upper and kk == "Identifier" and j > i + 1 and not (char_at(piece, 0) >= 65 and char_at(piece, 0) <= 90) and piece != "num":
                         good = false
                     else:
                         if kk == "Lt":

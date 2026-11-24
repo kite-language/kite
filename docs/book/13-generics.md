@@ -74,3 +74,26 @@ make main():
 ```
 
 > **Note:** `Option` and `Result` are ordinary generic records, so you can read their fields (`o.has`, `o.value`, `r.is_ok`).
+
+## Explicit type arguments (templates)
+
+Normally the type parameters are inferred. You can also give them yourself, in angle brackets before the arguments, as in C++
+templates. This is the way to call a generic function whose type cannot be deduced from its arguments:
+
+```kite
+make zero<T>() -> T:
+    z: T = 0
+    return z
+
+make convert<A, B>(a: A, b: B) -> B:
+    return b
+
+make main():
+    print(zero<int>())                    // nothing to infer T from: say it
+    print(first<string>(["x", "y"]))      // same as first(["x", "y"])
+    print(convert<int, string>(1, "two"))
+```
+
+Type arguments are written with type names that start with an uppercase letter (`Point`, `Box<int>`), the built-in types
+(`int`, `float`, `bool`, `string`, `num`, `[int]`, `ptr<int>`), so `a < b > (c)` is still a comparison.
+Giving more type arguments than the function has is error `E0127`.

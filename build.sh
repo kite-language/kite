@@ -109,6 +109,18 @@ if [ "${1:-}" = "test" ]; then
   (cd "$ROOT/stdlib/tests/pieces2_test" && KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" run -q)
   bold "==> language feature tests (kite test)"
   (cd "$ROOT/stdlib/tests/lang_test" && KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" test)
+  bold "==> dead-code removal (--storage): the same tests with unused functions dropped"
+  (cd "$ROOT/stdlib/tests/lang_test" && KITE_STORAGE=1 KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" test)
+  (cd "$ROOT/stdlib/tests/std_test" && KITE_STORAGE=1 KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" run -q)
+  (cd "$ROOT/stdlib/tests/pieces2_test" && KITE_STORAGE=1 KITE_PIECES="$ROOT/pieces" "$(exe "$ROOT/stage2/target/release/kitec")" run -q)
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init shr >/dev/null; cd shr
+    printf 'use std.strings\nuse std.json\nmake unused(n: int) -> int:\n    return n * 2\n\nmake main():\n    print(strings.upper("kite"))\n' > src/main.ki
+    "$KC" build --release -q >/dev/null; A=$(wc -c < target/release/shr)
+    "$KC" build --release --storage -q >/dev/null; B=$(wc -c < target/release/shr)
+    [ "$(./target/release/shr)" = "KITE" ] && [ "$B" -lt "$A" ] && echo "--storage: output unchanged, binary $A -> $B bytes: ok"
+  )
   bold "==> signature, native back end, freestanding runtime"
   (
     KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
@@ -148,6 +160,16 @@ if [ "${1:-}" = "test" ]; then
     W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init cst >/dev/null; cd cst
     printf 'const LIMIT = 3\n\nmake main():\n    const LOCAL = 4\n    LOCAL = 5\n    LOCAL += 1\n    LIMIT = 9\n    ok = 1\n    ok = 2\n' > src/main.ki
     N=$("$KC" check 2>&1 | grep -c "E0124" || true); [ "$N" = "3" ] && echo "assignments to constants rejected (E0124): ok"
+  )
+  bold "==> conditional compilation (when)"
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init cfg >/dev/null; cd cfg
+    printf 'when windows:\n    make who() -> string:\n        return "win-only-text"\nelse:\n    make who() -> string:\n        return "other-only-text"\n\nmake main():\n    print(who())\n' > src/main.ki
+    "$KC" build -q --target x86_64-pc-windows-msvc >/dev/null 2>&1 || true
+    L=target/x86_64-pc-windows-msvc/debug/cfg.ll
+    [ "$(grep -c win-only-text $L)" -ge 1 ] && [ "$(grep -c other-only-text $L)" = "0" ] && echo "when: windows target keeps only the windows code: ok"
+    "$KC" build -q >/dev/null 2>&1; [ "$(grep -c other-only-text target/debug/cfg.ll)" -ge 1 ] && [ "$(grep -c win-only-text target/debug/cfg.ll)" = "0" ] && echo "when: host build drops the windows code: ok"
   )
   bold "==> piece registry verification"
   KITE="$(exe "$ROOT/stage2/target/release/kitec")" scripts/verify-pieces.sh

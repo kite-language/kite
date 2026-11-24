@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Compilación condicional — Kite</title>
+<meta name="description" content="Algunos códigos solo tienen sentido en un sistema operativo. Un bloque when conserva su código para los destinos que nombras y lo elimina del programa para todos los demás: no se c">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/conditional/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/conditional/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/conditional/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/conditional/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/conditional/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.5.1</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/conditional/" hreflang="en" lang="en">EN</a><a href="/fr/guide/conditional/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/conditional/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/conditional/">Compilación condicional</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Compilación condicional</div>
+<article>
+<h1 id="compilacion-condicional">Compilación condicional</h1>
+<p>Algunos códigos solo tienen sentido en un sistema operativo. Un bloque <strong><code>when</code></strong> conserva su código para los destinos que nombras y
+<strong>lo elimina del programa</strong> para todos los demás: no se compila, no se comprueba y no está en el binario.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>when windows:
+    <span class="k">make</span> open_url(url: <span class="t">string</span>):
+        run(<span class="s">f&quot;start {url}&quot;</span>)
+<span class="k">else</span>:
+    <span class="k">make</span> open_url(url: <span class="t">string</span>):
+        run(<span class="s">f&quot;xdg-open {url}&quot;</span>)
+
+<span class="k">make</span> main():
+    open_url(<span class="s">&quot;https://kite-lang.pages.dev&quot;</span>)
+    when linux:
+        print(<span class="s">&quot;running on Linux&quot;</span>)
+</code></pre></div>
+<p><code>when</code> funciona con los elementos de nivel superior (funciones, tipos, constantes, líneas <code>use</code>) y con las instrucciones dentro de
+las funciones. Un bloque <code>else:</code> opcional justo después contiene el código de los demás destinos. Los bloques se pueden anidar.</p>
+<h2 id="condiciones">Condiciones</h2>
+<table>
+<thead>
+<tr>
+<th>condición</th>
+<th>verdadera cuando el destino es</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>windows</code>, <code>linux</code>, <code>macos</code></td>
+<td>ese sistema operativo</td>
+</tr>
+<tr>
+<td><code>unix</code></td>
+<td>Linux o macOS</td>
+</tr>
+<tr>
+<td><code>bare</code></td>
+<td>freestanding (sin SO), p. ej. <code>x86_64-unknown-none</code></td>
+</tr>
+<tr>
+<td><code>x86_64</code>, <code>aarch64</code>, <code>riscv64</code></td>
+<td>esa arquitectura de CPU</td>
+</tr>
+<tr>
+<td><code>os == "linux"</code>, <code>arch == "aarch64"</code></td>
+<td>lo mismo, escrito como comparación (<code>!=</code> también funciona)</td>
+</tr>
+</tbody>
+</table>
+<p>Combínalas con <code>not</code>, <code>and</code>, <code>or</code> y paréntesis: <code>when unix and not macos:</code>, <code>when (linux or macos) and arch == "aarch64":</code>.</p>
+<p>El destino es el que se da a <code>kite build --target ...</code> (o <code>[build] target</code> en <code>kite.toml</code>); sin destino, es la máquina en la que estás.</p>
+<blockquote class="callout note"><p><strong>Nota:</strong> <code>when</code> solo es una palabra clave al principio de una línea, seguida de una condición y <code>:</code>, así que una variable llamada <code>when</code> sigue funcionando.</p>
+</blockquote>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/pieces/"><small>Anterior</small>← Piezas (paquetes)</a><a class="next" href="/es/guide/memory/"><small>Siguiente</small>Memoria, punteros e hilos →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/14-conditional.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#condiciones">Condiciones</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

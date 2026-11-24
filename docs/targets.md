@@ -62,3 +62,8 @@ kite build --target x86_64-unknown-none      # target/x86_64-unknown-none/debug/
 ```
 
 To provide your own allocator instead, build with `--runtime none` and define `malloc`, `free`, ... as C functions.
+
+## Smaller executables (0.5.1)
+`kite build --storage` (or `[build] storage = true`) removes every function the program cannot reach from `main` / `_start`, including the unused
+functions of imported pieces, then compiles for size and lets the linker drop unused sections and symbols. Freestanding objects and libraries without
+an entry point are kept whole. See the [kite command](/reference/cli/).

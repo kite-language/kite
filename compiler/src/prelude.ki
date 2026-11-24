@@ -167,6 +167,24 @@ make inject_prelude(ast: Ast, root: int):
 
 // Like `inject_prelude`, plus extra library source (e.g. the package-metadata accessors); like the
 // prelude it is only compiled in when referenced, and user definitions win.
+// Does `text` (a type such as `[num]` or `Box<num>`) mention `word` as one of its names?
+make type_mentions_word(text: string, word: string) -> bool:
+    s = text
+    for ch in ["[", "]", "<", ">", "(", ")", ",", "{", "}", ":", "\""]:
+        s = replace_all(s, ch, " ")
+    for w in split(s, " "):
+        if w == word:
+            return true
+    return false
+
+make mentions_type(ast: Ast, word: string) -> bool:
+    i = 0
+    while i < len(ast.nodes):
+        if ast.nodes[i].kind == "Type" and type_mentions_word(ast.nodes[i].text, word):
+            return true
+        i += 1
+    return false
+
 make inject_prelude_extra(ast: Ast, root: int, extra: string):
     ss = Strs()
     ss.set = StrMap_int()
@@ -180,6 +198,12 @@ make inject_prelude_extra(ast: Ast, root: int, extra: string):
         load_source(extra, ast, pool, false)
     for inst in map_instances(ss.order):
         load_source(map_source(inst), ast, pool, true)
+    // the `num` type (int or float) and its operations, only for programs that use it
+    if mentions_type(ast, "num"):
+        load_source(prelude_num(), ast, pool, true)
+        // the conversion methods (`x.as_int()`) are called through the uniform call syntax, so pull them in too
+        for nm in ["as_float", "as_int", "is_float"]:
+            ss.set.set(nm, 1)
 
     sl = ast.nodes[root].kids[1]
     fl = ast.nodes[root].kids[3]

@@ -74,3 +74,26 @@ make main():
 ```
 
 > **Nota:** `Option` y `Result` son simples registros genéricos, así que puedes leer sus campos (`o.has`, `o.value`, `r.is_ok`).
+
+## Argumentos de tipo explícitos (templates)
+
+Normalmente los parámetros de tipo se infieren. También puedes darlos tú, entre ángulos antes de los argumentos, como en las plantillas
+de C++. Es la forma de llamar a una función genérica cuyo tipo no se deduce de sus argumentos:
+
+```kite
+make zero<T>() -> T:
+    z: T = 0
+    return z
+
+make convert<A, B>(a: A, b: B) -> B:
+    return b
+
+make main():
+    print(zero<int>())                    // nada de lo que deducir T: se indica
+    print(first<string>(["x", "y"]))      // igual que first(["x", "y"])
+    print(convert<int, string>(1, "two"))
+```
+
+Los argumentos de tipo se escriben con nombres de tipo que empiezan en mayúscula (`Point`, `Box<int>`) o los tipos integrados
+(`int`, `float`, `bool`, `string`, `num`, `[int]`, `ptr<int>`), así que `a < b > (c)` sigue siendo una comparación.
+Dar más argumentos de tipo de los que tiene la función es el error `E0127`.

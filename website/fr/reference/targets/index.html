@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/reference/targets/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/targets/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/targets/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
 <li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
 <li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
@@ -136,11 +137,15 @@ add the <strong>core runtime</strong>: <code>--runtime core</code> (the default 
 kite build --target x86_64-unknown-none      # target/x86_64-unknown-none/debug/&lt;name&gt;.elf, no undefined symbols
 </code></pre></div>
 <p>To provide your own allocator instead, build with <code>--runtime none</code> and define <code>malloc</code>, <code>free</code>, ... as C functions.</p>
+<h2 id="smaller-executables-051">Smaller executables (0.5.1)</h2>
+<p><code>kite build --storage</code> (or <code>[build] storage = true</code>) removes every function the program cannot reach from <code>main</code> / <code>_start</code>, including the unused
+functions of imported pieces, then compiles for size and lets the linker drop unused sections and symbols. Freestanding objects and libraries without
+an entry point are kept whole. See the <a href="/fr/reference/cli/">kite command</a>.</p>
 </article>
 <footer class="pager"><a class="prev" href="/fr/reference/pieces-registry/"><small>Précédent</small>← Pièces et registre</a><a class="next" href="/fr/reference/c-interop/"><small>Suivant</small>Appeler du C →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/targets.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#freestanding-builds-and-the-built-in-runtime-044">Freestanding builds and the built-in runtime (0.4.4)</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#freestanding-builds-and-the-built-in-runtime-044">Freestanding builds and the built-in runtime (0.4.4)</a></li><li class="l2"><a href="#smaller-executables-051">Smaller executables (0.5.1)</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

@@ -1,0 +1,35 @@
+use std.test
+
+make half(x: num) -> num:
+    return x / 2
+
+make main():
+    t = test_new("num")
+    a: num = 3
+    b: num = 2.5
+    test_eq_str(t, "int shown as int", str(a), "3")
+    test_eq_str(t, "float shown as float", str(b), "2.5")
+    test_eq_str(t, "int + float", str(a + b), "5.5")
+    test_eq_str(t, "int * int stays int", str(a * 2), "6")
+    test_eq_str(t, "float of a whole number", str(half(7.0)), "3.5")
+    test_eq_str(t, "int division", str(half(7)), "3")
+    test_eq_str(t, "negation", str(-a), "-3")
+    test_eq_str(t, "3.0 keeps its point", str(a * 1.0), "3.0")
+    test_eq_str(t, "compare", str(a < b), "false")
+    c: num = 1
+    c += 2
+    c.incr()
+    test_eq_str(t, "compound assignment", str(c), "4")
+    test_eq_int(t, "as_int", b.as_int(), 2)
+    test_eq_str(t, "as_float", str(b.as_float()), "2.5")
+    test_eq_str(t, "f-string", f"value {b}", "value 2.5")
+    xs: [num] = []
+    append(xs, a)
+    append(xs, 4)
+    append(xs, 0.5)
+    total: num = 0
+    for v in xs:
+        total += v
+    test_eq_str(t, "list of num", str(total), "7.5")
+    test_eq_str(t, "mixed equality", str(a == 3), "true")
+    exit(test_finish(t))

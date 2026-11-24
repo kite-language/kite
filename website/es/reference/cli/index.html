@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menú">☰</button>
   <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Idioma"><a href="/reference/cli/" hreflang="en" lang="en">EN</a><a href="/fr/reference/cli/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/reference/cli/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/es/guide/records/">Registros, clases y enums</a></li>
 <li><a href="/es/guide/generics/">Genéricos</a></li>
 <li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/conditional/">Compilación condicional</a></li>
 <li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
 <li><a href="/es/guide/style/">Escribir Kite legible</a></li>
 <li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
@@ -193,11 +194,28 @@
 <td><code>--backend native</code></td>
 <td>generador x86-64 experimental, sin clang (subconjunto entero)</td>
 </tr>
+<tr>
+<td><code>--storage</code></td>
+<td>el ejecutable más pequeño: elimina toda función que el programa nunca llama (también dentro de las piezas que usa), <code>-Os</code>, una sección por función y el enlazador quita el resto, símbolos eliminados</td>
+</tr>
 </tbody>
 </table>
 <p><code>kite.toml</code> fija las mismas opciones: <code>[build] opt_level</code>, <code>target</code>, <code>runtime</code>, <code>heap_size</code>.</p>
+<h2 id="ejecutables-mas-pequenos-storage">Ejecutables más pequeños: <code>--storage</code></h2>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite build --release --storage
+</code></pre></div>
+<p><code>--storage</code> hace el ejecutable lo más pequeño posible. Kite parte de <code>main</code> y conserva solo las funciones que el programa puede alcanzar:
+se elimina toda función que nadie llama, <strong>incluidas las funciones sin usar de las piezas que importas</strong> (un programa que usa una sola
+función de <code>std.strings</code> no arrastra las demás). Después el código se compila para tamaño, cada función tiene su propia sección,
+y el enlazador quita lo que queda sin usar y elimina los símbolos. El comportamiento no cambia; solo cambia el tamaño.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>$ kite build --release --storage
+      Shrunk removed <span class="n">103</span> of <span class="n">143</span> functions the program never calls
+$ ls -l target/release/app     # unos <span class="n">14</span> KB en lugar de <span class="n">50</span> KB para un programa pequeño
+</code></pre></div>
+<p>Hazlo permanente con <code>[build] storage = true</code> en <code>kite.toml</code>. Las bibliotecas (<code>--lib</code>) y los objetos freestanding sin <code>main</code>
+ni <code>_start</code> se dejan enteros, porque cualquier función puede llamarse desde fuera.</p>
 <h2 id="salida-de-la-compilacion">Salida de la compilación</h2>
-<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">4.9</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.4</span>.<span class="n">9</span>)
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">5.1</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.5</span>.<span class="n">1</span>)
    Compiling hello v0.<span class="n">1.0</span> (/home/me/hello)
     Finished dev [unoptimized] target(s) <span class="k">in</span> <span class="n">0</span>.42s
 </code></pre></div>
@@ -226,7 +244,7 @@ IR de LLVM (<code>&lt;nombre&gt;.ll</code>) junto al binario y la huella de cach
 <footer class="pager"><a class="prev" href="/es/reference/std-pieces/"><small>Anterior</small>← Piezas estándar</a><a class="next" href="/es/reference/pieces-registry/"><small>Siguiente</small>Piezas y registro →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/10-cli.md">Editar esta página en GitHub</a></p>
 </main>
-<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#salida-de-la-compilacion">Salida de la compilación</a></li><li class="l2"><a href="#entorno">Entorno</a></li></ul></nav>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#ejecutables-mas-pequenos-storage">Ejecutables más pequeños: --storage</a></li><li class="l2"><a href="#salida-de-la-compilacion">Salida de la compilación</a></li><li class="l2"><a href="#entorno">Entorno</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
 <script src="/docs.js"></script>

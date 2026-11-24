@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/reference/cli/" hreflang="en" lang="en">EN</a><a href="/fr/reference/cli/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/cli/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/guide/records/">Records, classes and enums</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
 <li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
@@ -193,11 +194,28 @@
 <td><code>--backend native</code></td>
 <td>experimental x86-64 generator with no clang (integer subset)</td>
 </tr>
+<tr>
+<td><code>--storage</code></td>
+<td>smallest executable: drops every function the program never calls (also inside the pieces it uses), <code>-Os</code>, one section per function and the linker removes the rest, symbols stripped</td>
+</tr>
 </tbody>
 </table>
 <p><code>kite.toml</code> sets the same options: <code>[build] opt_level</code>, <code>target</code>, <code>runtime</code>, <code>heap_size</code>.</p>
+<h2 id="smaller-executables-storage">Smaller executables: <code>--storage</code></h2>
+<div class="codeblock"><span class="lang">sh</span><button class="copy" type="button">copy</button><pre class="code"><code>kite build --release --storage
+</code></pre></div>
+<p><code>--storage</code> makes the executable as small as it can be. Kite starts from <code>main</code> and keeps only the functions the program can reach:
+every function nobody calls is removed, <strong>including the unused functions of the pieces you import</strong> (a program that uses one
+function of <code>std.strings</code> does not carry the other ones). Then the code is compiled for size, each function gets its own section,
+and the linker removes whatever is left unused and strips the symbols. Behaviour does not change; only the size does.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>$ kite build --release --storage
+      Shrunk removed <span class="n">103</span> of <span class="n">143</span> functions the program never calls
+$ ls -l target/release/app     # about <span class="n">14</span> KB instead of <span class="n">50</span> KB <span class="k">for</span> a small program
+</code></pre></div>
+<p>Make it permanent with <code>[build] storage = true</code> in <code>kite.toml</code>. Libraries (<code>--lib</code>) and freestanding objects without a <code>main</code>
+or <code>_start</code> are left whole, because every function may be called from outside.</p>
 <h2 id="build-output">Build output</h2>
-<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">4.9</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.4</span>.<span class="n">9</span>)
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>   Compiling sha256 v0.<span class="n">5.1</span> (/home/me/kite/pieces/std/sha256/<span class="n">0.5</span>.<span class="n">1</span>)
    Compiling hello v0.<span class="n">1.0</span> (/home/me/hello)
     Finished dev [unoptimized] target(s) <span class="k">in</span> <span class="n">0</span>.42s
 </code></pre></div>
@@ -226,7 +244,7 @@ LLVM IR (<code>&lt;name&gt;.ll</code>) next to the binary and the cache fingerpr
 <footer class="pager"><a class="prev" href="/reference/std-pieces/"><small>Previous</small>← Standard pieces</a><a class="next" href="/reference/pieces-registry/"><small>Next</small>Pieces and the registry →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/10-cli.md">Edit this page on GitHub</a></p>
 </main>
-<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#build-output">Build output</a></li><li class="l2"><a href="#environment">Environment</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#kite-build">kite build</a></li><li class="l2"><a href="#smaller-executables-storage">Smaller executables: --storage</a></li><li class="l2"><a href="#build-output">Build output</a></li><li class="l2"><a href="#environment">Environment</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>

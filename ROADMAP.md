@@ -16,6 +16,8 @@ Versions are `0.x` until 1.0.0. The compiler is written in Kite and compiles its
 | 0.4.7 | nested collections: lists of lists, nested literals, struct fields of nested lists, `len` of list elements |
 | 0.4.8 | general `const` (local, read-only, E0124); reserved words usable as variable, parameter and field names |
 | 0.4.9 | generic records (`Box<T>`), `std.option` / `std.result` (`Option<T>`, `Result<T, E>`) |
+| 0.5.0 | `num` (int or float), templates with explicit type arguments (`first<int>(x)`), conditional compilation (`when windows:`) |
+| 0.5.1 | `--storage`: dead-code removal across pieces, size-optimised compile and link |
 
 ## Road to 1.0.0
 Each stage is ordered by how much it unlocks; version numbers are indicative. **1.0.0 is declared when every
@@ -77,3 +79,9 @@ compiler, and the syntax and the default pieces' API are frozen.**
   **Status (0.4.4)**: started. `kite build --backend native` has an x86-64 Linux generator and ELF writer for the integer subset.
   Next: lists, strings and structs (reuse the core runtime), floats (SSE), AArch64 and RISC-V encoders, Mach-O and PE writers,
   register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.
+  **Size options (`--storage`)**: since that back end owns the whole compilation, it gets the size options a general-purpose toolchain cannot offer.
+  Done in 0.5.1 for the current path (any back end): `kite build --storage` removes every function the program cannot reach, also inside the
+  pieces it uses (`compiler/src/shake.ki`), compiles with `-Os`, one section per function and datum, linker garbage collection and stripped symbols.
+  Planned for the native back end: no libc at all (own start-up code, `print` and number formatting written for the program's exact use),
+  merging of identical functions, string and constant deduplication and tail merging, shortest instruction encodings and short jumps,
+  inlining only where it shrinks, removal of unused struct fields and enum variants, `--storage=max` with a compressed self-extracting layout.

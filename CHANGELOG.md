@@ -2,6 +2,33 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
+## 0.5.1 -- `--storage`: the smallest executable
+- `kite build --storage` / `[build] storage = true`: removes every function the program can never reach from `main` / `_start` (including the unused functions
+  of the pieces it imports and of the prelude), compiles with `-Os -ffunction-sections -fdata-sections` and links with garbage collection and stripped
+  symbols (`--gc-sections -s` on Linux, `-dead_strip -x` on macOS, `/OPT:REF,ICF` on Windows). `Shrunk removed N of M functions` is printed. A small program
+  went from 50 912 to 14 480 bytes. `compiler/src/shake.ki`; libraries and objects without an entry point are left whole; the native back end gets the same pruned program.
+- `KITE_STORAGE=1` turns the removal on for any command (used by `build.sh test` to run the language and piece tests on a pruned program).
+
+## 0.5.0 -- the 0.5 line: generics, `num`, conditional compilation
+Everything below is new compared with 0.4.4 (the 0.4.5 to 0.4.9 steps are folded into this release).
+- **`num`**: a number that is an `int` or a `float`. `x: num = 3`, `x: num = 2.5`; an `int`/`float` converts to `num` where a `num` is expected (assignment,
+  arguments, returns, `append`); `+ - * / %`, comparisons and unary `-` accept `num` (int with int stays int, anything with a float is a float);
+  `x.as_int()`, `x.as_float()`, `x.is_float()`; `print`, `str`, f-strings. Implemented as a prelude record `num` plus `num__*` functions
+  (`stdlib/prelude/num.ki`) injected only into programs that mention the type; sema rewrites the operators into calls (E0126 for an unsupported operand).
+  The uniform call syntax now also applies to values of record types when no method of that name exists (`value.f()` is `f(value)`).
+- **Templates**: generic functions `make first<T>(xs: [T]) -> T` (inferred, specialised per type), generic records `type Box<T>:` with `Box<int>` in any
+  type position and as constructor `Box<int>()`, and **explicit type arguments** `first<int>(xs)`, `zero<int>()`, `convert<int, string>(a, b)` (E0127 for too many).
+  `std.option` (`Option<T>`) and `std.result` (`Result<T, E>`): 40 default pieces.
+- **Conditional compilation**: `when windows:` / `else:` blocks (items and statements; `windows linux macos unix bare x86_64 aarch64 riscv64`,
+  `os == "..."`, `arch == "..."`, `not and or`). The code for other targets is removed before parsing (not compiled, not type-checked, not in the binary).
+  The target is `--target` / `[build] target`, the host otherwise.
+- **Pieces**: `pub` before make/type/class/enum/const exports an item; a file with any `pub` makes its other items private to the piece (E0080).
+- **Language**: nested collections (`[[int]]`, struct fields of lists of lists, `len(g[0])` fixed); local and read-only `const` (E0124); `from use type class match case enum thread try
+  failed finally` usable as names (`to`, `in`, type names and `null` stay reserved); fields and parameters of those names work too.
+- **Windows CI fixes**: `timespec_get` declared and defined twice (declaration skipped, `i64` shim), CLI test checks `hello.exe`; a regression check compiles the Windows IR.
+- **Site**: English, French (`/fr/`) and Spanish (`/es/`); grouped menu, page outline, copy buttons, callouts; guide chapters Generics, Conditional compilation, cheat sheet, troubleshooting.
+- Fixed while testing: a stale arena header after generic instantiation could crash the compiler.
+
 ## 0.4.9 -- generic records, `Option<T>` and `Result<T, E>`
 - **Generic records**: `type Box<T>:` / `type Pair<A, B>:`; applied as `Box<int>` in any type position (`[Box<int>]`, `ptr<Box<int>>`, `Box<Box<int>>`)
   and as a constructor `Box<int>()`. The compiler makes one instance per type arguments (`Box__int`), also from inside generic functions

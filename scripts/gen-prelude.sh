@@ -1,5 +1,5 @@
 #!/bin/bash
-# Embeds stdlib/prelude/{core.ki,map.tpl} into compiler/src/prelude_data.ki so that kitec
+# Embeds stdlib/prelude/{core.ki,map.tpl,num.ki} into compiler/src/prelude_data.ki so that kitec
 # carries the prelude with it (Kite has no include_str!). Run again whenever the prelude changes.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,5 +20,6 @@ emit() { # emit <function name> <file>
   echo
   emit prelude_core "$ROOT/stdlib/prelude/core.ki"
   emit prelude_map_tpl "$ROOT/stdlib/prelude/map.tpl"
+  emit prelude_num "$ROOT/stdlib/prelude/num.ki"
 } > "$OUT"
 echo "wrote $OUT"

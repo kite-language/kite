@@ -2,7 +2,7 @@
 
 # Kite
 
-Readable like Python, fast like C, with a pinch of Rust-style safety. Current version: **0.4.9**.
+Readable like Python, fast like C, with a pinch of Rust-style safety. Current version: **0.5.1**.
 
 ```
 make main():

@@ -1,0 +1,200 @@
+// Conditional compilation: `when COND:` blocks (items or statements) are kept or removed before parsing,
+// depending on the target. `else:` after a `when` block is the other branch.
+//
+//   when windows:                       when linux or macos:
+//       make open() ...                     ...
+//   else:                               when os == "linux" and arch == "x86_64":
+//       make open() ...                     ...
+//
+// Names: windows linux macos unix bare (no OS) x86_64 aarch64 riscv64; `os == "..."`, `arch == "..."`; `not`, `and`, `or`, parentheses.
+use std.sys
+use lexer
+
+// The operating system of a target triple (the host when the triple is empty): windows, macos, linux or bare.
+make cfg_os_of(triple: string) -> string:
+    if len(triple) == 0:
+        if sys.is_windows():
+            return "windows"
+        u = trim(sys.capture("uname -s 2>/dev/null"))
+        if contains_str(u, "Darwin"):
+            return "macos"
+        return "linux"
+    if contains_str(triple, "windows"):
+        return "windows"
+    if contains_str(triple, "apple") or contains_str(triple, "darwin") or contains_str(triple, "macos"):
+        return "macos"
+    if contains_str(triple, "linux"):
+        return "linux"
+    return "bare"
+
+// The CPU architecture of a target triple (the host when empty): x86_64, aarch64, riscv64, ...
+make cfg_arch_of(triple: string) -> string:
+    t = triple
+    if len(t) == 0:
+        if sys.is_windows():
+            return "x86_64"
+        t = trim(sys.capture("uname -m 2>/dev/null"))
+    parts = split(t, "-")
+    a = parts[0]
+    if a == "arm64" or a == "aarch64":
+        return "aarch64"
+    if a == "amd64":
+        return "x86_64"
+    return a
+
+class CondParser:
+    toks: [Token]
+    pos: int
+    hi: int
+    os: string
+    arch: string
+
+    make kind(self) -> string:
+        if self.pos >= self.hi:
+            return ""
+        return self.toks[self.pos].kind
+
+    make word(self) -> string:
+        if self.pos >= self.hi:
+            return ""
+        return self.toks[self.pos].text
+
+    make or_expr(self) -> bool:
+        v = self.and_expr()
+        while self.kind() == "Or":
+            self.pos += 1
+            r = self.and_expr()
+            v = v or r
+        return v
+
+    make and_expr(self) -> bool:
+        v = self.not_expr()
+        while self.kind() == "And":
+            self.pos += 1
+            r = self.not_expr()
+            v = v and r
+        return v
+
+    make not_expr(self) -> bool:
+        if self.kind() == "Not":
+            self.pos += 1
+            return not self.not_expr()
+        if self.kind() == "LParen":
+            self.pos += 1
+            v = self.or_expr()
+            if self.kind() == "RParen":
+                self.pos += 1
+            return v
+        return self.atom()
+
+    make atom(self) -> bool:
+        name = self.word()
+        self.pos += 1
+        k = self.kind()
+        if k == "EqEq" or k == "NotEq":
+            self.pos += 1
+            val = self.word()
+            self.pos += 1
+            eq = false
+            if name == "os":
+                eq = self.os == val
+            orif name == "arch":
+                eq = self.arch == val
+            if k == "NotEq":
+                return not eq
+            return eq
+        if name == "unix":
+            return self.os == "linux" or self.os == "macos"
+        if name == "windows" or name == "linux" or name == "macos" or name == "bare":
+            return self.os == name
+        return self.arch == name
+
+make eval_cond(toks: [Token], lo: int, hi: int, os: string, arch: string) -> bool:
+    cp = CondParser()
+    cp.toks = toks
+    cp.pos = lo
+    cp.hi = hi
+    cp.os = os
+    cp.arch = arch
+    return cp.or_expr()
+
+make is_layout_kind(k: string) -> bool:
+    return k == "Newline" or k == "Indent" or k == "Dedent"
+
+// Index of the `:` that ends a `when` header starting at `i`, or -1 when this is not a header.
+make when_header_colon(toks: [Token], i: int, hi: int) -> int:
+    if toks[i].kind != "Identifier" or toks[i].text != "when":
+        return -1
+    if i > 0 and not is_layout_kind(toks[i - 1].kind):
+        return -1
+    if i + 1 >= hi:
+        return -1
+    nk = toks[i + 1].kind
+    if nk != "Identifier" and nk != "Not" and nk != "LParen":
+        return -1
+    j = i + 1
+    while j < hi:
+        k = toks[j].kind
+        if k == "Colon":
+            if j + 2 < hi and toks[j + 1].kind == "Newline" and toks[j + 2].kind == "Indent":
+                return j
+            return -1
+        if k == "Newline":
+            return -1
+        j += 1
+    return -1
+
+// Index just after the Dedent that closes the block whose Indent is at `ind`.
+make block_end(toks: [Token], ind: int, hi: int) -> int:
+    depth = 1
+    m = ind + 1
+    while m < hi and depth > 0:
+        k = toks[m].kind
+        if k == "Indent":
+            depth += 1
+        orif k == "Dedent":
+            depth -= 1
+        m += 1
+    return m
+
+make strip_range(toks: [Token], lo: int, hi: int, os: string, arch: string) -> [Token]:
+    out: [Token] = []
+    i = lo
+    while i < hi:
+        c = when_header_colon(toks, i, hi)
+        if c < 0:
+            append(out, toks[i])
+            i += 1
+        else:
+            keep = eval_cond(toks, i + 1, c, os, arch)
+            body_ind = c + 2
+            after = block_end(toks, body_ind, hi)
+            // an `else:` block right after
+            has_else = false
+            else_ind = 0
+            else_after = after
+            if after + 3 < hi and toks[after].kind == "Else" and toks[after + 1].kind == "Colon" and toks[after + 2].kind == "Newline" and toks[after + 3].kind == "Indent":
+                has_else = true
+                else_ind = after + 3
+                else_after = block_end(toks, else_ind, hi)
+            if keep:
+                for t in strip_range(toks, body_ind + 1, after - 1, os, arch):
+                    append(out, t)
+            orif has_else:
+                for t2 in strip_range(toks, else_ind + 1, else_after - 1, os, arch):
+                    append(out, t2)
+            i = else_after
+    return out
+
+// Removes the `when` blocks that do not apply to the target (`triple`, the host when empty).
+make strip_when(toks: [Token], triple: string) -> [Token]:
+    has_when = false
+    i = 0
+    while i < len(toks):
+        if toks[i].kind == "Identifier" and toks[i].text == "when":
+            has_when = true
+            break
+        i += 1
+    if not has_when:
+        return toks
+    return strip_range(toks, 0, len(toks), cfg_os_of(triple), cfg_arch_of(triple))

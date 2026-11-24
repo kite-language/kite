@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conditional compilation — Kite</title>
+<meta name="description" content="Some code only makes sense on one operating system. A when block keeps its code for the targets you name and removes it from the program for every other target: it is not compiled,">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/guide/conditional/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/conditional/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/conditional/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/conditional/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/conditional/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Skip to the content</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.5.1</span>
+  <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Language"><a class="on" href="/guide/conditional/" hreflang="en" lang="en">EN</a><a href="/fr/guide/conditional/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/conditional/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filter pages…" aria-label="Filter pages…">
+<details class="grp" open><summary>Getting started</summary><ul>
+<li><a href="/">Introduction</a></li>
+<li><a href="/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/guide/first-project/">Your first project</a></li>
+<li><a href="/guide/variables/">Variables and types</a></li>
+<li><a href="/guide/control-flow/">Control flow</a></li>
+<li><a href="/guide/functions/">Functions and constants</a></li>
+<li><a href="/guide/collections/">Collections</a></li>
+<li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a class="cur" aria-current="page" href="/guide/conditional/">Conditional compilation</a></li>
+<li><a href="/guide/memory/">Memory, pointers and threads</a></li>
+<li><a href="/guide/style/">Writing readable Kite</a></li>
+<li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
+<li><a href="/guide/troubleshooting/">Troubleshooting</a></li>
+</ul></details>
+<details class="grp" open><summary>Reference</summary><ul>
+<li><a href="/reference/language/">Language reference</a></li>
+<li><a href="/reference/builtins/">Built-in functions</a></li>
+<li><a href="/reference/std-pieces/">Standard pieces</a></li>
+<li><a href="/reference/cli/">The kite command</a></li>
+<li><a href="/reference/pieces-registry/">Pieces and the registry</a></li>
+<li><a href="/reference/targets/">Targets, OS and freestanding</a></li>
+<li><a href="/reference/c-interop/">Calling C</a></li>
+<li><a href="/reference/memory/">Memory model</a></li>
+<li><a href="/reference/editors/">Editors</a></li>
+</ul></details>
+<details class="grp" open><summary>Project</summary><ul>
+<li><a href="/project/roadmap/">Roadmap</a></li>
+<li><a href="/project/changelog/">Changelog</a></li>
+<li><a href="/project/architecture/">Architecture</a></li>
+<li><a href="/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Conditional compilation</div>
+<article>
+<h1 id="conditional-compilation">Conditional compilation</h1>
+<p>Some code only makes sense on one operating system. A <strong><code>when</code></strong> block keeps its code for the targets you name and
+<strong>removes it from the program</strong> for every other target: it is not compiled, not type-checked and not in the binary.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>when windows:
+    <span class="k">make</span> open_url(url: <span class="t">string</span>):
+        run(<span class="s">f&quot;start {url}&quot;</span>)
+<span class="k">else</span>:
+    <span class="k">make</span> open_url(url: <span class="t">string</span>):
+        run(<span class="s">f&quot;xdg-open {url}&quot;</span>)
+
+<span class="k">make</span> main():
+    open_url(<span class="s">&quot;https://kite-lang.pages.dev&quot;</span>)
+    when linux:
+        print(<span class="s">&quot;running on Linux&quot;</span>)
+</code></pre></div>
+<p><code>when</code> works on top-level items (functions, types, constants, <code>use</code> lines) and on statements inside functions. An optional
+<code>else:</code> block right after it holds the code for the other targets. Blocks can be nested.</p>
+<h2 id="conditions">Conditions</h2>
+<table>
+<thead>
+<tr>
+<th>condition</th>
+<th>true when the target is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>windows</code>, <code>linux</code>, <code>macos</code></td>
+<td>that operating system</td>
+</tr>
+<tr>
+<td><code>unix</code></td>
+<td>Linux or macOS</td>
+</tr>
+<tr>
+<td><code>bare</code></td>
+<td>freestanding (no OS), e.g. <code>x86_64-unknown-none</code></td>
+</tr>
+<tr>
+<td><code>x86_64</code>, <code>aarch64</code>, <code>riscv64</code></td>
+<td>that CPU architecture</td>
+</tr>
+<tr>
+<td><code>os == "linux"</code>, <code>arch == "aarch64"</code></td>
+<td>the same, written as a comparison (<code>!=</code> also works)</td>
+</tr>
+</tbody>
+</table>
+<p>Combine them with <code>not</code>, <code>and</code>, <code>or</code> and parentheses: <code>when unix and not macos:</code>, <code>when (linux or macos) and arch == "aarch64":</code>.</p>
+<p>The target is the one given to <code>kite build --target ...</code> (or <code>[build] target</code> in <code>kite.toml</code>); without one it is the machine you are on.</p>
+<blockquote class="callout note"><p><strong>Note:</strong> <code>when</code> is only a keyword at the start of a line followed by a condition and <code>:</code>, so a variable named <code>when</code> still works.</p>
+</blockquote>
+</article>
+<footer class="pager"><a class="prev" href="/guide/pieces/"><small>Previous</small>← Pieces (packages)</a><a class="next" href="/guide/memory/"><small>Next</small>Memory, pointers and threads →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/14-conditional.md">Edit this page on GitHub</a></p>
+</main>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#conditions">Conditions</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

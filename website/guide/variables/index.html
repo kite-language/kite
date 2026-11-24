@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/guide/variables/" hreflang="en" lang="en">EN</a><a href="/fr/guide/variables/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/variables/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/guide/records/">Records, classes and enums</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
 <li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
@@ -101,6 +102,11 @@ p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k
 <td></td>
 </tr>
 <tr>
+<td><code>num</code></td>
+<td><code>3</code>, <code>2.5</code></td>
+<td>an <code>int</code> or a <code>float</code>, see <a href="#num-an-int-or-a-float">num</a></td>
+</tr>
+<tr>
 <td><code>string</code></td>
 <td><code>"hi"</code>, <code>"line\n"</code></td>
 <td>bytes; <code>\n \t \r \0 \e \\ \" \x41</code> escapes</td>
@@ -131,6 +137,30 @@ p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k
 <p><code>+ - * / %</code> on numbers (<code>+</code> also joins strings), <code>== != &lt; &gt; &lt;= &gt;=</code>, <code>and or not</code>, bit operators <code>&amp; | ^ ~ &lt;&lt; &gt;&gt;</code>.
 Compound assignment: <code>x += 1</code>, <code>x -= 1</code>, ... and the readable <code>x.incr()</code> / <code>x.decr()</code> for <code>+1</code> / <code>-1</code>
 (also on fields and list items: <code>self.count.incr()</code>, <code>items[2].decr()</code>).</p>
+<h2 id="num-an-int-or-a-float">num: an int or a float</h2>
+<p><code>num</code> is a number that is either an <code>int</code> or a <code>float</code>. Use it when a value may be one or the other (a price, a measurement,
+the result of a calculation on mixed input). An <code>int</code> or a <code>float</code> is accepted wherever a <code>num</code> is expected.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> half(x: num) -&gt; num:
+    <span class="k">return</span> x / <span class="n">2</span>
+
+<span class="k">make</span> main():
+    a: num = <span class="n">3</span>                 <span class="c">// holds an int</span>
+    b: num = <span class="n">2.5</span>               <span class="c">// holds a float</span>
+    print(a + b)               <span class="c">// 5.5   (anything with a float is a float)</span>
+    print(a * <span class="n">2</span>)               <span class="c">// 6     (int with int stays an int)</span>
+    print(half(<span class="n">7</span>))             <span class="c">// 3     (integer division)</span>
+    print(half(<span class="n">7.0</span>))           <span class="c">// 3.5</span>
+    print(a &lt; b)               <span class="c">// false</span>
+    print(b.as_int())          <span class="c">// 2     (a float is truncated)</span>
+    print(a.as_float())        <span class="c">// 3.0</span>
+    print(a.is_float())        <span class="c">// false</span>
+</code></pre></div>
+<ul>
+<li>Arithmetic (<code>+ - * / %</code>), comparisons and <code>-x</code> work on <code>num</code>, mixing freely with <code>int</code> and <code>float</code>.</li>
+<li><code>print</code>, <code>str</code> and f-strings show a <code>num</code> naturally (<code>3</code>, <code>2.5</code>; a float with a whole value keeps its point: <code>3.0</code>).</li>
+<li><code>x.as_int()</code> and <code>x.as_float()</code> convert out; <code>x.is_float()</code> tells which one it holds. Lists, record fields and parameters can be <code>num</code> (<code>[num]</code>).</li>
+<li>A variable is a <code>num</code> when you declare it as one (<code>x: num = 0</code>); <code>x = 0</code> alone makes an <code>int</code>.</li>
+</ul>
 <h2 id="converting">Converting</h2>
 <table>
 <thead>
@@ -174,7 +204,7 @@ print(<span class="s">f&quot;{name} has {n} letters&quot;</span>)      <span cla
 <footer class="pager"><a class="prev" href="/guide/first-project/"><small>Previous</small>← Your first project</a><a class="next" href="/guide/control-flow/"><small>Next</small>Control flow →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/02-variables.md">Edit this page on GitHub</a></p>
 </main>
-<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#the-types">The types</a></li><li class="l2"><a href="#operators">Operators</a></li><li class="l2"><a href="#converting">Converting</a></li><li class="l2"><a href="#building-strings">Building strings</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#the-types">The types</a></li><li class="l2"><a href="#operators">Operators</a></li><li class="l2"><a href="#num-an-int-or-a-float">num: an int or a float</a></li><li class="l2"><a href="#converting">Converting</a></li><li class="l2"><a href="#building-strings">Building strings</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>

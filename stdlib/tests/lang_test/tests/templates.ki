@@ -1,0 +1,35 @@
+use std.test
+
+type Box<T>:
+    value: T
+
+make first<T>(xs: [T]) -> T:
+    return xs[0]
+
+make zero<T>() -> T:
+    z: T = 0
+    return z
+
+make make_box<T>(v: T) -> Box<T>:
+    b = Box<T>()
+    b.value = v
+    return b
+
+make convert<A, B>(a: A, b: B) -> B:
+    return b
+
+make main():
+    t = test_new("explicit type arguments")
+    test_eq_int(t, "first<int>", first<int>([7, 8]), 7)
+    test_eq_str(t, "first<string>", first<string>(["x", "y"]), "x")
+    test_eq_int(t, "no argument to infer from", zero<int>(), 0)
+    test_eq_str(t, "generic record result", make_box<string>("s").value, "s")
+    test_eq_str(t, "two type arguments", convert<int, string>(1, "two"), "two")
+    a = 3
+    b = 5
+    c = 4
+    ok = 0
+    if a < b and b > c:
+        ok = 1
+    test_eq_int(t, "comparisons are still comparisons", ok, 1)
+    exit(test_finish(t))

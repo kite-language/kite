@@ -123,3 +123,19 @@ f-strings, lists, records) and may use other constants. Constants are read-only:
 `from use type class match case enum thread try failed finally` are keywords only where their keyword meaning applies; elsewhere they are
 ordinary names: `from = 3`, `print(type)`, `make span(from: int, case: int)`, `for finally in xs`, f-strings `f"{try}"`.
 Still reserved: `to`, `in`, the type names (`int float string bool ptr`) and `null`.
+
+## The `num` type (0.5.0)
+
+`num` holds an `int` or a `float`. `x: num = 3` and `x: num = 2.5` are both valid; an `int` or `float` is converted where a `num` is expected
+(assignments, arguments, returns, `append`). `+ - * / %`, comparisons and unary `-` accept a `num` on either side; int with int gives an int,
+anything with a float gives a float. `x.as_int()`, `x.as_float()`, `x.is_float()`; `print`, `str` and f-strings show it. It is a record
+(`is_float`, `i`, `f`) with helper functions that the compiler adds only to programs that use the type.
+
+## Explicit type arguments (0.5.0)
+
+`first<int>(xs)`, `zero<int>()`, `convert<int, string>(a, b)` give the type parameters of a generic function explicitly. See [Generics](/guide/generics/).
+
+## Conditional compilation: `when` (0.5.0)
+
+`when windows:` ... `else:` ... keeps the block for that target and removes it for the others (items and statements); conditions are
+`windows linux macos unix bare x86_64 aarch64 riscv64`, `os == "..."`, `arch == "..."`, combined with `not and or`. See [Conditional compilation](/guide/conditional/).

@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/project/changelog/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/project/changelog/" hreflang="fr" lang="fr">FR</a><a href="/es/project/changelog/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
 <li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
 <li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
@@ -65,6 +66,33 @@
 <article>
 <h1 id="changelog-kite-repository">Changelog (kite repository)</h1>
 <p>Editor repositories have their own changelogs: see docs/versions.md.</p>
+<h2 id="051-storage-the-smallest-executable">0.5.1 -- <code>--storage</code>: the smallest executable</h2>
+<ul>
+<li><code>kite build --storage</code> / <code>[build] storage = true</code>: removes every function the program can never reach from <code>main</code> / <code>_start</code> (including the unused functions
+  of the pieces it imports and of the prelude), compiles with <code>-Os -ffunction-sections -fdata-sections</code> and links with garbage collection and stripped
+  symbols (<code>--gc-sections -s</code> on Linux, <code>-dead_strip -x</code> on macOS, <code>/OPT:REF,ICF</code> on Windows). <code>Shrunk removed N of M functions</code> is printed. A small program
+  went from 50 912 to 14 480 bytes. <code>compiler/src/shake.ki</code>; libraries and objects without an entry point are left whole; the native back end gets the same pruned program.</li>
+<li><code>KITE_STORAGE=1</code> turns the removal on for any command (used by <code>build.sh test</code> to run the language and piece tests on a pruned program).</li>
+</ul>
+<h2 id="050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, <code>num</code>, conditional compilation</h2>
+<p>Everything below is new compared with 0.4.4 (the 0.4.5 to 0.4.9 steps are folded into this release).
+- <strong><code>num</code></strong>: a number that is an <code>int</code> or a <code>float</code>. <code>x: num = 3</code>, <code>x: num = 2.5</code>; an <code>int</code>/<code>float</code> converts to <code>num</code> where a <code>num</code> is expected (assignment,
+  arguments, returns, <code>append</code>); <code>+ - * / %</code>, comparisons and unary <code>-</code> accept <code>num</code> (int with int stays int, anything with a float is a float);
+  <code>x.as_int()</code>, <code>x.as_float()</code>, <code>x.is_float()</code>; <code>print</code>, <code>str</code>, f-strings. Implemented as a prelude record <code>num</code> plus <code>num__*</code> functions
+  (<code>stdlib/prelude/num.ki</code>) injected only into programs that mention the type; sema rewrites the operators into calls (E0126 for an unsupported operand).
+  The uniform call syntax now also applies to values of record types when no method of that name exists (<code>value.f()</code> is <code>f(value)</code>).
+- <strong>Templates</strong>: generic functions <code>make first&lt;T&gt;(xs: [T]) -&gt; T</code> (inferred, specialised per type), generic records <code>type Box&lt;T&gt;:</code> with <code>Box&lt;int&gt;</code> in any
+  type position and as constructor <code>Box&lt;int&gt;()</code>, and <strong>explicit type arguments</strong> <code>first&lt;int&gt;(xs)</code>, <code>zero&lt;int&gt;()</code>, <code>convert&lt;int, string&gt;(a, b)</code> (E0127 for too many).
+  <code>std.option</code> (<code>Option&lt;T&gt;</code>) and <code>std.result</code> (<code>Result&lt;T, E&gt;</code>): 40 default pieces.
+- <strong>Conditional compilation</strong>: <code>when windows:</code> / <code>else:</code> blocks (items and statements; <code>windows linux macos unix bare x86_64 aarch64 riscv64</code>,
+  <code>os == "..."</code>, <code>arch == "..."</code>, <code>not and or</code>). The code for other targets is removed before parsing (not compiled, not type-checked, not in the binary).
+  The target is <code>--target</code> / <code>[build] target</code>, the host otherwise.
+- <strong>Pieces</strong>: <code>pub</code> before make/type/class/enum/const exports an item; a file with any <code>pub</code> makes its other items private to the piece (E0080).
+- <strong>Language</strong>: nested collections (<code>[[int]]</code>, struct fields of lists of lists, <code>len(g[0])</code> fixed); local and read-only <code>const</code> (E0124); <code>from use type class match case enum thread try
+  failed finally</code> usable as names (<code>to</code>, <code>in</code>, type names and <code>null</code> stay reserved); fields and parameters of those names work too.
+- <strong>Windows CI fixes</strong>: <code>timespec_get</code> declared and defined twice (declaration skipped, <code>i64</code> shim), CLI test checks <code>hello.exe</code>; a regression check compiles the Windows IR.
+- <strong>Site</strong>: English, French (<code>/fr/</code>) and Spanish (<code>/es/</code>); grouped menu, page outline, copy buttons, callouts; guide chapters Generics, Conditional compilation, cheat sheet, troubleshooting.
+- Fixed while testing: a stale arena header after generic instantiation could crash the compiler.</p>
 <h2 id="049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code></h2>
 <ul>
 <li><strong>Generic records</strong>: <code>type Box&lt;T&gt;:</code> / <code>type Pair&lt;A, B&gt;:</code>; applied as <code>Box&lt;int&gt;</code> in any type position (<code>[Box&lt;int&gt;]</code>, <code>ptr&lt;Box&lt;int&gt;&gt;</code>, <code>Box&lt;Box&lt;int&gt;&gt;</code>)
@@ -249,7 +277,7 @@
 <footer class="pager"><a class="prev" href="/fr/project/roadmap/"><small>Précédent</small>← Feuille de route</a><a class="next" href="/fr/project/architecture/"><small>Suivant</small>Architecture →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/CHANGELOG.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#051-storage-the-smallest-executable">0.5.1 -- --storage: the smallest executable</a></li><li class="l2"><a href="#050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, num, conditional compilation</a></li><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

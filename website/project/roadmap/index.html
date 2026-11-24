@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/project/roadmap/" hreflang="en" lang="en">EN</a><a href="/fr/project/roadmap/" hreflang="fr" lang="fr">FR</a><a href="/es/project/roadmap/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/guide/records/">Records, classes and enums</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
+<li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
 <li><a href="/guide/style/">Writing readable Kite</a></li>
 <li><a href="/guide/cheatsheet/">Cheat sheet</a></li>
@@ -115,6 +116,14 @@
 <td>0.4.9</td>
 <td>generic records (<code>Box&lt;T&gt;</code>), <code>std.option</code> / <code>std.result</code> (<code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>)</td>
 </tr>
+<tr>
+<td>0.5.0</td>
+<td><code>num</code> (int or float), templates with explicit type arguments (<code>first&lt;int&gt;(x)</code>), conditional compilation (<code>when windows:</code>)</td>
+</tr>
+<tr>
+<td>0.5.1</td>
+<td><code>--storage</code>: dead-code removal across pieces, size-optimised compile and link</td>
+</tr>
 </tbody>
 </table>
 <h2 id="road-to-100">Road to 1.0.0</h2>
@@ -183,7 +192,13 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
   architectures (x86-64, AArch64, RISC-V, ...), so a Kite toolchain needs neither clang nor LLVM to produce a binary.
   <strong>Status (0.4.4)</strong>: started. <code>kite build --backend native</code> has an x86-64 Linux generator and ELF writer for the integer subset.
   Next: lists, strings and structs (reuse the core runtime), floats (SSE), AArch64 and RISC-V encoders, Mach-O and PE writers,
-  register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.</li>
+  register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.
+  <strong>Size options (<code>--storage</code>)</strong>: since that back end owns the whole compilation, it gets the size options a general-purpose toolchain cannot offer.
+  Done in 0.5.1 for the current path (any back end): <code>kite build --storage</code> removes every function the program cannot reach, also inside the
+  pieces it uses (<code>compiler/src/shake.ki</code>), compiles with <code>-Os</code>, one section per function and datum, linker garbage collection and stripped symbols.
+  Planned for the native back end: no libc at all (own start-up code, <code>print</code> and number formatting written for the program's exact use),
+  merging of identical functions, string and constant deduplication and tail merging, shortest instruction encodings and short jumps,
+  inlining only where it shrinks, removal of unused struct fields and enum variants, <code>--storage=max</code> with a compressed self-extracting layout.</li>
 </ul>
 </article>
 <footer class="pager"><a class="prev" href="/reference/editors/"><small>Previous</small>← Editors</a><a class="next" href="/project/changelog/"><small>Next</small>Changelog →</a></footer>

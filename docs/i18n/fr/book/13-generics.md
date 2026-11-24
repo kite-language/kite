@@ -74,3 +74,26 @@ make main():
 ```
 
 > **Remarque :** `Option` et `Result` sont de simples records génériques : vous pouvez lire leurs champs (`o.has`, `o.value`, `r.is_ok`).
+
+## Arguments de type explicites (templates)
+
+Normalement les paramètres de type sont déduits. Vous pouvez aussi les donner vous-même, entre chevrons avant les arguments, comme avec les templates
+C++. C'est la façon d'appeler une fonction générique dont le type ne se déduit pas de ses arguments :
+
+```kite
+make zero<T>() -> T:
+    z: T = 0
+    return z
+
+make convert<A, B>(a: A, b: B) -> B:
+    return b
+
+make main():
+    print(zero<int>())                    // rien pour déduire T : on le dit
+    print(first<string>(["x", "y"]))      // comme first(["x", "y"])
+    print(convert<int, string>(1, "two"))
+```
+
+Les arguments de type s'écrivent avec des noms de types commençant par une majuscule (`Point`, `Box<int>`) ou les types intégrés
+(`int`, `float`, `bool`, `string`, `num`, `[int]`, `ptr<int>`), donc `a < b > (c)` reste une comparaison.
+Donner plus d'arguments de type que la fonction n'en a est l'erreur `E0127`.

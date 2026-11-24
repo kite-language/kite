@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/guide/variables/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/variables/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/variables/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
 <li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
 <li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
@@ -101,6 +102,11 @@ p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k
 <td></td>
 </tr>
 <tr>
+<td><code>num</code></td>
+<td><code>3</code>, <code>2.5</code></td>
+<td>un <code>int</code> ou un <code>float</code>, voir <a href="#num-un-int-ou-un-float">num</a></td>
+</tr>
+<tr>
 <td><code>string</code></td>
 <td><code>"hi"</code>, <code>"line\n"</code></td>
 <td>octets ; échappements <code>\n \t \r \0 \e \\ \" \x41</code></td>
@@ -131,6 +137,30 @@ p: <span class="t">ptr</span>&lt;<span class="t">int</span>&gt; = <span class="k
 <p><code>+ - * / %</code> sur les nombres (<code>+</code> concatène aussi les chaînes), <code>== != &lt; &gt; &lt;= &gt;=</code>, <code>and or not</code>, opérateurs binaires <code>&amp; | ^ ~ &lt;&lt; &gt;&gt;</code>.
 Affectation composée : <code>x += 1</code>, <code>x -= 1</code>, ... et le lisible <code>x.incr()</code> / <code>x.decr()</code> pour <code>+1</code> / <code>-1</code>
 (aussi sur les champs et les éléments de liste : <code>self.count.incr()</code>, <code>items[2].decr()</code>).</p>
+<h2 id="num-un-int-ou-un-float">num : un int ou un float</h2>
+<p><code>num</code> est un nombre qui est soit un <code>int</code>, soit un <code>float</code>. Utilisez-le quand une valeur peut être l'un ou l'autre (un prix, une mesure,
+le résultat d'un calcul sur des entrées mixtes). Un <code>int</code> ou un <code>float</code> est accepté partout où un <code>num</code> est attendu.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> half(x: num) -&gt; num:
+    <span class="k">return</span> x / <span class="n">2</span>
+
+<span class="k">make</span> main():
+    a: num = <span class="n">3</span>                 <span class="c">// contient un int</span>
+    b: num = <span class="n">2.5</span>               <span class="c">// contient un float</span>
+    print(a + b)               <span class="c">// 5.5   (tout ce qui contient un float est un float)</span>
+    print(a * <span class="n">2</span>)               <span class="c">// 6     (int avec int reste un int)</span>
+    print(half(<span class="n">7</span>))             <span class="c">// 3     (division entière)</span>
+    print(half(<span class="n">7.0</span>))           <span class="c">// 3.5</span>
+    print(a &lt; b)               <span class="c">// false</span>
+    print(b.as_int())          <span class="c">// 2     (un float est tronqué)</span>
+    print(a.as_float())        <span class="c">// 3.0</span>
+    print(a.is_float())        <span class="c">// false</span>
+</code></pre></div>
+<ul>
+<li>L'arithmétique (<code>+ - * / %</code>), les comparaisons et <code>-x</code> fonctionnent sur <code>num</code>, en se mélangeant librement avec <code>int</code> et <code>float</code>.</li>
+<li><code>print</code>, <code>str</code> et les f-strings affichent naturellement un <code>num</code> (<code>3</code>, <code>2.5</code> ; un float de valeur entière garde son point : <code>3.0</code>).</li>
+<li><code>x.as_int()</code> et <code>x.as_float()</code> convertissent vers l'extérieur ; <code>x.is_float()</code> indique lequel il contient. Les listes, champs de records et paramètres peuvent être <code>num</code> (<code>[num]</code>).</li>
+<li>Une variable est un <code>num</code> quand vous la déclarez comme telle (<code>x: num = 0</code>) ; <code>x = 0</code> seul fait un <code>int</code>.</li>
+</ul>
 <h2 id="convertir">Convertir</h2>
 <table>
 <thead>
@@ -174,7 +204,7 @@ print(<span class="s">f&quot;{name} has {n} letters&quot;</span>)      <span cla
 <footer class="pager"><a class="prev" href="/fr/guide/first-project/"><small>Précédent</small>← Votre premier projet</a><a class="next" href="/fr/guide/control-flow/"><small>Suivant</small>Structures de contrôle →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/02-variables.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#les-types">Les types</a></li><li class="l2"><a href="#operateurs">Opérateurs</a></li><li class="l2"><a href="#convertir">Convertir</a></li><li class="l2"><a href="#construire-des-chaines">Construire des chaînes</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#les-types">Les types</a></li><li class="l2"><a href="#operateurs">Opérateurs</a></li><li class="l2"><a href="#num-un-int-ou-un-float">num : un int ou un float</a></li><li class="l2"><a href="#convertir">Convertir</a></li><li class="l2"><a href="#construire-des-chaines">Construire des chaînes</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

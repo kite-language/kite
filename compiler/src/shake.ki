@@ -1,0 +1,64 @@
+// Dead-code removal for `--storage` builds: every function the program can never reach from its entry point is dropped,
+// including the unused functions of the pieces it imports (and of the prelude), before the program is lowered.
+// What counts as reachable: `main` / `_start`, every function they call (also through a class's virtual dispatchers),
+// every function named in an expression (`spawn(worker, 1)`), and every `extern` declaration.
+
+// The number of functions that were removed; the program is left alone (0) when it has no entry point.
+make shake_program(ast: Ast, root: int) -> int:
+    fl = ast.nodes[root].kids[3]
+    fns = ast.nodes[fl].kids
+    idx = StrMap_int()
+    i = 0
+    while i < len(fns):
+        idx.set(ast.nodes[fns[i]].text, i + 1)
+        i += 1
+    keep: [bool] = []
+    i = 0
+    while i < len(fns):
+        append(keep, false)
+        i += 1
+    work: [int] = []
+    roots = 0
+    for entry in ["main", "_start"]:
+        if idx.has(entry):
+            p = idx.get(entry) - 1
+            keep[p] = true
+            append(work, p)
+            roots += 1
+    if roots == 0:
+        return 0
+    // extern declarations are only declarations: keep them
+    i = 0
+    while i < len(fns):
+        if contains_str(ast.nodes[ast.nodes[fns[i]].kids[2]].text, "extern") and not keep[i]:
+            keep[i] = true
+        i += 1
+    while len(work) > 0:
+        cur = pop(work)
+        stack: [int] = [fns[cur]]
+        while len(stack) > 0:
+            nd = pop(stack)
+            if nd < 0:
+                continue
+            k = ast.nodes[nd].kind
+            if k == "Call" or k == "Ident":
+                nm = ast.nodes[nd].text
+                if idx.has(nm):
+                    p2 = idx.get(nm) - 1
+                    if not keep[p2]:
+                        keep[p2] = true
+                        append(work, p2)
+            kl = ast.nodes[nd].kids
+            for c in kl:
+                append(stack, c)
+    live: [int] = []
+    removed = 0
+    i = 0
+    while i < len(fns):
+        if keep[i]:
+            append(live, fns[i])
+        else:
+            removed += 1
+        i += 1
+    ast.nodes[fl].kids = live
+    return removed

@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/reference/language/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/language/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/language/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
 <li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
 <li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
@@ -181,11 +182,21 @@ f-strings, lists, records) and may use other constants. Constants are read-only:
 <p><code>from use type class match case enum thread try failed finally</code> are keywords only where their keyword meaning applies; elsewhere they are
 ordinary names: <code>from = 3</code>, <code>print(type)</code>, <code>make span(from: int, case: int)</code>, <code>for finally in xs</code>, f-strings <code>f"{try}"</code>.
 Still reserved: <code>to</code>, <code>in</code>, the type names (<code>int float string bool ptr</code>) and <code>null</code>.</p>
+<h2 id="the-num-type-050">The <code>num</code> type (0.5.0)</h2>
+<p><code>num</code> holds an <code>int</code> or a <code>float</code>. <code>x: num = 3</code> and <code>x: num = 2.5</code> are both valid; an <code>int</code> or <code>float</code> is converted where a <code>num</code> is expected
+(assignments, arguments, returns, <code>append</code>). <code>+ - * / %</code>, comparisons and unary <code>-</code> accept a <code>num</code> on either side; int with int gives an int,
+anything with a float gives a float. <code>x.as_int()</code>, <code>x.as_float()</code>, <code>x.is_float()</code>; <code>print</code>, <code>str</code> and f-strings show it. It is a record
+(<code>is_float</code>, <code>i</code>, <code>f</code>) with helper functions that the compiler adds only to programs that use the type.</p>
+<h2 id="explicit-type-arguments-050">Explicit type arguments (0.5.0)</h2>
+<p><code>first&lt;int&gt;(xs)</code>, <code>zero&lt;int&gt;()</code>, <code>convert&lt;int, string&gt;(a, b)</code> give the type parameters of a generic function explicitly. See <a href="/fr/guide/generics/">Generics</a>.</p>
+<h2 id="conditional-compilation-when-050">Conditional compilation: <code>when</code> (0.5.0)</h2>
+<p><code>when windows:</code> ... <code>else:</code> ... keeps the block for that target and removes it for the others (items and statements); conditions are
+<code>windows linux macos unix bare x86_64 aarch64 riscv64</code>, <code>os == "..."</code>, <code>arch == "..."</code>, combined with <code>not and or</code>. See <a href="/fr/guide/conditional/">Conditional compilation</a>.</p>
 </article>
 <footer class="pager"><a class="prev" href="/fr/guide/troubleshooting/"><small>Précédent</small>← Dépannage</a><a class="next" href="/fr/reference/builtins/"><small>Suivant</small>Fonctions intégrées →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/language.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#basics">Basics</a></li><li class="l2"><a href="#strings">Strings</a></li><li class="l2"><a href="#functions">Functions</a></li><li class="l2"><a href="#collections">Collections</a></li><li class="l2"><a href="#classes">Classes</a></li><li class="l2"><a href="#data-enums-and-match">Data enums and match</a></li><li class="l2"><a href="#pointers-and-null">Pointers and null</a></li><li class="l2"><a href="#not-in-02">Not in 0.2</a></li><li class="l2"><a href="#visibility-pub">Visibility (pub)</a></li><li class="l2"><a href="#generic-functions-046">Generic functions (0.4.6)</a></li><li class="l2"><a href="#constants-048">Constants (0.4.8)</a></li><li class="l2"><a href="#words-usable-as-names-048">Words usable as names (0.4.8)</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#basics">Basics</a></li><li class="l2"><a href="#strings">Strings</a></li><li class="l2"><a href="#functions">Functions</a></li><li class="l2"><a href="#collections">Collections</a></li><li class="l2"><a href="#classes">Classes</a></li><li class="l2"><a href="#data-enums-and-match">Data enums and match</a></li><li class="l2"><a href="#pointers-and-null">Pointers and null</a></li><li class="l2"><a href="#not-in-02">Not in 0.2</a></li><li class="l2"><a href="#visibility-pub">Visibility (pub)</a></li><li class="l2"><a href="#generic-functions-046">Generic functions (0.4.6)</a></li><li class="l2"><a href="#constants-048">Constants (0.4.8)</a></li><li class="l2"><a href="#words-usable-as-names-048">Words usable as names (0.4.8)</a></li><li class="l2"><a href="#the-num-type-050">The num type (0.5.0)</a></li><li class="l2"><a href="#explicit-type-arguments-050">Explicit type arguments (0.5.0)</a></li><li class="l2"><a href="#conditional-compilation-when-050">Conditional compilation: when (0.5.0)</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

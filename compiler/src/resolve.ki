@@ -7,6 +7,7 @@ use ast
 use lexer
 use parser
 use prelude
+use cfgwhen
 use sysx
 
 make retag_diags(d: Diags, file: string, source: string):
@@ -79,6 +80,7 @@ class Loader:
     org_idx: StrMap_int
     org_names: [string]
     org_files: [string]
+    triple: string
     org_srcs: [string]
     org_roots: [string]
     org_priv: [bool]
@@ -317,6 +319,7 @@ class Loader:
             return false
         pd = Diags()
         fa = Ast()
+        toks = strip_when(toks, self.triple)
         root = parse_tokens(toks, fa, pd)
         retag_diags(pd, display, source)
         had_parse = pd.had_errors()
@@ -404,8 +407,9 @@ class Merged:
     org_srcs: [string]
     files_loaded: [string]
 
-make load_and_merge(entry_path: string, src_root: string, registry: string, piece_names: [string], piece_roots: [string]) -> Merged:
+make load_and_merge(entry_path: string, src_root: string, registry: string, piece_names: [string], piece_roots: [string], triple: string) -> Merged:
     lo = Loader()
+    lo.triple = triple
     lo.ast = Ast()
     lo.src_root = src_root
     lo.visited = StrMap_int()

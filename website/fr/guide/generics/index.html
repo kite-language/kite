@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.4.9</span>
+  <span class="ver">v0.5.1</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/guide/generics/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/generics/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/generics/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -37,6 +37,7 @@
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
 <li><a class="cur" aria-current="page" href="/fr/guide/generics/">Génériques</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
 <li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
 <li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
@@ -126,11 +127,29 @@ Les records génériques sont de simples records <code>type</code> (pas encore d
 </code></pre></div>
 <blockquote class="callout note"><p><strong>Remarque :</strong> <code>Option</code> et <code>Result</code> sont de simples records génériques : vous pouvez lire leurs champs (<code>o.has</code>, <code>o.value</code>, <code>r.is_ok</code>).</p>
 </blockquote>
+<h2 id="arguments-de-type-explicites-templates">Arguments de type explicites (templates)</h2>
+<p>Normalement les paramètres de type sont déduits. Vous pouvez aussi les donner vous-même, entre chevrons avant les arguments, comme avec les templates
+C++. C'est la façon d'appeler une fonction générique dont le type ne se déduit pas de ses arguments :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> zero&lt;T&gt;() -&gt; T:
+    z: T = <span class="n">0</span>
+    <span class="k">return</span> z
+
+<span class="k">make</span> convert&lt;A, B&gt;(a: A, b: B) -&gt; B:
+    <span class="k">return</span> b
+
+<span class="k">make</span> main():
+    print(zero&lt;<span class="t">int</span>&gt;())                    <span class="c">// rien pour déduire T : on le dit</span>
+    print(first&lt;<span class="t">string</span>&gt;([<span class="s">&quot;x&quot;</span>, <span class="s">&quot;y&quot;</span>]))      <span class="c">// comme first([&quot;x&quot;, &quot;y&quot;])</span>
+    print(convert&lt;<span class="t">int</span>, <span class="t">string</span>&gt;(<span class="n">1</span>, <span class="s">&quot;two&quot;</span>))
+</code></pre></div>
+<p>Les arguments de type s'écrivent avec des noms de types commençant par une majuscule (<code>Point</code>, <code>Box&lt;int&gt;</code>) ou les types intégrés
+(<code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>, <code>num</code>, <code>[int]</code>, <code>ptr&lt;int&gt;</code>), donc <code>a &lt; b &gt; (c)</code> reste une comparaison.
+Donner plus d'arguments de type que la fonction n'en a est l'erreur <code>E0127</code>.</p>
 </article>
 <footer class="pager"><a class="prev" href="/fr/guide/records/"><small>Précédent</small>← Records, classes et enums</a><a class="next" href="/fr/guide/pieces/"><small>Suivant</small>Pièces (paquets) →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/13-generics.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#fonctions-generiques">Fonctions génériques</a></li><li class="l2"><a href="#records-generiques">Records génériques</a></li><li class="l2"><a href="#option-et-result">Option et Result</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#fonctions-generiques">Fonctions génériques</a></li><li class="l2"><a href="#records-generiques">Records génériques</a></li><li class="l2"><a href="#option-et-result">Option et Result</a></li><li class="l2"><a href="#arguments-de-type-explicites-templates">Arguments de type explicites (templates)</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

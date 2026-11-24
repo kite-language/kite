@@ -38,13 +38,34 @@ kite <comando> [opciones]
 | `--runtime core` | añade el runtime integrado sin libc (asignador «bump», funciones de memoria y cadenas) |
 | `--heap-size N` | heap de ese runtime en bytes (por defecto 1048576) |
 | `--backend native` | generador x86-64 experimental, sin clang (subconjunto entero) |
+| `--storage` | el ejecutable más pequeño: elimina toda función que el programa nunca llama (también dentro de las piezas que usa), `-Os`, una sección por función y el enlazador quita el resto, símbolos eliminados |
 
 `kite.toml` fija las mismas opciones: `[build] opt_level`, `target`, `runtime`, `heap_size`.
+
+## Ejecutables más pequeños: `--storage`
+
+```sh
+kite build --release --storage
+```
+
+`--storage` hace el ejecutable lo más pequeño posible. Kite parte de `main` y conserva solo las funciones que el programa puede alcanzar:
+se elimina toda función que nadie llama, **incluidas las funciones sin usar de las piezas que importas** (un programa que usa una sola
+función de `std.strings` no arrastra las demás). Después el código se compila para tamaño, cada función tiene su propia sección,
+y el enlazador quita lo que queda sin usar y elimina los símbolos. El comportamiento no cambia; solo cambia el tamaño.
+
+```
+$ kite build --release --storage
+      Shrunk removed 103 of 143 functions the program never calls
+$ ls -l target/release/app     # unos 14 KB en lugar de 50 KB para un programa pequeño
+```
+
+Hazlo permanente con `[build] storage = true` en `kite.toml`. Las bibliotecas (`--lib`) y los objetos freestanding sin `main`
+ni `_start` se dejan enteros, porque cualquier función puede llamarse desde fuera.
 
 ## Salida de la compilación
 
 ```
-   Compiling sha256 v0.4.9 (/home/me/kite/pieces/std/sha256/0.4.9)
+   Compiling sha256 v0.5.1 (/home/me/kite/pieces/std/sha256/0.5.1)
    Compiling hello v0.1.0 (/home/me/hello)
     Finished dev [unoptimized] target(s) in 0.42s
 ```

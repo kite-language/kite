@@ -1,0 +1,106 @@
+// Kite prelude: the `num` type, a number that is either an int or a float.
+// Loaded only into programs that mention the type `num`. The compiler turns operators on `num` values into calls of the
+// `num__*` functions below, and converts an `int` or a `float` to `num` where a `num` is expected.
+type num:
+    is_float: bool
+    i: int
+    f: float
+
+make num__from_int(x: int) -> num:
+    n = num()
+    n.i = x
+    return n
+
+make num__from_float(x: float) -> num:
+    n = num()
+    n.is_float = true
+    n.f = x
+    return n
+
+// The value as a float (an int is converted).
+make as_float(a: num) -> float:
+    if a.is_float:
+        return a.f
+    return float_of(a.i)
+
+// The value as an int (a float is truncated toward zero).
+make as_int(a: num) -> int:
+    if a.is_float:
+        return int_of(a.f)
+    return a.i
+
+// True when the value currently holds a float.
+make is_float(a: num) -> bool:
+    return a.is_float
+
+make num__add(a: num, b: num) -> num:
+    if a.is_float or b.is_float:
+        return num__from_float(as_float(a) + as_float(b))
+    return num__from_int(a.i + b.i)
+
+make num__sub(a: num, b: num) -> num:
+    if a.is_float or b.is_float:
+        return num__from_float(as_float(a) - as_float(b))
+    return num__from_int(a.i - b.i)
+
+make num__mul(a: num, b: num) -> num:
+    if a.is_float or b.is_float:
+        return num__from_float(as_float(a) * as_float(b))
+    return num__from_int(a.i * b.i)
+
+// int / int stays an integer division, anything with a float is a float division.
+make num__div(a: num, b: num) -> num:
+    if a.is_float or b.is_float:
+        return num__from_float(as_float(a) / as_float(b))
+    return num__from_int(a.i / b.i)
+
+// Remainder; with floats the sign follows the dividend, like C's fmod.
+make num__mod(a: num, b: num) -> num:
+    if a.is_float or b.is_float:
+        x = as_float(a)
+        y = as_float(b)
+        return num__from_float(x - y * float_of(int_of(x / y)))
+    return num__from_int(a.i % b.i)
+
+make num__neg(a: num) -> num:
+    if a.is_float:
+        return num__from_float(0.0 - a.f)
+    return num__from_int(0 - a.i)
+
+make num__lt(a: num, b: num) -> bool:
+    if a.is_float or b.is_float:
+        return as_float(a) < as_float(b)
+    return a.i < b.i
+
+make num__gt(a: num, b: num) -> bool:
+    if a.is_float or b.is_float:
+        return as_float(a) > as_float(b)
+    return a.i > b.i
+
+make num__le(a: num, b: num) -> bool:
+    if a.is_float or b.is_float:
+        return as_float(a) <= as_float(b)
+    return a.i <= b.i
+
+make num__ge(a: num, b: num) -> bool:
+    if a.is_float or b.is_float:
+        return as_float(a) >= as_float(b)
+    return a.i >= b.i
+
+// 1 and 1.0 are equal.
+make num__eq(a: num, b: num) -> bool:
+    if a.is_float or b.is_float:
+        return as_float(a) == as_float(b)
+    return a.i == b.i
+
+make num__ne(a: num, b: num) -> bool:
+    return not num__eq(a, b)
+
+// "7" for an int, "2.5" or "3.0" for a float.
+make num__str(a: num) -> string:
+    if not a.is_float:
+        return str(a.i)
+    s = str(a.f)
+    if find(s, ".") < 0 and find(s, "e") < 0 and find(s, "n") < 0 and find(s, "i") < 0:
+        return s + ".0"
+    return s
