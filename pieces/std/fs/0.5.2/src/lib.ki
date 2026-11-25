@@ -1,0 +1,83 @@
+// std.fs -- files and directories (built on std.sys and the shell).
+
+use std.sys
+
+make fs_exists(path: string) -> bool:
+    return sys_path_exists(path)
+
+make fs_read(path: string) -> string:
+    return read_file(path)
+
+make fs_write(path: string, text: string) -> bool:
+    return write_file(path, text)
+
+make fs_append(path: string, text: string) -> bool:
+    return write_file(path, read_file(path) + text)
+
+make fs_copy(src: string, dst: string) -> bool:
+    return sys_sh("cp -R " + sys_quote(src) + " " + sys_quote(dst)) == 0
+
+make fs_rename(src: string, dst: string) -> bool:
+    return sys_sh("mv " + sys_quote(src) + " " + sys_quote(dst)) == 0
+
+// Entry names of a directory (including hidden ones, sorted).
+make fs_temp_dir(prefix: string) -> string:
+    return trim(sys_capture("mktemp -d -t " + sys_quote(prefix + ".XXXXXX")))
+
+// Directories answer `access("<dir>/.")`; files do not. No shell involved (works on Windows too).
+// A trailing slash only names a directory on every OS (Windows folds `file/.` into `file`, so that spelling cannot be used).
+make fs_is_dir(path: string) -> bool:
+    return sys_path_exists(path + "/")
+
+make fs_is_file(path: string) -> bool:
+    return sys_path_exists(path) and not fs_is_dir(path)
+
+// Creates `path` and its parents with the C library (no shell).
+make fs_mkdir_all(path: string) -> bool:
+    p = replace_all(path, "\\", "/")
+    cur = ""
+    parts = split(p, "/")
+    i = 0
+    while i < len(parts):
+        seg = parts[i]
+        if i == 0:
+            cur = seg
+        else:
+            cur = cur + "/" + seg
+        is_drive = i == 0 and ends_with(seg, ":")
+        if len(seg) > 0 and not is_drive:
+            if not fs_is_dir(cur):
+                mkdir(cur, 511)
+        i += 1
+    return fs_is_dir(p)
+
+make fs_cwd() -> string:
+    buf = alloc_n(int, 512)
+    r = getcwd(buf, 4096)
+    out = ""
+    if r != null:
+        out = strdup(buf)
+    free(buf)
+    return replace_all(out, "\\", "/")
+
+make fs_remove(path: string) -> bool:
+    if sys_is_windows():
+        return sys_sh("del /f /q " + sys_quote(replace_all(path, "/", "\\"))) == 0
+    return sys_sh("rm -f " + sys_quote(path)) == 0
+
+make fs_remove_all(path: string) -> bool:
+    if sys_is_windows():
+        return sys_sh("rmdir /s /q " + sys_quote(replace_all(path, "/", "\\"))) == 0
+    return sys_sh("rm -rf " + sys_quote(path)) == 0
+
+// Entry names of a directory (including hidden ones).
+make fs_list(dir: string) -> [string]:
+    out: [string] = []
+    cmd = "ls -1A " + sys_quote(dir)
+    if sys_is_windows():
+        cmd = "dir /b " + sys_quote(replace_all(dir, "/", "\\"))
+    for line in split(sys_capture(cmd), "\n"):
+        t = trim(line)
+        if len(t) > 0:
+            append(out, t)
+    return out

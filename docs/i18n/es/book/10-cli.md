@@ -65,7 +65,7 @@ ni `_start` se dejan enteros, porque cualquier función puede llamarse desde fue
 ## Salida de la compilación
 
 ```
-   Compiling sha256 v0.5.1 (/home/me/kite/pieces/std/sha256/0.5.1)
+   Compiling sha256 v0.5.2 (/home/me/kite/pieces/std/sha256/0.5.2)
    Compiling hello v0.1.0 (/home/me/hello)
     Finished dev [unoptimized] target(s) in 0.42s
 ```

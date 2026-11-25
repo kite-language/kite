@@ -1,0 +1,45 @@
+// option -- `Option<T>`: a value that may be missing, for any type T (generic record, Kite 0.4.9+).
+//
+//   use std.option
+//
+//   make find(xs: [int], x: int) -> Option<int>:
+//       i = 0
+//       for v in xs:
+//           if v == x:
+//               return option.some(i)
+//           i.incr()
+//       return Option<int>()            // an empty Option<int> is "none"
+//
+//   r = find([4, 5, 6], 5)
+//   if r.has:
+//       print(r.value)
+//   print(option.unwrap_or(r, -1))
+
+type Option<T>:
+    has: bool
+    value: T
+
+// An Option holding `v`.
+make option_some<T>(v: T) -> Option<T>:
+    o = Option<T>()
+    o.has = true
+    o.value = v
+    return o
+
+make option_is_some<T>(o: Option<T>) -> bool:
+    return o.has
+
+make option_is_none<T>(o: Option<T>) -> bool:
+    return not o.has
+
+// The value, or a panic when the Option is empty.
+make option_unwrap<T>(o: Option<T>) -> T:
+    if not o.has:
+        panic("option.unwrap on an empty Option")
+    return o.value
+
+// The value, or `fallback` when the Option is empty.
+make option_unwrap_or<T>(o: Option<T>, fallback: T) -> T:
+    if o.has:
+        return o.value
+    return fallback

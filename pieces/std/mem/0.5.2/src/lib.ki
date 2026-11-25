@@ -1,0 +1,83 @@
+// mem -- manual memory management over the builtins `alloc(T)`, `alloc_n(T, n)`, `free(p)`,
+// `realloc_n(p, n)`, `copy_n(dst, src, n)`, `zero_n(p, n)`, `ptr_to_int(p)` and `int_to_ptr(n)`.
+//
+// Int buffers (`ptr<int>` with element access by index) and a growable int vector.
+
+make mem_new(n: int) -> ptr<int>:
+    return alloc_n(int, n)
+
+make mem_free(p: ptr<int>):
+    free(p)
+
+make mem_get(p: ptr<int>, i: int) -> int:
+    q = p + i
+    return *q
+
+make mem_set(p: ptr<int>, i: int, v: int):
+    q = p + i
+    *q = v
+
+// Resizes to `n` elements; new elements are zeroed, `old` is the previous element count.
+make mem_grow(p: ptr<int>, old: int, n: int) -> ptr<int>:
+    q = realloc_n(p, n)
+    if n > old:
+        tail = q + old
+        zero_n(tail, n - old)
+    return q
+
+make mem_copy(dst: ptr<int>, src: ptr<int>, n: int):
+    copy_n(dst, src, n)
+
+make mem_zero(p: ptr<int>, n: int):
+    zero_n(p, n)
+
+make mem_fill(p: ptr<int>, n: int, v: int):
+    i = 0
+    while i < n:
+        mem_set(p, i, v)
+        i += 1
+
+make mem_equal(a: ptr<int>, b: ptr<int>, n: int) -> bool:
+    i = 0
+    while i < n:
+        if mem_get(a, i) != mem_get(b, i):
+            return false
+        i += 1
+    return true
+
+// A growable vector of ints.
+class IntVec:
+    data: ptr<int>
+    len: int
+    cap: int
+
+make intvec_new() -> IntVec:
+    v = IntVec()
+    v.cap = 4
+    v.data = alloc_n(int, 4)
+    return v
+
+make intvec_push(v: IntVec, x: int):
+    if v.len == v.cap:
+        v.cap = v.cap * 2
+        v.data = realloc_n(v.data, v.cap)
+    mem_set(v.data, v.len, x)
+    v.len += 1
+
+make intvec_get(v: IntVec, i: int) -> int:
+    return mem_get(v.data, i)
+
+make intvec_set(v: IntVec, i: int, x: int):
+    mem_set(v.data, i, x)
+
+make intvec_pop(v: IntVec) -> int:
+    v.len -= 1
+    return mem_get(v.data, v.len)
+
+make intvec_len(v: IntVec) -> int:
+    return v.len
+
+make intvec_free(v: IntVec):
+    free(v.data)
+    v.len = 0
+    v.cap = 0

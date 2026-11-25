@@ -41,7 +41,8 @@ fn run_kite_program(source: &str) -> Option<String> {
         output.status.success(),
         "program exited non-zero: {output:?}"
     );
-    Some(String::from_utf8_lossy(&output.stdout).to_string())
+    // Windows programs write "\r\n" through the C runtime in text mode: compare with "\n" everywhere
+    Some(String::from_utf8_lossy(&output.stdout).replace("\r\n", "\n"))
 }
 
 /// Like [`run_kite_program`], but forwards `args` as the compiled
@@ -64,7 +65,8 @@ fn run_kite_program_with_args(source: &str, args: &[&str]) -> Option<String> {
         output.status.success(),
         "program exited non-zero: {output:?}"
     );
-    Some(String::from_utf8_lossy(&output.stdout).to_string())
+    // Windows programs write "\r\n" through the C runtime in text mode: compare with "\n" everywhere
+    Some(String::from_utf8_lossy(&output.stdout).replace("\r\n", "\n"))
 }
 
 #[test]

@@ -23,7 +23,7 @@ use progress
 use diff
 
 make main():
-    t = test_new("pieces 0.5.1")
+    t = test_new("pieces 0.5.2")
     // random
     r = random.new(42)
     r2 = random.new(42)

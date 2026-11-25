@@ -2,6 +2,15 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
+## 0.5.2 -- Windows and macOS CI fixes
+- **Windows stage 2**: `fs.is_dir` used `path + "/."`, which Windows folds into `path`, so every file looked like a directory and `kite build` said
+  ``stage2/src/main.ki not found``. A directory is now `exists(path + "/")` (a trailing slash only names a directory on every OS).
+- **Windows tests**: the Rust end-to-end tests compared output with `\n` while Windows programs print `\r\n`: the output is normalised.
+- **Line endings**: `.gitattributes` forces LF checkouts (`* text=auto eol=lf`) and `archive/rust-stage0/rustfmt.toml` sets `newline_style = "Unix"`, so `cargo fmt --check`
+  and the shell scripts behave the same on Windows.
+- **macOS x86-64**: CI and the release workflow now also run on `macos-15-intel` (GitHub's last native Intel image, available until August 2027), next to the
+  Apple-silicon `macos-latest`; each architecture is built natively (`release-macos-arm64`, `release-macos-x64`).
+
 ## 0.5.1 -- `--storage`: the smallest executable
 - `kite build --storage` / `[build] storage = true`: removes every function the program can never reach from `main` / `_start` (including the unused functions
   of the pieces it imports and of the prelude), compiles with `-Os -ffunction-sections -fdata-sections` and links with garbage collection and stripped

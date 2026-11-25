@@ -1,0 +1,54 @@
+// result -- `Result<T, E>`: either a value of type T or an error of type E (generic record, Kite 0.4.9+).
+//
+//   use std.result
+//
+//   make parse_digit(c: string) -> Result<int, string>:
+//       r = Result<int, string>()          // an empty Result to fill in
+//       if c >= "0" and c <= "9":
+//           return result.ok(r, to_int(c))
+//       return result.err(r, f"not a digit: {c}")
+//
+//   r = parse_digit("7")
+//   if result.is_ok(r):
+//       print(result.unwrap(r))
+//   else:
+//       print(result.error(r))
+
+type Result<T, E>:
+    is_ok: bool
+    value: T
+    error: E
+
+// `r` filled with the success value `v`.
+make result_ok<T, E>(r: Result<T, E>, v: T) -> Result<T, E>:
+    r.is_ok = true
+    r.value = v
+    return r
+
+// `r` filled with the error `e`.
+make result_err<T, E>(r: Result<T, E>, e: E) -> Result<T, E>:
+    r.is_ok = false
+    r.error = e
+    return r
+
+make result_is_ok<T, E>(r: Result<T, E>) -> bool:
+    return r.is_ok
+
+make result_is_err<T, E>(r: Result<T, E>) -> bool:
+    return not r.is_ok
+
+// The value, or a panic when the Result is an error.
+make result_unwrap<T, E>(r: Result<T, E>) -> T:
+    if not r.is_ok:
+        panic("result.unwrap on an error Result")
+    return r.value
+
+// The value, or `fallback` when the Result is an error.
+make result_unwrap_or<T, E>(r: Result<T, E>, fallback: T) -> T:
+    if r.is_ok:
+        return r.value
+    return fallback
+
+// The error (meaningful when `is_ok` is false).
+make result_error<T, E>(r: Result<T, E>) -> E:
+    return r.error

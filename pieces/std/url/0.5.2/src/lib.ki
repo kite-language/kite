@@ -1,0 +1,129 @@
+// url -- split URLs and encode/decode components.
+
+make url_is_unreserved(c: int) -> bool:
+    return (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 45 or c == 46 or c == 95 or c == 126
+
+make url_encode(s: string) -> string:
+    digits = "0123456789ABCDEF"
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if url_is_unreserved(c):
+            append(parts, substr(s, i, i + 1))
+        else:
+            append(parts, "%" + substr(digits, c / 16, c / 16 + 1) + substr(digits, c % 16, c % 16 + 1))
+        i += 1
+    return join(parts, "")
+
+make url_hex_value(c: int) -> int:
+    if c >= 48 and c <= 57:
+        return c - 48
+    if c >= 97 and c <= 102:
+        return c - 87
+    if c >= 65 and c <= 70:
+        return c - 55
+    return -1
+
+// `+` becomes a space (form encoding).
+make url_decode(s: string) -> string:
+    parts: [string] = []
+    i = 0
+    while i < len(s):
+        c = char_at(s, i)
+        if c == 37 and i + 2 < len(s) and url_hex_value(char_at(s, i + 1)) >= 0 and url_hex_value(char_at(s, i + 2)) >= 0:
+            append(parts, chr_byte(url_hex_value(char_at(s, i + 1)) * 16 + url_hex_value(char_at(s, i + 2))))
+            i += 3
+        orif c == 43:
+            append(parts, " ")
+            i += 1
+        else:
+            append(parts, substr(s, i, i + 1))
+            i += 1
+    return join(parts, "")
+
+make url_scheme(u: string) -> string:
+    i = find(u, "://")
+    if i < 0:
+        return ""
+    return substr(u, 0, i)
+
+// Text after `scheme://` up to the first `/`, `?` or `#` (userinfo and port included).
+make url_authority(u: string) -> string:
+    i = find(u, "://")
+    rest = u
+    if i >= 0:
+        rest = substr(u, i + 3, len(u))
+    e = len(rest)
+    k = 0
+    while k < len(rest):
+        c = char_at(rest, k)
+        if c == 47 or c == 63 or c == 35:
+            e = k
+            break
+        k += 1
+    return substr(rest, 0, e)
+
+make url_host(u: string) -> string:
+    a = url_authority(u)
+    at = find(a, "@")
+    if at >= 0:
+        a = substr(a, at + 1, len(a))
+    colon = find(a, ":")
+    if colon >= 0:
+        return substr(a, 0, colon)
+    return a
+
+make url_port(u: string, dflt: int) -> int:
+    a = url_authority(u)
+    colon = url_last_colon(a)
+    if colon < 0:
+        return dflt
+    p = substr(a, colon + 1, len(a))
+    if len(p) == 0:
+        return dflt
+    return to_int(p)
+
+make url_last_colon(a: string) -> int:
+    last = -1
+    i = 0
+    while i < len(a):
+        if char_at(a, i) == 58:
+            last = i
+        i += 1
+    return last
+
+make url_path(u: string) -> string:
+    i = find(u, "://")
+    rest = u
+    if i >= 0:
+        rest = substr(u, i + 3, len(u))
+    s = find(rest, "/")
+    if s < 0:
+        return "/"
+    p = substr(rest, s, len(rest))
+    q = find(p, "?")
+    if q >= 0:
+        p = substr(p, 0, q)
+    h = find(p, "#")
+    if h >= 0:
+        p = substr(p, 0, h)
+    return p
+
+make url_query(u: string) -> string:
+    q = find(u, "?")
+    if q < 0:
+        return ""
+    s = substr(u, q + 1, len(u))
+    h = find(s, "#")
+    if h >= 0:
+        s = substr(s, 0, h)
+    return s
+
+// Decoded value of `key` in a query string (`a=1&b=two`), or `dflt`.
+make url_query_get(query: string, key: string, dflt: string) -> string:
+    for pair in split(query, "&"):
+        eq = find(pair, "=")
+        if eq >= 0 and url_decode(substr(pair, 0, eq)) == key:
+            return url_decode(substr(pair, eq + 1, len(pair)))
+    return dflt

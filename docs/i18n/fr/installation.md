@@ -41,7 +41,7 @@ kite run
 ## Fixer une version ou désinstaller
 
 ```sh
-curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.5.1
+curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --version 0.5.2
 curl -fsSL https://kite-lang.pages.dev/install.sh | sh -s -- --uninstall
 ```
 

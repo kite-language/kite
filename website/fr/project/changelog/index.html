@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.1</span>
+  <span class="ver">v0.5.2</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/project/changelog/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/project/changelog/" hreflang="fr" lang="fr">FR</a><a href="/es/project/changelog/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -66,6 +66,16 @@
 <article>
 <h1 id="changelog-kite-repository">Changelog (kite repository)</h1>
 <p>Editor repositories have their own changelogs: see docs/versions.md.</p>
+<h2 id="052-windows-and-macos-ci-fixes">0.5.2 -- Windows and macOS CI fixes</h2>
+<ul>
+<li><strong>Windows stage 2</strong>: <code>fs.is_dir</code> used <code>path + "/."</code>, which Windows folds into <code>path</code>, so every file looked like a directory and <code>kite build</code> said
+  <code>stage2/src/main.ki not found</code>. A directory is now <code>exists(path + "/")</code> (a trailing slash only names a directory on every OS).</li>
+<li><strong>Windows tests</strong>: the Rust end-to-end tests compared output with <code>\n</code> while Windows programs print <code>\r\n</code>: the output is normalised.</li>
+<li><strong>Line endings</strong>: <code>.gitattributes</code> forces LF checkouts (<code>* text=auto eol=lf</code>) and <code>archive/rust-stage0/rustfmt.toml</code> sets <code>newline_style = "Unix"</code>, so <code>cargo fmt --check</code>
+  and the shell scripts behave the same on Windows.</li>
+<li><strong>macOS x86-64</strong>: CI and the release workflow now also run on <code>macos-15-intel</code> (GitHub's last native Intel image, available until August 2027), next to the
+  Apple-silicon <code>macos-latest</code>; each architecture is built natively (<code>release-macos-arm64</code>, <code>release-macos-x64</code>).</li>
+</ul>
 <h2 id="051-storage-the-smallest-executable">0.5.1 -- <code>--storage</code>: the smallest executable</h2>
 <ul>
 <li><code>kite build --storage</code> / <code>[build] storage = true</code>: removes every function the program can never reach from <code>main</code> / <code>_start</code> (including the unused functions
@@ -277,7 +287,7 @@
 <footer class="pager"><a class="prev" href="/fr/project/roadmap/"><small>Précédent</small>← Feuille de route</a><a class="next" href="/fr/project/architecture/"><small>Suivant</small>Architecture →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/CHANGELOG.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#051-storage-the-smallest-executable">0.5.1 -- --storage: the smallest executable</a></li><li class="l2"><a href="#050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, num, conditional compilation</a></li><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#052-windows-and-macos-ci-fixes">0.5.2 -- Windows and macOS CI fixes</a></li><li class="l2"><a href="#051-storage-the-smallest-executable">0.5.1 -- --storage: the smallest executable</a></li><li class="l2"><a href="#050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, num, conditional compilation</a></li><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

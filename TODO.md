@@ -1,4 +1,4 @@
-# Kite: what is left (v0.5.1)
+# Kite: what is left (v0.5.2)
 
 ## 1. Bootstrap: done in 0.4.0 ✅
 The whole Rust compiler is ported to Kite (`compiler/`). `./build.sh` builds stage1 (kitec compiled by the Rust seed),
@@ -25,7 +25,7 @@ and `docs/targets.md`.
 Still open: a remote registry/mirror (the registry is the repository's `pieces/` folder), real `thread:` blocks
 (only the `spawn` builtin is threaded), thread-safe `StrMap`/lists, `condvar`/channels pieces, `kite doc`.
 
-## 1b. Package system (0.5.1)
+## 1b. Package system (0.5.2)
 Design in `docs/packages.md`; implemented after the bootstrap, on top of the `git`, `toml`, `json`, `semver`, `sha256` libraries.
 
 ## 2. Language and runtime

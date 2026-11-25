@@ -54,19 +54,26 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: { name: "release-${{ matrix.short }}", path: dist/release/*.zip }
 
-  # macOS: a single job on the current arm64 runner (`macos-latest`) builds both architectures; the x86_64 archive is
-  # cross-compiled with `--target x86_64-apple-darwin` (the Intel runners are retired/unavailable, so none is used).
+  # macOS: one native job per architecture: Apple silicon (`macos-latest`) and Intel x86_64 (`macos-15-intel`, GitHub's last Intel image,
+  # available until August 2027). The old `macos-13` image is retired and must not be used.
   macos:
-    runs-on: macos-latest      # the current Apple-silicon runner; the Intel build is cross-compiled from it
+    name: macos (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     continue-on-error: true    # runner outages must not block the release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-latest,   target: macos-arm64 }
+          - { runner: macos-15-intel, target: macos-x64 }
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: ./build.sh
-      - run: scripts/package-release.sh --compiler kite --no-deb --no-rpm --targets macos-arm64,macos-x64
+      - run: scripts/package-release.sh --compiler kite --no-deb --no-rpm --targets ${{ matrix.target }}
       - uses: actions/upload-artifact@v4
-        with: { name: "release-macos", path: dist/release/*.tar.gz }
+        with: { name: "release-${{ matrix.target }}", path: dist/release/*.tar.gz }
 
   publish:
     needs: [linux, windows, macos]

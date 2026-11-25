@@ -1,0 +1,255 @@
+// collections -- containers and list helpers. Kite has no generics yet, so ints and strings each get their own.
+
+class IntStack:
+    items: [int]
+
+make intstack_new() -> IntStack:
+    return IntStack()
+
+make intstack_push(s: IntStack, x: int):
+    append(s.items, x)
+
+make intstack_pop(s: IntStack) -> int:
+    return pop(s.items)
+
+make intstack_peek(s: IntStack) -> int:
+    return s.items[len(s.items) - 1]
+
+make intstack_len(s: IntStack) -> int:
+    return len(s.items)
+
+make intstack_is_empty(s: IntStack) -> bool:
+    return len(s.items) == 0
+
+class IntQueue:
+    items: [int]
+    head: int
+
+make intqueue_new() -> IntQueue:
+    return IntQueue()
+
+make intqueue_push(q: IntQueue, x: int):
+    append(q.items, x)
+
+make intqueue_pop(q: IntQueue) -> int:
+    x = q.items[q.head]
+    q.head += 1
+    return x
+
+make intqueue_len(q: IntQueue) -> int:
+    return len(q.items) - q.head
+
+make intqueue_is_empty(q: IntQueue) -> bool:
+    return q.head >= len(q.items)
+
+// A set of strings.
+class StrSet:
+    m: StrMap_int
+    n: int
+
+make strset_new() -> StrSet:
+    s = StrSet()
+    s.m = StrMap_int()
+    return s
+
+// True when `k` was not in the set yet.
+make strset_add(s: StrSet, k: string) -> bool:
+    if s.m.has(k):
+        return false
+    s.m.set(k, 1)
+    s.n += 1
+    return true
+
+make strset_has(s: StrSet, k: string) -> bool:
+    return s.m.has(k)
+
+make strset_len(s: StrSet) -> int:
+    return s.n
+
+// ---- int lists -------------------------------------------------------------------------------
+
+// A sorted copy (merge sort).
+make collections_sort_ints(xs: [int]) -> [int]:
+    n = len(xs)
+    if n <= 1:
+        return xs
+    mid = n / 2
+    left: [int] = []
+    right: [int] = []
+    i = 0
+    while i < n:
+        if i < mid:
+            append(left, xs[i])
+        else:
+            append(right, xs[i])
+        i += 1
+    a = collections_sort_ints(left)
+    b = collections_sort_ints(right)
+    out: [int] = []
+    ia = 0
+    ib = 0
+    while ia < len(a) and ib < len(b):
+        if a[ia] <= b[ib]:
+            append(out, a[ia])
+            ia += 1
+        else:
+            append(out, b[ib])
+            ib += 1
+    while ia < len(a):
+        append(out, a[ia])
+        ia += 1
+    while ib < len(b):
+        append(out, b[ib])
+        ib += 1
+    return out
+
+make collections_reverse_ints(xs: [int]) -> [int]:
+    out: [int] = []
+    i = len(xs) - 1
+    while i >= 0:
+        append(out, xs[i])
+        i -= 1
+    return out
+
+make collections_unique_ints(xs: [int]) -> [int]:
+    sorted = collections_sort_ints(xs)
+    out: [int] = []
+    for x in sorted:
+        if len(out) == 0 or out[len(out) - 1] != x:
+            append(out, x)
+    return out
+
+make collections_index_of_int(xs: [int], x: int) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == x:
+            return i
+        i += 1
+    return -1
+
+make collections_contains_int(xs: [int], x: int) -> bool:
+    return collections_index_of_int(xs, x) >= 0
+
+make collections_slice_ints(xs: [int], from_i: int, to_i: int) -> [int]:
+    out: [int] = []
+    i = from_i
+    while i < to_i and i < len(xs):
+        append(out, xs[i])
+        i += 1
+    return out
+
+make collections_concat_ints(a: [int], b: [int]) -> [int]:
+    out: [int] = []
+    for x in a:
+        append(out, x)
+    for y in b:
+        append(out, y)
+    return out
+
+// a, a+1, ..., b-1
+make collections_range_ints(a: int, b: int) -> [int]:
+    out: [int] = []
+    i = a
+    while i < b:
+        append(out, i)
+        i += 1
+    return out
+
+make collections_sum_ints(xs: [int]) -> int:
+    t = 0
+    for x in xs:
+        t += x
+    return t
+
+make collections_min_int(xs: [int]) -> int:
+    m = xs[0]
+    for x in xs:
+        if x < m:
+            m = x
+    return m
+
+make collections_max_int(xs: [int]) -> int:
+    m = xs[0]
+    for x in xs:
+        if x > m:
+            m = x
+    return m
+
+// ---- string lists ----------------------------------------------------------------------------
+
+make collections_sort_strings(xs: [string]) -> [string]:
+    n = len(xs)
+    if n <= 1:
+        return xs
+    mid = n / 2
+    left: [string] = []
+    right: [string] = []
+    i = 0
+    while i < n:
+        if i < mid:
+            append(left, xs[i])
+        else:
+            append(right, xs[i])
+        i += 1
+    a = collections_sort_strings(left)
+    b = collections_sort_strings(right)
+    out: [string] = []
+    ia = 0
+    ib = 0
+    while ia < len(a) and ib < len(b):
+        if a[ia] <= b[ib]:
+            append(out, a[ia])
+            ia += 1
+        else:
+            append(out, b[ib])
+            ib += 1
+    while ia < len(a):
+        append(out, a[ia])
+        ia += 1
+    while ib < len(b):
+        append(out, b[ib])
+        ib += 1
+    return out
+
+make collections_reverse_strings(xs: [string]) -> [string]:
+    out: [string] = []
+    i = len(xs) - 1
+    while i >= 0:
+        append(out, xs[i])
+        i -= 1
+    return out
+
+make collections_unique_strings(xs: [string]) -> [string]:
+    sorted = collections_sort_strings(xs)
+    out: [string] = []
+    for x in sorted:
+        if len(out) == 0 or out[len(out) - 1] != x:
+            append(out, x)
+    return out
+
+make collections_index_of_string(xs: [string], x: string) -> int:
+    i = 0
+    while i < len(xs):
+        if xs[i] == x:
+            return i
+        i += 1
+    return -1
+
+make collections_contains_string(xs: [string], x: string) -> bool:
+    return collections_index_of_string(xs, x) >= 0
+
+make collections_slice_strings(xs: [string], from_i: int, to_i: int) -> [string]:
+    out: [string] = []
+    i = from_i
+    while i < to_i and i < len(xs):
+        append(out, xs[i])
+        i += 1
+    return out
+
+make collections_concat_strings(a: [string], b: [string]) -> [string]:
+    out: [string] = []
+    for x in a:
+        append(out, x)
+    for y in b:
+        append(out, y)
+    return out

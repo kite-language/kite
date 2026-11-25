@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.1</span>
+  <span class="ver">v0.5.2</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/reference/pieces-registry/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/pieces-registry/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/pieces-registry/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -77,13 +77,13 @@ the language itself is "made of pieces" -- the default ones (<code>std.*</code>)
   <code>[dependencies]</code> and imported by name. A community piece cannot take the name of a default piece.</li>
 </ul>
 <p>Published <strong>community</strong> versions are <strong>immutable</strong>. The default pieces are versioned with the language (each release
-replaces the directory of the previous one: <code>pieces/std/&lt;name&gt;/0.5.1/</code>), so they are exempt from the immutability
+replaces the directory of the previous one: <code>pieces/std/&lt;name&gt;/0.5.2/</code>), so they are exempt from the immutability
 check. kite finds it through <code>$KITE_PIECES</code>, a <code>pieces/</code> folder (with a <code>REGISTRY</code>
 file) above the project, <code>~/.kite/pieces</code>, or <code>/usr/share/kite/pieces</code> (installed with the <code>.deb</code>/<code>.rpm</code>/archive).</p>
 <h2 id="using-pieces">Using pieces</h2>
 <div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>kite search json          # search names, descriptions, keywords
 kite info semver          # metadata <span class="k">and</span> versions
-kite add sha256           # writes `sha256 = <span class="s">&quot;0.5.1&quot;</span>` <span class="k">to</span> [dependencies] <span class="k">and</span> updates kite.lock
+kite add sha256           # writes `sha256 = <span class="s">&quot;0.5.2&quot;</span>` <span class="k">to</span> [dependencies] <span class="k">and</span> updates kite.lock
 kite add semver@^<span class="n">0.4</span>      # a requirement: <span class="s">&quot;1.2&quot;</span> / <span class="s">&quot;^1.2&quot;</span> / <span class="s">&quot;~1.2.3&quot;</span> / <span class="s">&quot;&gt;=1.0&quot;</span> / <span class="s">&quot;=1.2.3&quot;</span> / <span class="s">&quot;*&quot;</span>
 kite tree                 # dependency tree (transitive dependencies are detected <span class="k">and</span> resolved)
 kite update               # re-resolve <span class="k">and</span> rewrite kite.lock
@@ -124,7 +124,7 @@ Functions still share one global namespace under the hood, so name your piece's 
 </tr>
 <tr>
 <td><code>option</code>, <code>result</code></td>
-<td>generic <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> records with <code>some</code>, <code>unwrap</code>, <code>unwrap_or</code>, <code>ok</code>, <code>err</code> (0.5.1)</td>
+<td>generic <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code> records with <code>some</code>, <code>unwrap</code>, <code>unwrap_or</code>, <code>ok</code>, <code>err</code> (0.5.2)</td>
 </tr>
 <tr>
 <td><code>mem</code></td>

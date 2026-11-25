@@ -1,0 +1,74 @@
+// random -- a small xorshift64 generator. Not for cryptography.
+//   r = random.from_clock()      // or random.new(42) for a reproducible sequence
+//   n = random.range(r, 1, 7)    // 1..6
+
+use std.time
+
+class Rng:
+    state: int
+
+make random_new(seed: int) -> Rng:
+    r = Rng()
+    r.state = seed
+    if seed == 0:
+        r.state = 88172645463325252
+    return r
+
+make random_from_clock() -> Rng:
+    return random_new(time.now_ns())
+
+// A non-negative integer.
+make random_next(r: Rng) -> int:
+    x = r.state
+    x = x ^ (x << 13)
+    x = x ^ ((x >> 7) & 144115188075855871)
+    x = x ^ (x << 17)
+    r.state = x
+    return x & 9223372036854775807
+
+// lo <= n < hi
+make random_range(r: Rng, lo: int, hi: int) -> int:
+    if hi <= lo:
+        return lo
+    return lo + random_next(r) % (hi - lo)
+
+make random_bool(r: Rng) -> bool:
+    return (random_next(r) % 2) == 1
+
+// True `percent` times out of 100.
+make random_chance(r: Rng, percent: int) -> bool:
+    return random_next(r) % 100 < percent
+
+// A shuffled copy (Fisher-Yates).
+make random_shuffle(r: Rng, xs: [int]) -> [int]:
+    out: [int] = []
+    for x in xs:
+        append(out, x)
+    i = len(out) - 1
+    while i > 0:
+        j = random_next(r) % (i + 1)
+        t = out[i]
+        out[i] = out[j]
+        out[j] = t
+        i -= 1
+    return out
+
+make random_string(r: Rng, n: int) -> string:
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    parts: [string] = []
+    i = 0
+    while i < n:
+        k = random_next(r) % len(alphabet)
+        append(parts, substr(alphabet, k, k + 1))
+        i += 1
+    return join(parts, "")
+
+make random_hex(r: Rng, n: int) -> string:
+    digits = "0123456789abcdef"
+    parts: [string] = []
+    i = 0
+    while i < n:
+        k = random_next(r) % 16
+        append(parts, substr(digits, k, k + 1))
+        i += 1
+    return join(parts, "")
