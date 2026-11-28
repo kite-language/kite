@@ -37,3 +37,7 @@ Un campo `string` de un registro recién creado es un puntero nulo hasta que lo 
 ## Windows: errores de enlazado con `printf` o `timespec_get`
 
 Actualiza a la última versión (esos símbolos los proporcionan los shims de Kite). Vuelve a ejecutar `kite build` e informa de toda la salida si sigue fallando.
+
+## Colores en los mensajes de error
+
+Los errores se colorean en un terminal. Define `NO_COLOR=1` para desactivar los colores, o `KITE_COLOR=always` / `KITE_COLOR=never` para forzarlos o quitarlos (por ejemplo en un registro de CI).

@@ -1,0 +1,32 @@
+// glob -- `*` matches any run of characters (including none), `?` exactly one.
+
+make glob_match(pattern: string, text: string) -> bool:
+    p = 0
+    t = 0
+    star = -1
+    mark = 0
+    while t < len(text):
+        if p < len(pattern) and (char_at(pattern, p) == 63 or char_at(pattern, p) == char_at(text, t)):
+            p += 1
+            t += 1
+        orif p < len(pattern) and char_at(pattern, p) == 42:
+            star = p
+            mark = t
+            p += 1
+        orif star >= 0:
+            p = star + 1
+            mark += 1
+            t = mark
+        else:
+            return false
+    while p < len(pattern) and char_at(pattern, p) == 42:
+        p += 1
+    return p == len(pattern)
+
+// The names of `names` that match `pattern`.
+make glob_filter(pattern: string, names: [string]) -> [string]:
+    out: [string] = []
+    for n in names:
+        if glob_match(pattern, n):
+            append(out, n)
+    return out

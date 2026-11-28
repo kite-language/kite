@@ -51,6 +51,7 @@ ages = StrMap_int()            // string keys; also StrMap_string, StrMap_float,
 ages.set("ada", 36)
 print(ages.get("ada"))         // 36
 print(ages.has("bob"))         // false
+ages.remove("ada")             // true if it was there; the other keys keep their order
 print(ages.size())
 for key in ages.keys:          // insertion order
     print(key)

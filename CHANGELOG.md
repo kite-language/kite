@@ -2,7 +2,35 @@
 
 Editor repositories have their own changelogs: see docs/versions.md.
 
-## 0.5.2 -- Windows and macOS CI fixes
+## 0.7.0 -- closures that capture, and the `?` operator
+- **Closures**: a lambda keeps a copy of the variables of the enclosing function that it uses (`add_base = |x: int| x + base`), including strings, floats, bools, pointers, enums
+  and other functions; works through `std.iter` too. Representation: a function value points to a block `[code pointer, captured values...]` (`FnAddr` gives the static block
+  of a plain function or capture-less lambda, `MkClosure` allocates the block of a capturing lambda, `CallInd` loads the code pointer and passes the block first); every
+  function used as a value is reached through a wrapper `name__fv` or a lifted `lambda__N` that takes that block. Lists, records and `num` cannot be captured yet (E0139);
+  closure blocks are not freed.
+- **`?` operator**: `x = f()?`, `return g()? + h()?`, `if f()?.ok ...` hoist the call into a temporary and return the error / empty value of the function's own `Result<T, E>` or `Option<T>`
+  (E0144 when the function returns neither, E0141 / E0142 / E0143 for unsupported positions). Lexer token `Question`, AST node `Propagate`, expanded by the desugar pass.
+- Tests `lang_test/tests/propagate.ki` and the closure cases of `functions.ki`; guide chapter "Errors: Result, Option and ?" (EN/FR/ES).
+
+## 0.6.0 -- function values, lambdas and `std.iter`
+The interim builds 0.5.1 to 0.5.3 are folded into this entry: from now on only `0.x.0` releases are made. Fixed here: the escape byte of coloured errors was written as `?` (`chr(27)`), now `chr_byte(27)`.
+
+### Function values and lambdas
+- **Function types** `fn(int, string) -> bool` (`fn(string)` when nothing is returned); a function name is a value (`f = double`), a variable of function type can be called (`f(21)`),
+  and functions can be passed, stored and returned. **Lambdas** `|x, y| x + y`, `|x: float| x / 2.0`, `|| 42`: parameter types come from the expected function type or from annotations;
+  the compiler lifts each lambda to a function of its own (no run-time cost). Lambdas do not capture variables yet (planned for 0.7.0). Values take and return `int`, `float`, `bool`,
+  `string`, pointers and enums (E0131); other errors E0133 to E0138. Generic functions accept function parameters (`make map<T, U>(xs: [T], f: fn(T) -> U) -> [U]`).
+- New default piece **`std.iter`**: `map`, `filter`, `reduce`, `each`, `any`, `all`, `count`, `range` (41 default pieces).
+- IR: `FnAddr` and `CallInd` instructions; function values are `i64*` pointers. Test `lang_test/tests/functions.ki`; guide chapter "Function values and lambdas" (EN/FR/ES).
+
+### imported names, `StrMap.remove`, coloured errors
+- **Imports by name**: `use std.strings.{upper, lower}` (same as `from std.strings import upper, lower`): `upper(...)` stands for `strings.upper(...)` in that file; a
+  function of your own with the same name wins; an unknown name is error `E0128`. Works for generic functions too (`use std.option.{some}`).
+- **`StrMap_*.remove(key)`** (true when the key was there; insertion order of the others is kept).
+- **Coloured diagnostics** on a terminal (bold red error, blue arrow, red carets, cyan help); `NO_COLOR` turns them off, `KITE_COLOR=always|never` forces them.
+- Tests: `lang_test/tests/imports.ki`; `build.sh` checks the colour switches.
+
+### Windows and macOS CI fixes
 - **Windows stage 2**: `fs.is_dir` used `path + "/."`, which Windows folds into `path`, so every file looked like a directory and `kite build` said
   ``stage2/src/main.ki not found``. A directory is now `exists(path + "/")` (a trailing slash only names a directory on every OS).
 - **Windows tests**: the Rust end-to-end tests compared output with `\n` while Windows programs print `\r\n`: the output is normalised.
@@ -11,7 +39,7 @@ Editor repositories have their own changelogs: see docs/versions.md.
 - **macOS x86-64**: CI and the release workflow now also run on `macos-15-intel` (GitHub's last native Intel image, available until August 2027), next to the
   Apple-silicon `macos-latest`; each architecture is built natively (`release-macos-arm64`, `release-macos-x64`).
 
-## 0.5.1 -- `--storage`: the smallest executable
+### `--storage`: the smallest executable
 - `kite build --storage` / `[build] storage = true`: removes every function the program can never reach from `main` / `_start` (including the unused functions
   of the pieces it imports and of the prelude), compiles with `-Os -ffunction-sections -fdata-sections` and links with garbage collection and stripped
   symbols (`--gc-sections -s` on Linux, `-dead_strip -x` on macOS, `/OPT:REF,ICF` on Windows). `Shrunk removed N of M functions` is printed. A small program

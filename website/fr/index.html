@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/" hreflang="fr" lang="fr">FR</a><a href="/es/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
 <li><a href="/fr/guide/collections/">Collections</a></li>
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/function-values/">Valeurs de fonction et lambdas</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/errors/">Erreurs : Result, Option et ?</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
 <li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
@@ -74,7 +76,7 @@ statiques inférés et aucune pause de ramasse-miettes : <code>kite build</code>
 <p><strong>Ce que vous obtenez</strong></p>
 <ul>
 <li>Un compilateur écrit en Kite lui-même (il se compile : stage 1 = stage 2 = stage 3).</li>
-<li>Les <strong>pièces</strong> : les paquets de Kite. Le langage fournit 40 pièces par défaut (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) et un
+<li>Les <strong>pièces</strong> : les paquets de Kite. Le langage fournit 41 pièces par défaut (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) et un
   registre communautaire hébergé dans le dépôt.</li>
 <li>Des threads, des pointeurs et de la mémoire manuelle quand vous en avez besoin ; des chaînes, listes, tuples et dictionnaires quand vous n'en avez pas besoin.</li>
 <li><code>kite</code> fait tout : <code>init</code>, <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>fmt</code>, <code>doc</code>, <code>add</code>, <code>publish</code>, <code>target</code>, ...</li>

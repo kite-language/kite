@@ -49,7 +49,8 @@ rm -rf "$ROOT/compiler/target" "$ROOT/stage2" "$ROOT/stage3" "$ROOT/compiler/BOO
 if [ "$FRESH" = 1 ]; then rm -rf "$STAGE0_TARGET"; fi
 
 bold "==> stage0: Rust compiler"
-if [ ! -x "$STAGE0" ]; then
+# (always run cargo: it is incremental, and a stale seed or example binary would make the Kite-vs-Rust comparisons lie)
+if [ -z "${KITE_STAGE0:-}" ]; then
   (cd "$STAGE0_DIR" && CARGO_TARGET_DIR="$STAGE0_TARGET" cargo build -q --release --bins --examples 2>&1 | grep -v "^warning\|^ *|\|^ *-->\|^ *=\|^$\|^[0-9 ]*|" || true)
 fi
 STAGE0="$(exe "$STAGE0")"
@@ -170,6 +171,23 @@ if [ "${1:-}" = "test" ]; then
     L=target/x86_64-pc-windows-msvc/debug/cfg.ll
     [ "$(grep -c win-only-text $L)" -ge 1 ] && [ "$(grep -c other-only-text $L)" = "0" ] && echo "when: windows target keeps only the windows code: ok"
     "$KC" build -q >/dev/null 2>&1; [ "$(grep -c other-only-text target/debug/cfg.ll)" -ge 1 ] && [ "$(grep -c win-only-text target/debug/cfg.ll)" = "0" ] && echo "when: host build drops the windows code: ok"
+  )
+  bold "==> the ? operator"
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init qq >/dev/null; cd qq
+    printf 'use std.result\nmake f() -> Result<int, string>:\n    r = Result<int, string>()\n    return result.ok(r, 1)\n\nmake g() -> int:\n    x = f()?\n    return x\n\nmake main():\n    print(g())\n' > src/main.ki
+    OUT="$("$KC" check 2>&1 || true)"; case "$OUT" in *E0144*) echo "? outside a Result/Option function rejected (E0144): ok";; esac
+  )
+  bold "==> coloured diagnostics"
+  (
+    KC="$(exe "$ROOT/stage2/target/release/kitec")"; export KITE_PIECES="$ROOT/pieces"
+    W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT; cd "$W"; "$KC" init col >/dev/null; cd col
+    printf 'make main():\n    x = 1 + "a"\n' > src/main.ki
+    ESC="$(printf '\033')"
+    OUT="$(KITE_COLOR=always "$KC" check 2>&1 || true)"; case "$OUT" in *"$ESC[1;31m"*) echo "colour on request: ok";; esac
+    OUT="$("$KC" check 2>&1 || true)"; case "$OUT" in *"$ESC"*) ;; *) echo "no colour when piped: ok";; esac
+    OUT="$(NO_COLOR=1 KITE_COLOR=always "$KC" check 2>&1 || true)"; case "$OUT" in *"$ESC"*) ;; *) echo "NO_COLOR respected: ok";; esac
   )
   bold "==> piece registry verification"
   KITE="$(exe "$ROOT/stage2/target/release/kitec")" scripts/verify-pieces.sh

@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/guide/collections/" hreflang="en" lang="en">EN</a><a href="/fr/guide/collections/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/collections/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a class="cur" aria-current="page" href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/function-values/">Function values and lambdas</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/errors/">Errors: Result, Option and ?</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
@@ -132,6 +134,7 @@ print(person[<span class="s">&quot;name&quot;</span>])             <span class="
 ages.set(<span class="s">&quot;ada&quot;</span>, <span class="n">36</span>)
 print(ages.get(<span class="s">&quot;ada&quot;</span>))         <span class="c">// 36</span>
 print(ages.has(<span class="s">&quot;bob&quot;</span>))         <span class="c">// false</span>
+ages.remove(<span class="s">&quot;ada&quot;</span>)             <span class="c">// true if it was there; the other keys keep their order</span>
 print(ages.size())
 <span class="k">for</span> key <span class="k">in</span> ages.keys:          <span class="c">// insertion order</span>
     print(key)

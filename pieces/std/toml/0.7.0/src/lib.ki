@@ -1,0 +1,106 @@
+// std.toml -- a small TOML reader for flat configuration: `[section]` headers and
+// `key = value` lines (strings, integers, booleans). Tables of tables, arrays and inline tables
+// are not supported.
+
+make toml_unquote(s: string) -> string:
+    t = trim(s)
+    if len(t) >= 2 and char_at(t, 0) == 34 and char_at(t, len(t) - 1) == 34:
+        inner = substr(t, 1, len(t) - 1)
+        inner = replace_all(inner, "\\n", "\n")
+        inner = replace_all(inner, "\\\"", "\"")
+        return replace_all(inner, "\\\\", "\\")
+    hash = find(t, " #")
+    if hash >= 0:
+        return trim(substr(t, 0, hash))
+    return t
+
+// Value of `key` in `section` ("" for the top level); `dflt` when absent.
+make toml_get(text: string, section: string, key: string, dflt: string) -> string:
+    cur = ""
+    for raw in split(text, "\n"):
+        line = trim(raw)
+        if len(line) == 0 or starts_with(line, "#"):
+            continue
+        if starts_with(line, "["):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq < 0:
+            continue
+        if cur == section and trim(substr(line, 0, eq)) == key:
+            return toml_unquote(substr(line, eq + 1, len(line)))
+    return dflt
+
+make toml_has(text: string, section: string, key: string) -> bool:
+    marker = chr(1)
+    return toml_get(text, section, key, marker) != marker
+
+make toml_get_int(text: string, section: string, key: string, dflt: int) -> int:
+    v = toml_get(text, section, key, "")
+    if len(v) == 0:
+        return dflt
+    return to_int(v)
+
+// Keys of a section, in file order.
+make toml_keys(text: string, section: string) -> [string]:
+    out: [string] = []
+    cur = ""
+    for raw in split(text, "\n"):
+        line = trim(raw)
+        if len(line) == 0 or starts_with(line, "#"):
+            continue
+        if starts_with(line, "["):
+            cur = trim(substr(line, 1, len(line) - 1))
+            continue
+        eq = find(line, "=")
+        if eq >= 0 and cur == section:
+            append(out, trim(substr(line, 0, eq)))
+    return out
+
+make toml_quote(s: string) -> string:
+    return "\"" + replace_all(replace_all(replace_all(s, "\\", "\\\\"), "\"", "\\\""), "\n", "\\n") + "\""
+
+// `["a", "b"]` -> `a, b` (a plain value is just unquoted).
+make toml_array_join(v: string) -> string:
+    t = trim(v)
+    if not (starts_with(t, "[") and ends_with(t, "]")):
+        return toml_unquote(t)
+    out: [string] = []
+    for part in split(substr(t, 1, len(t) - 1), ","):
+        p = toml_unquote(part)
+        if len(p) > 0:
+            append(out, p)
+    return join(out, ", ")
+
+// Value of `key` inside an inline table `{ a = "x", b = "y" }` ("" if absent).
+make toml_inline_get(v: string, key: string) -> string:
+    t = trim(v)
+    if not (starts_with(t, "{") and ends_with(t, "}")):
+        return ""
+    for part in split(substr(t, 1, len(t) - 1), ","):
+        eq = find(part, "=")
+        if eq >= 0 and trim(substr(part, 0, eq)) == key:
+            return toml_unquote(substr(part, eq + 1, len(part)))
+    return ""
+
+// Strips a trailing `# comment` that is not inside quotes.
+make toml_strip_comment(line: string) -> string:
+    inq = false
+    i = 0
+    while i < len(line):
+        c = char_at(line, i)
+        if c == 34:
+            inq = not inq
+        orif c == 35 and not inq:
+            return trim(substr(line, 0, i))
+        i += 1
+    return line
+
+// `a, b` -> `["a", "b"]`
+make toml_quote_list(csv: string) -> string:
+    out: [string] = []
+    for p in split(csv, ","):
+        t = trim(p)
+        if len(t) > 0:
+            append(out, toml_quote(t))
+    return "[" + join(out, ", ") + "]"

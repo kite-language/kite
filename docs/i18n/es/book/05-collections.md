@@ -51,6 +51,7 @@ ages = StrMap_int()            // claves de cadena; también StrMap_string, StrM
 ages.set("ada", 36)
 print(ages.get("ada"))         // 36
 print(ages.has("bob"))         // false
+ages.remove("ada")             // true si estaba; las demás claves conservan su orden
 print(ages.size())
 for key in ages.keys:          // orden de inserción
     print(key)

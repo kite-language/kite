@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menú">☰</button>
   <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Idioma"><a href="/" hreflang="en" lang="en">EN</a><a href="/fr/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/es/guide/functions/">Funciones y constantes</a></li>
 <li><a href="/es/guide/collections/">Colecciones</a></li>
 <li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/function-values/">Valores de función y lambdas</a></li>
 <li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/errors/">Errores: Result, Option y ?</a></li>
 <li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
 <li><a href="/es/guide/conditional/">Compilación condicional</a></li>
 <li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
@@ -74,7 +76,7 @@ inferidos y ninguna pausa de recolector de basura: <code>kite build</code> convi
 <p><strong>Qué obtienes</strong></p>
 <ul>
 <li>Un compilador escrito en el propio Kite (se compila a sí mismo: stage 1 = stage 2 = stage 3).</li>
-<li>Las <strong>piezas</strong>: los paquetes de Kite. El lenguaje incluye 40 piezas por defecto (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) y un
+<li>Las <strong>piezas</strong>: los paquetes de Kite. El lenguaje incluye 41 piezas por defecto (<code>std.fs</code>, <code>std.json</code>, <code>std.random</code>, ...) y un
   registro comunitario que vive en el repositorio.</li>
 <li>Hilos, punteros y memoria manual cuando los necesitas; cadenas, listas, tuplas y diccionarios cuando no.</li>
 <li><code>kite</code> lo hace todo: <code>init</code>, <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>fmt</code>, <code>doc</code>, <code>add</code>, <code>publish</code>, <code>target</code>, ...</li>

@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/guide/generics/" hreflang="en" lang="en">EN</a><a href="/fr/guide/generics/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/generics/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/function-values/">Function values and lambdas</a></li>
 <li><a class="cur" aria-current="page" href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/errors/">Errors: Result, Option and ?</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
@@ -146,7 +148,7 @@ templates. This is the way to call a generic function whose type cannot be deduc
 (<code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>, <code>num</code>, <code>[int]</code>, <code>ptr&lt;int&gt;</code>), so <code>a &lt; b &gt; (c)</code> is still a comparison.
 Giving more type arguments than the function has is error <code>E0127</code>.</p>
 </article>
-<footer class="pager"><a class="prev" href="/guide/records/"><small>Previous</small>← Records, classes and enums</a><a class="next" href="/guide/pieces/"><small>Next</small>Pieces (packages) →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/function-values/"><small>Previous</small>← Function values and lambdas</a><a class="next" href="/guide/errors/"><small>Next</small>Errors: Result, Option and ? →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/13-generics.md">Edit this page on GitHub</a></p>
 </main>
 <nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#generic-functions">Generic functions</a></li><li class="l2"><a href="#generic-records">Generic records</a></li><li class="l2"><a href="#option-and-result">Option and Result</a></li><li class="l2"><a href="#explicit-type-arguments-templates">Explicit type arguments (templates)</a></li></ul></nav>

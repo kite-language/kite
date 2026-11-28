@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/reference/std-pieces/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/reference/std-pieces/" hreflang="fr" lang="fr">FR</a><a href="/es/reference/std-pieces/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
 <li><a href="/fr/guide/collections/">Collections</a></li>
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/function-values/">Valeurs de fonction et lambdas</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/errors/">Erreurs : Result, Option et ?</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
 <li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
@@ -69,7 +71,7 @@
 <h2 id="default-pieces">Default pieces</h2>
 <h3 id="args"><code>args</code></h3>
 <p>command-line argument parsing<br />
-<code>use std.args</code> · version 0.5.2</p>
+<code>use std.args</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -106,7 +108,7 @@
 </table>
 <h3 id="base64"><code>base64</code></h3>
 <p>Base64 encoding and decoding (RFC 4648)<br />
-<code>use std.base64</code> · version 0.5.2</p>
+<code>use std.base64</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -135,7 +137,7 @@
 </table>
 <h3 id="bits"><code>bits</code></h3>
 <p>bit tricks on 64-bit ints: popcount, rotations, flags<br />
-<code>use std.bits</code> · version 0.5.2</p>
+<code>use std.bits</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -184,7 +186,7 @@
 </table>
 <h3 id="collections"><code>collections</code></h3>
 <p>stacks, queues, sets, sorting and list helpers for ints and strings<br />
-<code>use std.collections</code> · version 0.5.2</p>
+<code>use std.collections</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -329,7 +331,7 @@
 </table>
 <h3 id="crc32"><code>crc32</code></h3>
 <p>CRC-32 checksum (IEEE 802.3)<br />
-<code>use std.crc32</code> · version 0.5.2</p>
+<code>use std.crc32</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -350,7 +352,7 @@
 </table>
 <h3 id="csv"><code>csv</code></h3>
 <p>CSV lines: parsing with quotes and writing<br />
-<code>use std.csv</code> · version 0.5.2</p>
+<code>use std.csv</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -375,7 +377,7 @@
 </table>
 <h3 id="datetime"><code>datetime</code></h3>
 <p>calendar dates and times from Unix timestamps (UTC)<br />
-<code>use std.datetime</code> · version 0.5.2</p>
+<code>use std.datetime</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -448,7 +450,7 @@
 </table>
 <h3 id="error"><code>error</code></h3>
 <p>error handling: Error values with context chains and Result-like records<br />
-<code>use std.error</code> · version 0.5.2</p>
+<code>use std.error</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -553,7 +555,7 @@
 </table>
 <h3 id="fmt"><code>fmt</code></h3>
 <p>padding and number formatting<br />
-<code>use std.fmt</code> · version 0.5.2</p>
+<code>use std.fmt</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -602,7 +604,7 @@
 </table>
 <h3 id="fs"><code>fs</code></h3>
 <p>files and directories<br />
-<code>use std.fs</code> · version 0.5.2</p>
+<code>use std.fs</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -671,7 +673,7 @@
 </table>
 <h3 id="git"><code>git</code></h3>
 <p>thin wrappers over the git command line<br />
-<code>use std.git</code> · version 0.5.2</p>
+<code>use std.git</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -724,7 +726,7 @@
 </table>
 <h3 id="glob"><code>glob</code></h3>
 <p>wildcard matching with * and ?<br />
-<code>use std.glob</code> · version 0.5.2</p>
+<code>use std.glob</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -745,7 +747,7 @@
 </table>
 <h3 id="hex"><code>hex</code></h3>
 <p>hexadecimal encoding and decoding of byte strings<br />
-<code>use std.hex</code> · version 0.5.2</p>
+<code>use std.hex</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -774,7 +776,7 @@
 </table>
 <h3 id="http"><code>http</code></h3>
 <p>HTTP requests through the curl command<br />
-<code>use std.http</code> · version 0.5.2</p>
+<code>use std.http</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -803,7 +805,7 @@
 </table>
 <h3 id="io"><code>io</code></h3>
 <p>standard input and output helpers<br />
-<code>use std.io</code> · version 0.5.2</p>
+<code>use std.io</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -834,9 +836,26 @@
 </tr>
 </tbody>
 </table>
+<h3 id="iter"><code>iter</code></h3>
+<p>map, filter, reduce and friends over lists, with function values<br />
+<code>use std.iter</code> · version 0.7.0</p>
+<table>
+<thead>
+<tr>
+<th>function</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iter_range(n: int) -&gt; [int]</code></td>
+<td>The list 0, 1, ..., n-1.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="json"><code>json</code></h3>
 <p>JSON value extraction without a tree<br />
-<code>use std.json</code> · version 0.5.2</p>
+<code>use std.json</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -889,7 +908,7 @@
 </table>
 <h3 id="log"><code>log</code></h3>
 <p>leveled log lines on stdout with timestamps<br />
-<code>use std.log</code> · version 0.5.2</p>
+<code>use std.log</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -934,7 +953,7 @@
 </table>
 <h3 id="math"><code>math</code></h3>
 <p>floating point math (libm) and int/float conversion helpers<br />
-<code>use std.math</code> · version 0.5.2</p>
+<code>use std.math</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1011,7 +1030,7 @@
 </table>
 <h3 id="mem"><code>mem</code></h3>
 <p>manual memory: typed buffers, realloc, copy and zero on top of alloc_n/realloc_n/copy_n/zero_n<br />
-<code>use std.mem</code> · version 0.5.2</p>
+<code>use std.mem</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1088,10 +1107,10 @@
 </table>
 <h3 id="option"><code>option</code></h3>
 <p>Option<T>: a value that may be missing<br />
-<code>use std.option</code> · version 0.5.2</p>
+<code>use std.option</code> · version 0.7.0</p>
 <h3 id="path"><code>path</code></h3>
 <p>string-based path helpers<br />
-<code>use std.path</code> · version 0.5.2</p>
+<code>use std.path</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1148,7 +1167,7 @@
 </table>
 <h3 id="process"><code>process</code></h3>
 <p>running programs and reading the environment<br />
-<code>use std.process</code> · version 0.5.2</p>
+<code>use std.process</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1181,7 +1200,7 @@
 </table>
 <h3 id="random"><code>random</code></h3>
 <p>pseudo-random numbers (xorshift64): ranges, shuffles, random strings<br />
-<code>use std.random</code> · version 0.5.2</p>
+<code>use std.random</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1230,10 +1249,10 @@
 </table>
 <h3 id="result"><code>result</code></h3>
 <p>Result<T, E>: a value or an error, for any types T and E<br />
-<code>use std.result</code> · version 0.5.2</p>
+<code>use std.result</code> · version 0.7.0</p>
 <h3 id="semver"><code>semver</code></h3>
 <p>semantic versions and requirements<br />
-<code>use std.semver</code> · version 0.5.2</p>
+<code>use std.semver</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1274,7 +1293,7 @@
 </table>
 <h3 id="sha256"><code>sha256</code></h3>
 <p>SHA-256 hashing<br />
-<code>use std.sha256</code> · version 0.5.2</p>
+<code>use std.sha256</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1303,7 +1322,7 @@
 </table>
 <h3 id="stats"><code>stats</code></h3>
 <p>basic statistics over int lists: mean, median, variance, standard deviation<br />
-<code>use std.stats</code> · version 0.5.2</p>
+<code>use std.stats</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1344,7 +1363,7 @@
 </table>
 <h3 id="strings"><code>strings</code></h3>
 <p>string utilities: lines, chars, wrapping, counting, trimming, case<br />
-<code>use std.strings</code> · version 0.5.2</p>
+<code>use std.strings</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1433,7 +1452,7 @@
 </table>
 <h3 id="sys"><code>sys</code></h3>
 <p>libc hooks and shell helpers: the base of the other default pieces<br />
-<code>use std.sys</code> · version 0.5.2</p>
+<code>use std.sys</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1494,7 +1513,7 @@
 </table>
 <h3 id="term"><code>term</code></h3>
 <p>terminal colours and queries<br />
-<code>use std.term</code> · version 0.5.2</p>
+<code>use std.term</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1563,7 +1582,7 @@
 </table>
 <h3 id="test"><code>test</code></h3>
 <p>a tiny assertion library<br />
-<code>use std.test</code> · version 0.5.2</p>
+<code>use std.test</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1612,7 +1631,7 @@
 </table>
 <h3 id="threads"><code>threads</code></h3>
 <p>threads: mutexes, atomics and sleeping on top of the spawn/thread_join builtins<br />
-<code>use std.threads</code> · version 0.5.2</p>
+<code>use std.threads</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1669,7 +1688,7 @@
 </table>
 <h3 id="time"><code>time</code></h3>
 <p>clock, formatting and sleeping<br />
-<code>use std.time</code> · version 0.5.2</p>
+<code>use std.time</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1710,7 +1729,7 @@
 </table>
 <h3 id="toml"><code>toml</code></h3>
 <p>flat TOML reader<br />
-<code>use std.toml</code> · version 0.5.2</p>
+<code>use std.toml</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1763,7 +1782,7 @@
 </table>
 <h3 id="types"><code>types</code></h3>
 <p>number and character helpers: parsing, clamping, classification<br />
-<code>use std.types</code> · version 0.5.2</p>
+<code>use std.types</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1848,7 +1867,7 @@
 </table>
 <h3 id="url"><code>url</code></h3>
 <p>URL parsing and percent-encoding<br />
-<code>use std.url</code> · version 0.5.2</p>
+<code>use std.url</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1909,7 +1928,7 @@
 </table>
 <h3 id="utf8"><code>utf8</code></h3>
 <p>UTF-8 aware helpers: code point counting, validation, splitting<br />
-<code>use std.utf8</code> · version 0.5.2</p>
+<code>use std.utf8</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -1938,7 +1957,7 @@
 </table>
 <h3 id="uuid"><code>uuid</code></h3>
 <p>random (version 4) UUIDs<br />
-<code>use std.uuid</code> · version 0.5.2</p>
+<code>use std.uuid</code> · version 0.7.0</p>
 <table>
 <thead>
 <tr>
@@ -2062,7 +2081,7 @@
 <footer class="pager"><a class="prev" href="/fr/reference/builtins/"><small>Précédent</small>← Fonctions intégrées</a><a class="next" href="/fr/reference/cli/"><small>Suivant</small>La commande kite →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/pieces">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#default-pieces">Default pieces</a></li><li class="l3"><a href="#args">args</a></li><li class="l3"><a href="#base64">base64</a></li><li class="l3"><a href="#bits">bits</a></li><li class="l3"><a href="#collections">collections</a></li><li class="l3"><a href="#crc32">crc32</a></li><li class="l3"><a href="#csv">csv</a></li><li class="l3"><a href="#datetime">datetime</a></li><li class="l3"><a href="#error">error</a></li><li class="l3"><a href="#fmt">fmt</a></li><li class="l3"><a href="#fs">fs</a></li><li class="l3"><a href="#git">git</a></li><li class="l3"><a href="#glob">glob</a></li><li class="l3"><a href="#hex">hex</a></li><li class="l3"><a href="#http">http</a></li><li class="l3"><a href="#io">io</a></li><li class="l3"><a href="#json">json</a></li><li class="l3"><a href="#log">log</a></li><li class="l3"><a href="#math">math</a></li><li class="l3"><a href="#mem">mem</a></li><li class="l3"><a href="#option">option</a></li><li class="l3"><a href="#path">path</a></li><li class="l3"><a href="#process">process</a></li><li class="l3"><a href="#random">random</a></li><li class="l3"><a href="#result">result</a></li><li class="l3"><a href="#semver">semver</a></li><li class="l3"><a href="#sha256">sha256</a></li><li class="l3"><a href="#stats">stats</a></li><li class="l3"><a href="#strings">strings</a></li><li class="l3"><a href="#sys">sys</a></li><li class="l3"><a href="#term">term</a></li><li class="l3"><a href="#test">test</a></li><li class="l3"><a href="#threads">threads</a></li><li class="l3"><a href="#time">time</a></li><li class="l3"><a href="#toml">toml</a></li><li class="l3"><a href="#types">types</a></li><li class="l3"><a href="#url">url</a></li><li class="l3"><a href="#utf8">utf8</a></li><li class="l3"><a href="#uuid">uuid</a></li><li class="l2"><a href="#community-pieces">Community pieces</a></li><li class="l3"><a href="#diff">diff</a></li><li class="l3"><a href="#ini">ini</a></li><li class="l3"><a href="#progress">progress</a></li><li class="l3"><a href="#table">table</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#default-pieces">Default pieces</a></li><li class="l3"><a href="#args">args</a></li><li class="l3"><a href="#base64">base64</a></li><li class="l3"><a href="#bits">bits</a></li><li class="l3"><a href="#collections">collections</a></li><li class="l3"><a href="#crc32">crc32</a></li><li class="l3"><a href="#csv">csv</a></li><li class="l3"><a href="#datetime">datetime</a></li><li class="l3"><a href="#error">error</a></li><li class="l3"><a href="#fmt">fmt</a></li><li class="l3"><a href="#fs">fs</a></li><li class="l3"><a href="#git">git</a></li><li class="l3"><a href="#glob">glob</a></li><li class="l3"><a href="#hex">hex</a></li><li class="l3"><a href="#http">http</a></li><li class="l3"><a href="#io">io</a></li><li class="l3"><a href="#iter">iter</a></li><li class="l3"><a href="#json">json</a></li><li class="l3"><a href="#log">log</a></li><li class="l3"><a href="#math">math</a></li><li class="l3"><a href="#mem">mem</a></li><li class="l3"><a href="#option">option</a></li><li class="l3"><a href="#path">path</a></li><li class="l3"><a href="#process">process</a></li><li class="l3"><a href="#random">random</a></li><li class="l3"><a href="#result">result</a></li><li class="l3"><a href="#semver">semver</a></li><li class="l3"><a href="#sha256">sha256</a></li><li class="l3"><a href="#stats">stats</a></li><li class="l3"><a href="#strings">strings</a></li><li class="l3"><a href="#sys">sys</a></li><li class="l3"><a href="#term">term</a></li><li class="l3"><a href="#test">test</a></li><li class="l3"><a href="#threads">threads</a></li><li class="l3"><a href="#time">time</a></li><li class="l3"><a href="#toml">toml</a></li><li class="l3"><a href="#types">types</a></li><li class="l3"><a href="#url">url</a></li><li class="l3"><a href="#utf8">utf8</a></li><li class="l3"><a href="#uuid">uuid</a></li><li class="l2"><a href="#community-pieces">Community pieces</a></li><li class="l3"><a href="#diff">diff</a></li><li class="l3"><a href="#ini">ini</a></li><li class="l3"><a href="#progress">progress</a></li><li class="l3"><a href="#table">table</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

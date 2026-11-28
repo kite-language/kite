@@ -37,3 +37,7 @@ Un champ `string` d'un record fraîchement créé est un pointeur nul tant que v
 ## Windows : erreurs d'édition de liens sur `printf` ou `timespec_get`
 
 Passez à la dernière version (ces symboles sont fournis par les shims de Kite). Relancez `kite build` et signalez toute la sortie si cela échoue encore.
+
+## Couleurs dans les messages d'erreur
+
+Les erreurs sont colorées dans un terminal. Définissez `NO_COLOR=1` pour désactiver les couleurs, ou `KITE_COLOR=always` / `KITE_COLOR=never` pour les forcer ou les couper (par exemple dans un journal de CI).

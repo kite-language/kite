@@ -1,0 +1,22 @@
+use std.test
+use std.strings.{upper, lower}
+use std.option.{some, unwrap_or}
+from std.math import sqrt
+
+make main():
+    t = test_new("imports and maps")
+    test_eq_str(t, "use piece.{a, b}", upper("kite") + lower("ABC"), "KITEabc")
+    test_eq_int(t, "generic function imported by name", unwrap_or(some(41), 0) + 1, 42)
+    test_eq_str(t, "from piece import f", str(sqrt(16.0)), "4")
+    m = StrMap_int()
+    m.set("a", 1)
+    m.set("b", 2)
+    m.set("c", 3)
+    test_eq_str(t, "remove an existing key", str(m.remove("b")), "true")
+    test_eq_str(t, "remove a missing key", str(m.remove("zzz")), "false")
+    test_eq_int(t, "size after remove", m.size(), 2)
+    test_eq_str(t, "removed key is gone", str(m.has("b")), "false")
+    test_eq_int(t, "other keys survive", m.get("c"), 3)
+    m.set("b", 9)
+    test_eq_str(t, "insertion order after remove", m.keys[0] + m.keys[1] + m.keys[2], "acb")
+    exit(test_finish(t))

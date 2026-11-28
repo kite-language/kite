@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Valeurs de fonction et lambdas — Kite</title>
+<meta name="description" content="Une fonction peut être rangée dans une variable, passée à une autre fonction et retournée comme n&#x27;importe quelle valeur. Son type s&#x27;écrit fn(types des paramètres) -&amp;gt; type du rés">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/fr/guide/function-values/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/function-values/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/function-values/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/function-values/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/function-values/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Aller au contenu</a>
+<header class="top">
+  <button id="menu" aria-label="Menu">☰</button>
+  <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.7.0</span>
+  <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Langue"><a href="/guide/function-values/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/function-values/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/function-values/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrer les pages…" aria-label="Filtrer les pages…">
+<details class="grp" open><summary>Pour commencer</summary><ul>
+<li><a href="/fr/">Introduction</a></li>
+<li><a href="/fr/installation/">Installation</a></li>
+</ul></details>
+<details class="grp" open><summary>Guide</summary><ul>
+<li><a href="/fr/guide/first-project/">Votre premier projet</a></li>
+<li><a href="/fr/guide/variables/">Variables et types</a></li>
+<li><a href="/fr/guide/control-flow/">Structures de contrôle</a></li>
+<li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
+<li><a href="/fr/guide/collections/">Collections</a></li>
+<li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a class="cur" aria-current="page" href="/fr/guide/function-values/">Valeurs de fonction et lambdas</a></li>
+<li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/errors/">Erreurs : Result, Option et ?</a></li>
+<li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
+<li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
+<li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
+<li><a href="/fr/guide/style/">Écrire du Kite lisible</a></li>
+<li><a href="/fr/guide/cheatsheet/">Aide-mémoire</a></li>
+<li><a href="/fr/guide/troubleshooting/">Dépannage</a></li>
+</ul></details>
+<details class="grp" open><summary>Référence</summary><ul>
+<li><a href="/fr/reference/language/">Référence du langage</a></li>
+<li><a href="/fr/reference/builtins/">Fonctions intégrées</a></li>
+<li><a href="/fr/reference/std-pieces/">Pièces standard</a></li>
+<li><a href="/fr/reference/cli/">La commande kite</a></li>
+<li><a href="/fr/reference/pieces-registry/">Pièces et registre</a></li>
+<li><a href="/fr/reference/targets/">Cibles, OS et freestanding</a></li>
+<li><a href="/fr/reference/c-interop/">Appeler du C</a></li>
+<li><a href="/fr/reference/memory/">Modèle mémoire</a></li>
+<li><a href="/fr/reference/editors/">Éditeurs</a></li>
+</ul></details>
+<details class="grp" open><summary>Projet</summary><ul>
+<li><a href="/fr/project/roadmap/">Feuille de route</a></li>
+<li><a href="/fr/project/changelog/">Journal des modifications</a></li>
+<li><a href="/fr/project/architecture/">Architecture</a></li>
+<li><a href="/fr/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guide › Valeurs de fonction et lambdas</div>
+<article>
+<h1 id="valeurs-de-fonction-et-lambdas">Valeurs de fonction et lambdas</h1>
+<p>Une fonction peut être rangée dans une variable, passée à une autre fonction et retournée comme n'importe quelle valeur. Son type s'écrit
+<code>fn(types des paramètres) -&gt; type du résultat</code>.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> double(x: <span class="t">int</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> x * <span class="n">2</span>
+
+<span class="k">make</span> apply(f: fn(<span class="t">int</span>) -&gt; <span class="t">int</span>, v: <span class="t">int</span>) -&gt; <span class="t">int</span>:
+    <span class="k">return</span> f(v)                      <span class="c">// appeler une variable qui contient une fonction</span>
+
+<span class="k">make</span> main():
+    f = double                       <span class="c">// un nom de fonction est une valeur</span>
+    print(f(<span class="n">21</span>))                     <span class="c">// 42</span>
+    print(apply(double, <span class="n">4</span>))          <span class="c">// 8</span>
+</code></pre></div>
+<p>Rien n'est retourné ? Omettez la flèche : <code>fn(string)</code> est une fonction qui prend une chaîne et ne retourne rien.</p>
+<h2 id="lambdas">Lambdas</h2>
+<p>Une <strong>lambda</strong> est une petite fonction écrite là où on s'en sert : <code>|paramètres| expression</code>.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code>print(apply(|x| x + <span class="n">100</span>, <span class="n">5</span>))                          <span class="c">// 105</span>
+g: fn(<span class="t">int</span>, <span class="t">int</span>) -&gt; <span class="t">int</span> = |a, b| a * b
+k = |x: <span class="t">float</span>| x / <span class="n">2.0</span>                                <span class="c">// écrivez le type quand rien ne l&#x27;indique</span>
+say: fn(<span class="t">string</span>) = |s| print(s)
+z = || <span class="n">42</span>                                             <span class="c">// sans paramètre</span>
+</code></pre></div>
+<p>Les types des paramètres viennent du type de fonction <strong>attendu</strong> (<code>apply</code> ci-dessus attend <code>fn(int) -&gt; int</code>) ; une lambda affectée à une nouvelle
+variable n'a pas de type attendu, annotez donc ses paramètres (<code>|x: float|</code>). Le type du résultat est celui de l'expression.</p>
+<h2 id="capturer-des-variables-fermetures">Capturer des variables (fermetures)</h2>
+<p>Une lambda peut utiliser les variables de la fonction qui l'entoure. Elle garde une <strong>copie</strong> de leurs valeurs au moment où elle est créée :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> main():
+    base = <span class="n">1000</span>
+    add_base = |x: <span class="t">int</span>| x + base          <span class="c">// capture base</span>
+    base = <span class="n">5</span>                              <span class="c">// la fermeture voit toujours 1000</span>
+    print(add_base(<span class="n">7</span>))                    <span class="c">// 1007</span>
+    scale = <span class="n">2.5</span>
+    half = |x: <span class="t">float</span>| x * scale
+    ys = iter.map([<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>], |n| n * <span class="n">10</span> + base)    <span class="c">// les captures marchent aussi avec iter.map</span>
+</code></pre></div>
+<p>Les variables capturées peuvent être <code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>, des pointeurs, des enums et d'autres fonctions (une fermeture peut en capturer une autre).</p>
+<h2 id="map-filter-reduce">map, filter, reduce</h2>
+<p>La pièce <code>std.iter</code> travaille sur les listes avec des valeurs de fonction (elle est générique, les types des éléments sont déduits) :</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.iter
+
+<span class="k">make</span> main():
+    nums = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>, <span class="n">4</span>]
+    squares = iter.map(nums, |x| x * x)               <span class="c">// [1, 4, 9, 16]</span>
+    evens = iter.filter(nums, |x| x % <span class="n">2</span> == <span class="n">0</span>)         <span class="c">// [2, 4]</span>
+    print(iter.reduce(nums, <span class="n">0</span>, |acc, x| acc + x))     <span class="c">// 10</span>
+    print(iter.any(nums, |x| x &gt; <span class="n">3</span>))                  <span class="c">// true</span>
+    iter.each(iter.range(<span class="n">3</span>), |i| print(i * <span class="n">10</span>))
+</code></pre></div>
+<h2 id="limites">Limites</h2>
+<ul>
+<li>Une lambda capture <strong>une copie</strong> des variables qu'elle utilise, prise à la création de la lambda (voir plus haut) ; les listes, records et <code>num</code> ne peuvent pas encore être capturés (<code>E0139</code>).
+  Le bloc qui contient les valeurs capturées n'est pas libéré : ne créez pas de fermetures dans une très longue boucle.</li>
+<li>Les valeurs de fonction prennent et retournent <code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>, des pointeurs et des enums (pas encore de listes, records ni <code>num</code>) : erreur <code>E0131</code>.</li>
+<li>Une fonction doit avoir un <code>-&gt; Type</code> explicite pour servir de valeur (<code>E0135</code>) ; un mauvais nombre ou type d'arguments à l'appel est <code>E0136</code> / <code>E0137</code>.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/fr/guide/records/"><small>Précédent</small>← Records, classes et enums</a><a class="next" href="/fr/guide/generics/"><small>Suivant</small>Génériques →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/15-function-values.md">Modifier cette page sur GitHub</a></p>
+</main>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#lambdas">Lambdas</a></li><li class="l2"><a href="#capturer-des-variables-fermetures">Capturer des variables (fermetures)</a></li><li class="l2"><a href="#map-filter-reduce">map, filter, reduce</a></li><li class="l2"><a href="#limites">Limites</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

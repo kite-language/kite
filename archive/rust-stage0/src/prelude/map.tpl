@@ -69,3 +69,14 @@ class @N@:
             self.rebuild(len(self.slots) * 2)
         else:
             self.place(k, self.count - 1)
+
+    // Removes `k` (keeping the insertion order of the other keys); false when it was not there.
+    make remove(self, k: string) -> bool:
+        i = self.slot_of(k)
+        if i < 0:
+            return false
+        remove(self.keys, i)
+        remove(self.vals, i)
+        self.count -= 1
+        self.rebuild(len(self.slots))
+        return true

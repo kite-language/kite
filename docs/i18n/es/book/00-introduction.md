@@ -12,7 +12,7 @@ make main():
 **Qué obtienes**
 
 - Un compilador escrito en el propio Kite (se compila a sí mismo: stage 1 = stage 2 = stage 3).
-- Las **piezas**: los paquetes de Kite. El lenguaje incluye 40 piezas por defecto (`std.fs`, `std.json`, `std.random`, ...) y un
+- Las **piezas**: los paquetes de Kite. El lenguaje incluye 41 piezas por defecto (`std.fs`, `std.json`, `std.random`, ...) y un
   registro comunitario que vive en el repositorio.
 - Hilos, punteros y memoria manual cuando los necesitas; cadenas, listas, tuplas y diccionarios cuando no.
 - `kite` lo hace todo: `init`, `build`, `run`, `check`, `test`, `fmt`, `doc`, `add`, `publish`, `target`, ...

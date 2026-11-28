@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/guide/troubleshooting/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/troubleshooting/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/troubleshooting/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
 <li><a href="/fr/guide/collections/">Collections</a></li>
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/function-values/">Valeurs de fonction et lambdas</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/errors/">Erreurs : Result, Option et ?</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
 <li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
@@ -87,11 +89,13 @@ après un <code>.</code>, tout mot est accepté : <code>job.thread</code> est va
 <p>Un champ <code>string</code> d'un record fraîchement créé est un pointeur nul tant que vous ne l'avez pas renseigné. Renseignez le champ avant de le lire.</p>
 <h2 id="windows-erreurs-dedition-de-liens-sur-printf-ou-timespec_get">Windows : erreurs d'édition de liens sur <code>printf</code> ou <code>timespec_get</code></h2>
 <p>Passez à la dernière version (ces symboles sont fournis par les shims de Kite). Relancez <code>kite build</code> et signalez toute la sortie si cela échoue encore.</p>
+<h2 id="couleurs-dans-les-messages-derreur">Couleurs dans les messages d'erreur</h2>
+<p>Les erreurs sont colorées dans un terminal. Définissez <code>NO_COLOR=1</code> pour désactiver les couleurs, ou <code>KITE_COLOR=always</code> / <code>KITE_COLOR=never</code> pour les forcer ou les couper (par exemple dans un journal de CI).</p>
 </article>
 <footer class="pager"><a class="prev" href="/fr/guide/cheatsheet/"><small>Précédent</small>← Aide-mémoire</a><a class="next" href="/fr/reference/language/"><small>Suivant</small>Référence du langage →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/fr/book/12-troubleshooting.md">Modifier cette page sur GitHub</a></p>
 </main>
-<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#une-variable-ne-peut-pas-porter-ce-nom">Une variable ne peut pas porter ce nom</a></li><li class="l2"><a href="#erreur-de-segmentation-avec-des-listes-dans-des-classes">Erreur de segmentation avec des listes dans des classes</a></li><li class="l2"><a href="#un-champ-string-fait-planter-len">Un champ string fait planter len()</a></li><li class="l2"><a href="#windows-erreurs-dedition-de-liens-sur-printf-ou-timespec_get">Windows : erreurs d&#x27;édition de liens sur printf ou timespec_get</a></li></ul></nav>
+<nav class="toc" aria-label="Sur cette page"><h5>Sur cette page</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#une-variable-ne-peut-pas-porter-ce-nom">Une variable ne peut pas porter ce nom</a></li><li class="l2"><a href="#erreur-de-segmentation-avec-des-listes-dans-des-classes">Erreur de segmentation avec des listes dans des classes</a></li><li class="l2"><a href="#un-champ-string-fait-planter-len">Un champ string fait planter len()</a></li><li class="l2"><a href="#windows-erreurs-dedition-de-liens-sur-printf-ou-timespec_get">Windows : erreurs d&#x27;édition de liens sur printf ou timespec_get</a></li><li class="l2"><a href="#couleurs-dans-les-messages-derreur">Couleurs dans les messages d&#x27;erreur</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copier", copied: "Copié"};</script>
 <script src="/docs.js"></script>

@@ -1,0 +1,57 @@
+use std.test
+use std.iter
+
+make double(x: int) -> int:
+    return x * 2
+
+make apply(f: fn(int) -> int, v: int) -> int:
+    return f(v)
+
+make greet(name: string) -> string:
+    return "hi " + name
+
+make compose(f: fn(int) -> int, g: fn(int) -> int, v: int) -> int:
+    return g(f(v))
+
+make main():
+    t = test_new("function values")
+    f = double
+    test_eq_int(t, "call a variable holding a function", f(21), 42)
+    test_eq_int(t, "pass a named function", apply(double, 4), 8)
+    test_eq_int(t, "pass a lambda", apply(|x| x + 100, 5), 105)
+    g: fn(int, int) -> int = |a: int, b: int| a * b
+    test_eq_int(t, "typed lambda", g(6, 7), 42)
+    h = greet
+    test_eq_str(t, "string argument and result", h("kite"), "hi kite")
+    k = |x: float| x / 2.0
+    test_eq_str(t, "float lambda", str(k(5.0)), "2.5")
+    z = || 42
+    test_eq_int(t, "lambda without parameters", z(), 42)
+    test_eq_int(t, "compose", compose(double, |x| x + 1, 5), 11)
+    nums = [1, 2, 3, 4]
+    sq = iter.map(nums, |x| x * x)
+    test_eq_int(t, "iter.map", sq[3], 16)
+    test_eq_int(t, "iter.filter", len(iter.filter(nums, |x| x % 2 == 0)), 2)
+    test_eq_int(t, "iter.reduce", iter.reduce(nums, 0, |acc, x| acc + x), 10)
+    test_eq_str(t, "iter.map to strings", iter.map(nums, |n| "n" + str(n))[2], "n3")
+    test_eq_str(t, "iter.any / all", str(iter.any(nums, |x| x > 3)) + str(iter.all(nums, |x| x > 3)), "truefalse")
+    test_eq_int(t, "iter.count", iter.count(nums, |x| x > 1), 3)
+    test_eq_str(t, "named function through iter", str(iter.map(nums, double)[1]), "4")
+    base = 1000
+    add_base = |x: int| x + base
+    test_eq_int(t, "closure captures an int", apply(add_base, 7), 1007)
+    name = "kite"
+    greet2 = |s: string| name + "-" + s
+    test_eq_str(t, "closure captures a string", greet2("ok"), "kite-ok")
+    scale = 2.5
+    half = |x: float| x * scale
+    test_eq_str(t, "closure captures a float", str(half(4.0)), "10")
+    flag = true
+    pick = |a: int| a > 0 and flag
+    test_eq_str(t, "closure captures a bool", str(pick(5)), "true")
+    offset = 10
+    test_eq_int(t, "iter.map with a capture", iter.map(nums, |x| x + offset)[3], 14)
+    test_eq_int(t, "iter.reduce with a capture", iter.reduce(nums, base, |acc, x| acc + x * offset), 1100)
+    wrapped = |y: int| apply(add_base, y)
+    test_eq_int(t, "a closure that captures a closure", wrapped(1), 1001)
+    exit(test_finish(t))

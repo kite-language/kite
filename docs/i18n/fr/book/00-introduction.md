@@ -12,7 +12,7 @@ make main():
 **Ce que vous obtenez**
 
 - Un compilateur écrit en Kite lui-même (il se compile : stage 1 = stage 2 = stage 3).
-- Les **pièces** : les paquets de Kite. Le langage fournit 40 pièces par défaut (`std.fs`, `std.json`, `std.random`, ...) et un
+- Les **pièces** : les paquets de Kite. Le langage fournit 41 pièces par défaut (`std.fs`, `std.json`, `std.random`, ...) et un
   registre communautaire hébergé dans le dépôt.
 - Des threads, des pointeurs et de la mémoire manuelle quand vous en avez besoin ; des chaînes, listes, tuples et dictionnaires quand vous n'en avez pas besoin.
 - `kite` fait tout : `init`, `build`, `run`, `check`, `test`, `fmt`, `doc`, `add`, `publish`, `target`, ...

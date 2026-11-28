@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menú">☰</button>
   <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Idioma"><a href="/guide/pieces/" hreflang="en" lang="en">EN</a><a href="/fr/guide/pieces/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/pieces/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/es/guide/functions/">Funciones y constantes</a></li>
 <li><a href="/es/guide/collections/">Colecciones</a></li>
 <li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/function-values/">Valores de función y lambdas</a></li>
 <li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/errors/">Errores: Result, Option y ?</a></li>
 <li><a class="cur" aria-current="page" href="/es/guide/pieces/">Piezas (paquetes)</a></li>
 <li><a href="/es/guide/conditional/">Compilación condicional</a></li>
 <li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
@@ -120,11 +122,22 @@ pub <span class="k">make</span> dist(a: Point, b: Point) -&gt; <span class="t">i
 de otra pieza es el error <code>E0080</code>. La referencia de <a href="/es/reference/std-pieces/">piezas estándar</a> solo lista los elementos <code>pub</code> de una pieza que usa <code>pub</code>.</p>
 <blockquote class="callout tip"><p><strong>Consejo:</strong> empieza en privado y marca <code>pub</code> solo lo que necesitan los usuarios de tu pieza: la interfaz se mantiene pequeña y puedes cambiar el resto con libertad.</p>
 </blockquote>
+<h2 id="importar-nombres">Importar nombres</h2>
+<p>En lugar de escribir <code>piece.function()</code> cada vez, importa por nombre las funciones que usas:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.strings.{upper, lower}       <span class="c">// o: from std.strings import upper, lower</span>
+<span class="k">use</span> std.option.{some, unwrap_or}
+
+<span class="k">make</span> main():
+    print(upper(<span class="s">&quot;kite&quot;</span>) + lower(<span class="s">&quot;ABC&quot;</span>))   <span class="c">// KITEabc</span>
+    print(unwrap_or(some(<span class="n">41</span>), <span class="n">0</span>))
+</code></pre></div>
+<p><code>upper</code> pasa a significar <code>strings.upper</code> en ese archivo (una función tuya con el mismo nombre gana). Nombrar una función que la pieza
+no tiene es el error <code>E0128</code>. La forma calificada <code>strings.upper(...)</code> sigue funcionando siempre.</p>
 </article>
-<footer class="pager"><a class="prev" href="/es/guide/generics/"><small>Anterior</small>← Genéricos</a><a class="next" href="/es/guide/conditional/"><small>Siguiente</small>Compilación condicional →</a></footer>
+<footer class="pager"><a class="prev" href="/es/guide/errors/"><small>Anterior</small>← Errores: Result, Option y ?</a><a class="next" href="/es/guide/conditional/"><small>Siguiente</small>Compilación condicional →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/07-pieces.md">Editar esta página en GitHub</a></p>
 </main>
-<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#dos-tipos">Dos tipos</a></li><li class="l2"><a href="#llamar-a-piezas">Llamar a piezas</a></li><li class="l2"><a href="#gestionar-dependencias">Gestionar dependencias</a></li><li class="l2"><a href="#publicar">Publicar</a></li><li class="l2"><a href="#elementos-publicos-y-privados">Elementos públicos y privados</a></li></ul></nav>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#dos-tipos">Dos tipos</a></li><li class="l2"><a href="#llamar-a-piezas">Llamar a piezas</a></li><li class="l2"><a href="#gestionar-dependencias">Gestionar dependencias</a></li><li class="l2"><a href="#publicar">Publicar</a></li><li class="l2"><a href="#elementos-publicos-y-privados">Elementos públicos y privados</a></li><li class="l2"><a href="#importar-nombres">Importar nombres</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
 <script src="/docs.js"></script>

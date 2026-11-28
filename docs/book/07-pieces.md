@@ -75,3 +75,19 @@ make helper(n: int) -> int:                   // private: other pieces cannot ca
 from another piece is error `E0080`. The [standard pieces](/reference/std-pieces/) reference lists only the `pub` items of a piece that uses `pub`.
 
 > **Tip:** start private, and mark `pub` only what users of your piece need: it keeps the interface small and lets you change the rest freely.
+
+## Importing names
+
+Instead of writing `piece.function()` every time, import the functions you use by name:
+
+```kite
+use std.strings.{upper, lower}       // or: from std.strings import upper, lower
+use std.option.{some, unwrap_or}
+
+make main():
+    print(upper("kite") + lower("ABC"))   // KITEabc
+    print(unwrap_or(some(41), 0))
+```
+
+`upper` then stands for `strings.upper` in that file (a function of your own with the same name wins). Naming a function the piece
+does not have is error `E0128`. The qualified form `strings.upper(...)` always keeps working.

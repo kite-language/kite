@@ -41,7 +41,7 @@ make shake_program(ast: Ast, root: int) -> int:
             if nd < 0:
                 continue
             k = ast.nodes[nd].kind
-            if k == "Call" or k == "Ident":
+            if k == "Call" or k == "Ident" or k == "FnRef" or k == "Closure":
                 nm = ast.nodes[nd].text
                 if idx.has(nm):
                     p2 = idx.get(nm) - 1

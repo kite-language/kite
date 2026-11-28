@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menú">☰</button>
   <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Idioma"><a href="/guide/troubleshooting/" hreflang="en" lang="en">EN</a><a href="/fr/guide/troubleshooting/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/troubleshooting/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/es/guide/functions/">Funciones y constantes</a></li>
 <li><a href="/es/guide/collections/">Colecciones</a></li>
 <li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/function-values/">Valores de función y lambdas</a></li>
 <li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/errors/">Errores: Result, Option y ?</a></li>
 <li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
 <li><a href="/es/guide/conditional/">Compilación condicional</a></li>
 <li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
@@ -87,11 +89,13 @@ después de un <code>.</code> se acepta cualquier palabra: <code>job.thread</cod
 <p>Un campo <code>string</code> de un registro recién creado es un puntero nulo hasta que lo asignas. Asigna el campo antes de leerlo.</p>
 <h2 id="windows-errores-de-enlazado-con-printf-o-timespec_get">Windows: errores de enlazado con <code>printf</code> o <code>timespec_get</code></h2>
 <p>Actualiza a la última versión (esos símbolos los proporcionan los shims de Kite). Vuelve a ejecutar <code>kite build</code> e informa de toda la salida si sigue fallando.</p>
+<h2 id="colores-en-los-mensajes-de-error">Colores en los mensajes de error</h2>
+<p>Los errores se colorean en un terminal. Define <code>NO_COLOR=1</code> para desactivar los colores, o <code>KITE_COLOR=always</code> / <code>KITE_COLOR=never</code> para forzarlos o quitarlos (por ejemplo en un registro de CI).</p>
 </article>
 <footer class="pager"><a class="prev" href="/es/guide/cheatsheet/"><small>Anterior</small>← Hoja de referencia rápida</a><a class="next" href="/es/reference/language/"><small>Siguiente</small>Referencia del lenguaje →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/12-troubleshooting.md">Editar esta página en GitHub</a></p>
 </main>
-<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#una-variable-no-puede-usar-ese-nombre">Una variable no puede usar ese nombre</a></li><li class="l2"><a href="#fallo-de-segmentacion-con-listas-dentro-de-clases">Fallo de segmentación con listas dentro de clases</a></li><li class="l2"><a href="#un-campo-string-hace-fallar-len">Un campo string hace fallar len()</a></li><li class="l2"><a href="#windows-errores-de-enlazado-con-printf-o-timespec_get">Windows: errores de enlazado con printf o timespec_get</a></li></ul></nav>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#una-variable-no-puede-usar-ese-nombre">Una variable no puede usar ese nombre</a></li><li class="l2"><a href="#fallo-de-segmentacion-con-listas-dentro-de-clases">Fallo de segmentación con listas dentro de clases</a></li><li class="l2"><a href="#un-campo-string-hace-fallar-len">Un campo string hace fallar len()</a></li><li class="l2"><a href="#windows-errores-de-enlazado-con-printf-o-timespec_get">Windows: errores de enlazado con printf o timespec_get</a></li><li class="l2"><a href="#colores-en-los-mensajes-de-error">Colores en los mensajes de error</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
 <script src="/docs.js"></script>

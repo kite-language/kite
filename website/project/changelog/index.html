@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/project/changelog/" hreflang="en" lang="en">EN</a><a href="/fr/project/changelog/" hreflang="fr" lang="fr">FR</a><a href="/es/project/changelog/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/function-values/">Function values and lambdas</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/errors/">Errors: Result, Option and ?</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
@@ -66,7 +68,37 @@
 <article>
 <h1 id="changelog-kite-repository">Changelog (kite repository)</h1>
 <p>Editor repositories have their own changelogs: see docs/versions.md.</p>
-<h2 id="052-windows-and-macos-ci-fixes">0.5.2 -- Windows and macOS CI fixes</h2>
+<h2 id="070-closures-that-capture-and-the-operator">0.7.0 -- closures that capture, and the <code>?</code> operator</h2>
+<ul>
+<li><strong>Closures</strong>: a lambda keeps a copy of the variables of the enclosing function that it uses (<code>add_base = |x: int| x + base</code>), including strings, floats, bools, pointers, enums
+  and other functions; works through <code>std.iter</code> too. Representation: a function value points to a block <code>[code pointer, captured values...]</code> (<code>FnAddr</code> gives the static block
+  of a plain function or capture-less lambda, <code>MkClosure</code> allocates the block of a capturing lambda, <code>CallInd</code> loads the code pointer and passes the block first); every
+  function used as a value is reached through a wrapper <code>name__fv</code> or a lifted <code>lambda__N</code> that takes that block. Lists, records and <code>num</code> cannot be captured yet (E0139);
+  closure blocks are not freed.</li>
+<li><strong><code>?</code> operator</strong>: <code>x = f()?</code>, <code>return g()? + h()?</code>, <code>if f()?.ok ...</code> hoist the call into a temporary and return the error / empty value of the function's own <code>Result&lt;T, E&gt;</code> or <code>Option&lt;T&gt;</code>
+  (E0144 when the function returns neither, E0141 / E0142 / E0143 for unsupported positions). Lexer token <code>Question</code>, AST node <code>Propagate</code>, expanded by the desugar pass.</li>
+<li>Tests <code>lang_test/tests/propagate.ki</code> and the closure cases of <code>functions.ki</code>; guide chapter "Errors: Result, Option and ?" (EN/FR/ES).</li>
+</ul>
+<h2 id="060-function-values-lambdas-and-stditer">0.6.0 -- function values, lambdas and <code>std.iter</code></h2>
+<p>The interim builds 0.5.1 to 0.5.3 are folded into this entry: from now on only <code>0.x.0</code> releases are made. Fixed here: the escape byte of coloured errors was written as <code>?</code> (<code>chr(27)</code>), now <code>chr_byte(27)</code>.</p>
+<h3 id="function-values-and-lambdas">Function values and lambdas</h3>
+<ul>
+<li><strong>Function types</strong> <code>fn(int, string) -&gt; bool</code> (<code>fn(string)</code> when nothing is returned); a function name is a value (<code>f = double</code>), a variable of function type can be called (<code>f(21)</code>),
+  and functions can be passed, stored and returned. <strong>Lambdas</strong> <code>|x, y| x + y</code>, <code>|x: float| x / 2.0</code>, <code>|| 42</code>: parameter types come from the expected function type or from annotations;
+  the compiler lifts each lambda to a function of its own (no run-time cost). Lambdas do not capture variables yet (planned for 0.7.0). Values take and return <code>int</code>, <code>float</code>, <code>bool</code>,
+  <code>string</code>, pointers and enums (E0131); other errors E0133 to E0138. Generic functions accept function parameters (<code>make map&lt;T, U&gt;(xs: [T], f: fn(T) -&gt; U) -&gt; [U]</code>).</li>
+<li>New default piece <strong><code>std.iter</code></strong>: <code>map</code>, <code>filter</code>, <code>reduce</code>, <code>each</code>, <code>any</code>, <code>all</code>, <code>count</code>, <code>range</code> (41 default pieces).</li>
+<li>IR: <code>FnAddr</code> and <code>CallInd</code> instructions; function values are <code>i64*</code> pointers. Test <code>lang_test/tests/functions.ki</code>; guide chapter "Function values and lambdas" (EN/FR/ES).</li>
+</ul>
+<h3 id="imported-names-strmapremove-coloured-errors">imported names, <code>StrMap.remove</code>, coloured errors</h3>
+<ul>
+<li><strong>Imports by name</strong>: <code>use std.strings.{upper, lower}</code> (same as <code>from std.strings import upper, lower</code>): <code>upper(...)</code> stands for <code>strings.upper(...)</code> in that file; a
+  function of your own with the same name wins; an unknown name is error <code>E0128</code>. Works for generic functions too (<code>use std.option.{some}</code>).</li>
+<li><strong><code>StrMap_*.remove(key)</code></strong> (true when the key was there; insertion order of the others is kept).</li>
+<li><strong>Coloured diagnostics</strong> on a terminal (bold red error, blue arrow, red carets, cyan help); <code>NO_COLOR</code> turns them off, <code>KITE_COLOR=always|never</code> forces them.</li>
+<li>Tests: <code>lang_test/tests/imports.ki</code>; <code>build.sh</code> checks the colour switches.</li>
+</ul>
+<h3 id="windows-and-macos-ci-fixes">Windows and macOS CI fixes</h3>
 <ul>
 <li><strong>Windows stage 2</strong>: <code>fs.is_dir</code> used <code>path + "/."</code>, which Windows folds into <code>path</code>, so every file looked like a directory and <code>kite build</code> said
   <code>stage2/src/main.ki not found</code>. A directory is now <code>exists(path + "/")</code> (a trailing slash only names a directory on every OS).</li>
@@ -76,7 +108,7 @@
 <li><strong>macOS x86-64</strong>: CI and the release workflow now also run on <code>macos-15-intel</code> (GitHub's last native Intel image, available until August 2027), next to the
   Apple-silicon <code>macos-latest</code>; each architecture is built natively (<code>release-macos-arm64</code>, <code>release-macos-x64</code>).</li>
 </ul>
-<h2 id="051-storage-the-smallest-executable">0.5.1 -- <code>--storage</code>: the smallest executable</h2>
+<h3 id="-storage-the-smallest-executable"><code>--storage</code>: the smallest executable</h3>
 <ul>
 <li><code>kite build --storage</code> / <code>[build] storage = true</code>: removes every function the program can never reach from <code>main</code> / <code>_start</code> (including the unused functions
   of the pieces it imports and of the prelude), compiles with <code>-Os -ffunction-sections -fdata-sections</code> and links with garbage collection and stripped
@@ -287,7 +319,7 @@
 <footer class="pager"><a class="prev" href="/project/roadmap/"><small>Previous</small>← Roadmap</a><a class="next" href="/project/architecture/"><small>Next</small>Architecture →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/CHANGELOG.md">Edit this page on GitHub</a></p>
 </main>
-<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#052-windows-and-macos-ci-fixes">0.5.2 -- Windows and macOS CI fixes</a></li><li class="l2"><a href="#051-storage-the-smallest-executable">0.5.1 -- --storage: the smallest executable</a></li><li class="l2"><a href="#050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, num, conditional compilation</a></li><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#070-closures-that-capture-and-the-operator">0.7.0 -- closures that capture, and the ? operator</a></li><li class="l2"><a href="#060-function-values-lambdas-and-stditer">0.6.0 -- function values, lambdas and std.iter</a></li><li class="l3"><a href="#function-values-and-lambdas">Function values and lambdas</a></li><li class="l3"><a href="#imported-names-strmapremove-coloured-errors">imported names, StrMap.remove, coloured errors</a></li><li class="l3"><a href="#windows-and-macos-ci-fixes">Windows and macOS CI fixes</a></li><li class="l3"><a href="#-storage-the-smallest-executable">--storage: the smallest executable</a></li><li class="l2"><a href="#050-the-05-line-generics-num-conditional-compilation">0.5.0 -- the 0.5 line: generics, num, conditional compilation</a></li><li class="l2"><a href="#049-generic-records-optiont-and-resultt-e">0.4.9 -- generic records, Option&amp;lt;T&amp;gt; and Result&amp;lt;T, E&amp;gt;</a></li><li class="l2"><a href="#048-general-constants-words-usable-as-names">0.4.8 -- general constants, words usable as names</a></li><li class="l2"><a href="#047-nested-collections">0.4.7 -- nested collections</a></li><li class="l2"><a href="#046-generic-functions">0.4.6 -- generic functions</a></li><li class="l2"><a href="#045-visibility-pub-a-site-in-three-languages-windows-fixes">0.4.5 -- visibility (pub), a site in three languages, Windows fixes</a></li><li class="l2"><a href="#044-language-touches-freestanding-runtime-first-native-back-end">0.4.4 -- language touches, freestanding runtime, first native back end</a></li><li class="l2"><a href="#043-more-pieces-repaired-workflows">0.4.3 -- more pieces, repaired workflows</a></li><li class="l2"><a href="#042-the-compiler-uses-its-own-pieces">0.4.2 -- the compiler uses its own pieces</a></li><li class="l2"><a href="#041-pieces">0.4.1 -- pieces</a></li><li class="l2"><a href="#040-self-hosted">0.4.0 -- self-hosted</a></li><li class="l2"><a href="#031">0.3.1</a></li><li class="l2"><a href="#030">0.3.0</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>

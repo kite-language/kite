@@ -1,0 +1,27 @@
+// crc32 -- the checksum used by zip, png and gzip.
+
+make crc32_of(s: string) -> int:
+    c = 4294967295
+    i = 0
+    while i < len(s):
+        c = c ^ char_at(s, i)
+        k = 0
+        while k < 8:
+            if (c & 1) == 1:
+                c = (c >> 1) ^ 3988292384
+            else:
+                c = c >> 1
+            k += 1
+        i += 1
+    return c ^ 4294967295
+
+make crc32_hex(s: string) -> string:
+    v = crc32_of(s)
+    digits = "0123456789abcdef"
+    out = ""
+    i = 7
+    while i >= 0:
+        d = (v >> (i * 4)) & 15
+        out = out + substr(digits, d, d + 1)
+        i -= 1
+    return out

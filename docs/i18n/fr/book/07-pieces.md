@@ -75,3 +75,19 @@ make helper(n: int) -> int:                   // privé : les autres pièces ne 
 d'une autre pièce est l'erreur `E0080`. La référence des [pièces standard](/reference/std-pieces/) ne liste que les éléments `pub` d'une pièce qui utilise `pub`.
 
 > **Astuce :** commencez en privé, et marquez `pub` seulement ce dont les utilisateurs de votre pièce ont besoin : l'interface reste petite et vous pouvez changer le reste librement.
+
+## Importer des noms
+
+Au lieu d'écrire `piece.function()` à chaque fois, importez par leur nom les fonctions que vous utilisez :
+
+```kite
+use std.strings.{upper, lower}       // ou : from std.strings import upper, lower
+use std.option.{some, unwrap_or}
+
+make main():
+    print(upper("kite") + lower("ABC"))   // KITEabc
+    print(unwrap_or(some(41), 0))
+```
+
+`upper` désigne alors `strings.upper` dans ce fichier (une fonction à vous du même nom l'emporte). Nommer une fonction que la pièce
+n'a pas est l'erreur `E0128`. La forme qualifiée `strings.upper(...)` continue toujours de fonctionner.

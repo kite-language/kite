@@ -1,0 +1,44 @@
+use std.test
+use std.result
+use std.option
+
+make digit(c: string) -> Result<int, string>:
+    r = Result<int, string>()
+    if c >= "0" and c <= "9":
+        return result.ok(r, to_int(c))
+    return result.err(r, f"not a digit: {c}")
+
+make two_digits(a: string, b: string) -> Result<int, string>:
+    x = digit(a)?
+    y = digit(b)?
+    r = Result<int, string>()
+    return result.ok(r, x * 10 + y)
+
+make sum3(a: string, b: string, c: string) -> Result<int, string>:
+    r = Result<int, string>()
+    return result.ok(r, digit(a)? + digit(b)? + digit(c)?)
+
+make find(xs: [int], v: int) -> Option<int>:
+    i = 0
+    for x in xs:
+        if x == v:
+            return option.some(i)
+        i.incr()
+    return Option<int>()
+
+make index_plus(xs: [int], v: int) -> Option<int>:
+    i = find(xs, v)?
+    return option.some(i + 100)
+
+make main():
+    t = test_new("the ? operator")
+    test_eq_int(t, "success passes through", result.unwrap(two_digits("4", "2")), 42)
+    bad = two_digits("4", "x")
+    test_eq_str(t, "error is returned", str(result.is_err(bad)), "true")
+    test_eq_str(t, "error value is kept", result.error(bad), "not a digit: x")
+    test_eq_str(t, "first error wins", result.error(two_digits("z", "y")), "not a digit: z")
+    test_eq_int(t, "several ? in one expression", result.unwrap(sum3("1", "2", "3")), 6)
+    test_eq_str(t, "? in an expression stops at the first error", result.error(sum3("1", "q", "w")), "not a digit: q")
+    test_eq_int(t, "option some", option.unwrap_or(index_plus([5, 6, 7], 6), -1), 101)
+    test_eq_int(t, "option none", option.unwrap_or(index_plus([5, 6, 7], 9), -1), -1)
+    exit(test_finish(t))

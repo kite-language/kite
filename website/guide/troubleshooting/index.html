@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/guide/troubleshooting/" hreflang="en" lang="en">EN</a><a href="/fr/guide/troubleshooting/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/troubleshooting/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/function-values/">Function values and lambdas</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/errors/">Errors: Result, Option and ?</a></li>
 <li><a href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
@@ -87,11 +89,13 @@ after a <code>.</code> any word is accepted: <code>job.thread</code>.</p>
 <p>A <code>string</code> field of a freshly created record is a null pointer until you set it. Set the field before reading it.</p>
 <h2 id="windows-link-errors-about-printf-or-timespec_get">Windows: link errors about <code>printf</code> or <code>timespec_get</code></h2>
 <p>Update to the latest version (these symbols are provided by Kite's own shims). Run <code>kite build</code> again and report the full output if it still fails.</p>
+<h2 id="colours-in-error-messages">Colours in error messages</h2>
+<p>Errors are coloured on a terminal. Set <code>NO_COLOR=1</code> to turn the colours off, or <code>KITE_COLOR=always</code> / <code>KITE_COLOR=never</code> to force them on or off (for example in a CI log).</p>
 </article>
 <footer class="pager"><a class="prev" href="/guide/cheatsheet/"><small>Previous</small>← Cheat sheet</a><a class="next" href="/reference/language/"><small>Next</small>Language reference →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/12-troubleshooting.md">Edit this page on GitHub</a></p>
 </main>
-<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#a-variable-cannot-be-used-as-a-name">A variable cannot be used as a name</a></li><li class="l2"><a href="#segmentation-fault-with-lists-inside-classes">Segmentation fault with lists inside classes</a></li><li class="l2"><a href="#a-string-field-crashes-len">A string field crashes len()</a></li><li class="l2"><a href="#windows-link-errors-about-printf-or-timespec_get">Windows: link errors about printf or timespec_get</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#clang-failed-to-compile-the-generated-llvm-ir">clang failed to compile the generated LLVM IR</a></li><li class="l2"><a href="#clang-command-not-found">clang: command not found</a></li><li class="l2"><a href="#e0080-is-private-to-the-piece-that-defines-it">E0080: ... is private to the piece that defines it</a></li><li class="l2"><a href="#e0072-piece-has-no-function">E0072: piece ... has no function ...</a></li><li class="l2"><a href="#a-variable-cannot-be-used-as-a-name">A variable cannot be used as a name</a></li><li class="l2"><a href="#segmentation-fault-with-lists-inside-classes">Segmentation fault with lists inside classes</a></li><li class="l2"><a href="#a-string-field-crashes-len">A string field crashes len()</a></li><li class="l2"><a href="#windows-link-errors-about-printf-or-timespec_get">Windows: link errors about printf or timespec_get</a></li><li class="l2"><a href="#colours-in-error-messages">Colours in error messages</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>

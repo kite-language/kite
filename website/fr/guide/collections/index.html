@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/fr/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/fr/">Documentation</a><a href="/fr/installation/">Installation</a><a href="/fr/project/roadmap/">Feuille de route</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Langue"><a href="/guide/collections/" hreflang="en" lang="en">EN</a><a class="on" href="/fr/guide/collections/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/collections/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/fr/guide/functions/">Fonctions et constantes</a></li>
 <li><a class="cur" aria-current="page" href="/fr/guide/collections/">Collections</a></li>
 <li><a href="/fr/guide/records/">Records, classes et enums</a></li>
+<li><a href="/fr/guide/function-values/">Valeurs de fonction et lambdas</a></li>
 <li><a href="/fr/guide/generics/">Génériques</a></li>
+<li><a href="/fr/guide/errors/">Erreurs : Result, Option et ?</a></li>
 <li><a href="/fr/guide/pieces/">Pièces (paquets)</a></li>
 <li><a href="/fr/guide/conditional/">Compilation conditionnelle</a></li>
 <li><a href="/fr/guide/memory/">Mémoire, pointeurs et threads</a></li>
@@ -132,6 +134,7 @@ print(person[<span class="s">&quot;name&quot;</span>])             <span class="
 ages.set(<span class="s">&quot;ada&quot;</span>, <span class="n">36</span>)
 print(ages.get(<span class="s">&quot;ada&quot;</span>))         <span class="c">// 36</span>
 print(ages.has(<span class="s">&quot;bob&quot;</span>))         <span class="c">// false</span>
+ages.remove(<span class="s">&quot;ada&quot;</span>)             <span class="c">// true s&#x27;il y était ; les autres clés gardent leur ordre</span>
 print(ages.size())
 <span class="k">for</span> key <span class="k">in</span> ages.keys:          <span class="c">// ordre d&#x27;insertion</span>
     print(key)

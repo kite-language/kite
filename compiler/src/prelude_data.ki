@@ -242,6 +242,17 @@ make prelude_map_tpl() -> string:
     s = s + "            self.rebuild(len(self.slots) * 2)\n"
     s = s + "        else:\n"
     s = s + "            self.place(k, self.count - 1)\n"
+    s = s + "\n"
+    s = s + "    // Removes `k` (keeping the insertion order of the other keys); false when it was not there.\n"
+    s = s + "    make remove(self, k: string) -> bool:\n"
+    s = s + "        i = self.slot_of(k)\n"
+    s = s + "        if i < 0:\n"
+    s = s + "            return false\n"
+    s = s + "        remove(self.keys, i)\n"
+    s = s + "        remove(self.vals, i)\n"
+    s = s + "        self.count -= 1\n"
+    s = s + "        self.rebuild(len(self.slots))\n"
+    s = s + "        return true\n"
     return s
 
 make prelude_num() -> string:

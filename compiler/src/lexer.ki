@@ -259,6 +259,8 @@ make kind_display(k: string) -> string:
         return "`|`"
     if k == "Caret":
         return "`^`"
+    if k == "Question":
+        return "?"
     if k == "Tilde":
         return "`~`"
     if k == "Shl":
@@ -660,6 +662,8 @@ class Lexer:
             return self.op2("Caret", "CaretEq")
         if c == 126:
             return tok_new("Tilde", "", 0, span_dummy())
+        if c == 63:
+            return tok_new("Question", "", 0, span_dummy())
         if c == 45:
             if self.peek() == 62:
                 self.advance()

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Hoja de ruta — Kite</title>
-<meta name="description" content="Versions are 0.x until 1.0.0. The compiler is written in Kite and compiles itself since 0.4.0. &quot;Planned&quot; means decided but not started; dates are deliberately left open.">
+<meta name="description" content="Versions are 0.x.0 until 1.0.0: only the minor number moves (0.8.0, 0.9.0, 1.0.0 after the current 0.7.0), there are no patch releases in between. The compiler is written in Kite a">
 <link rel="icon" href="/kite-32.png">
 <link rel="canonical" href="https://kite-lang.pages.dev/es/project/roadmap/">
 <link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/project/roadmap/">
@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menú">☰</button>
   <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Idioma"><a href="/project/roadmap/" hreflang="en" lang="en">EN</a><a href="/fr/project/roadmap/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/project/roadmap/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/es/guide/functions/">Funciones y constantes</a></li>
 <li><a href="/es/guide/collections/">Colecciones</a></li>
 <li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/function-values/">Valores de función y lambdas</a></li>
 <li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a href="/es/guide/errors/">Errores: Result, Option y ?</a></li>
 <li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
 <li><a href="/es/guide/conditional/">Compilación condicional</a></li>
 <li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
@@ -65,7 +67,7 @@
 <div class="crumbs">Proyecto › Hoja de ruta</div>
 <article>
 <h1 id="kite-roadmap">Kite roadmap</h1>
-<p>Versions are <code>0.x</code> until 1.0.0. The compiler is written in Kite and compiles itself since 0.4.0.
+<p>Versions are <code>0.x.0</code> until 1.0.0: only the minor number moves (0.8.0, 0.9.0, 1.0.0 after the current 0.7.0), there are no patch releases in between. The compiler is written in Kite and compiles itself since 0.4.0.
 "Planned" means decided but not started; dates are deliberately left open.</p>
 <h2 id="done">Done</h2>
 <table>
@@ -97,72 +99,42 @@
 <td><code>.incr()</code>/<code>.decr()</code>, multi-line method chains, uniform call syntax, keyword member names, string escapes; freestanding <code>--runtime core</code> (libc-free); binary signature and <code>kite inspect</code>; experimental native x86-64 back end (<code>--backend native</code>, integer subset); Windows link and portability fixes; the guide and the new site</td>
 </tr>
 <tr>
-<td>0.4.5</td>
-<td><code>pub</code> / private items for pieces (E0080); site in English, French and Spanish with a clearer layout; cheat sheet and troubleshooting pages; Windows <code>timespec_get</code> and CLI test fixes</td>
-</tr>
-<tr>
-<td>0.4.6</td>
-<td>generic functions (<code>make first&lt;T&gt;(xs: [T]) -&gt; T</code>), inferred and specialised per type</td>
-</tr>
-<tr>
-<td>0.4.7</td>
-<td>nested collections: lists of lists, nested literals, struct fields of nested lists, <code>len</code> of list elements</td>
-</tr>
-<tr>
-<td>0.4.8</td>
-<td>general <code>const</code> (local, read-only, E0124); reserved words usable as variable, parameter and field names</td>
-</tr>
-<tr>
-<td>0.4.9</td>
-<td>generic records (<code>Box&lt;T&gt;</code>), <code>std.option</code> / <code>std.result</code> (<code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>)</td>
-</tr>
-<tr>
 <td>0.5.0</td>
-<td><code>num</code> (int or float), templates with explicit type arguments (<code>first&lt;int&gt;(x)</code>), conditional compilation (<code>when windows:</code>)</td>
+<td><code>pub</code> / private items for pieces; generic functions, generic records and explicit type arguments (<code>first&lt;int&gt;(x)</code>), <code>std.option</code> / <code>std.result</code>; <code>num</code> (int or float); nested collections; local read-only <code>const</code>; reserved words usable as names; conditional compilation (<code>when windows:</code>); <code>--storage</code> (dead-code removal across pieces, size-optimised link); imports by name (<code>use piece.{a, b}</code>); <code>StrMap.remove</code>; coloured diagnostics; site in English, French and Spanish; Windows and macOS (Apple silicon and x86-64) CI fixes</td>
 </tr>
 <tr>
-<td>0.5.1</td>
-<td><code>--storage</code>: dead-code removal across pieces, size-optimised compile and link</td>
+<td>0.6.0</td>
+<td>function values and lambdas (<code>fn(int) -&gt; int</code>, <code>|x| x + 1</code>), <code>std.iter</code> (<code>map</code>, <code>filter</code>, <code>reduce</code>, ...); everything from the 0.5.x interim builds is folded in</td>
+</tr>
+<tr>
+<td>0.7.0</td>
+<td>closures that capture variables (<code>base = 1000; add = |x: int| x + base</code>); the <code>?</code> operator on <code>Result</code> and <code>Option</code> (<code>x = digit(a)?</code>) with a new guide chapter on errors</td>
 </tr>
 </tbody>
 </table>
 <h2 id="road-to-100">Road to 1.0.0</h2>
 <p>Each stage is ordered by how much it unlocks; version numbers are indicative. <strong>1.0.0 is declared when every
-box up to 0.9 is ticked, the whole test suite passes on Linux, macOS (Apple silicon) and Windows from the stage-3
+box up to 0.9.0 is ticked, the whole test suite passes on Linux, macOS (Apple silicon) and Windows from the stage-3
 compiler, and the syntax and the default pieces' API are frozen.</strong></p>
-<h3 id="05-language-foundations">0.5 -- language foundations</h3>
+<h3 id="080-language-foundations-concurrency-and-safety">0.8.0 -- language foundations, concurrency and safety</h3>
 <ul>
-<li>[ ] <strong>Real namespaces</strong>: functions of a piece live in <code>piece::function</code>, no global prefixes, <code>use piece.{a, b}</code></li>
-<li>[ ] <strong>Generics</strong>: <code>Vec&lt;T&gt;</code>, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>, <code>Map&lt;K, V&gt;</code> as ordinary library code (replaces the internal <code>StrMap_&lt;T&gt;</code> template)</li>
-<li>done in 0.4.6 / 0.4.9: generic functions, generic records (<code>Box&lt;T&gt;</code>), <code>std.option</code>, <code>std.result</code>; still to do: <code>Map&lt;K, V&gt;</code> as library code, generic classes and enums</li>
-<li>[x] <strong>Nested collections</strong>: lists of lists, structs holding collections (0.4.7); tuples still hold scalars only</li>
-<li>[x] <strong>Free the reserved words</strong> for variable and function names too (0.4.8; <code>to</code>, <code>in</code>, the type names and <code>null</code> stay reserved)</li>
+<li>[ ] Function values and closures over lists, records and <code>num</code> (today: <code>int</code>, <code>float</code>, <code>bool</code>, <code>string</code>, pointers, enums, functions); closure blocks freed automatically</li>
+<li>[ ] <strong>Real namespaces</strong>: functions of a piece live in <code>piece::function</code>, no global prefixes (<code>use piece.{a, b}</code> already works; to do: per-piece mangling of private items)</li>
+<li>[ ] <strong>Generics</strong> everywhere: <code>Map&lt;K, V&gt;</code> as library code (replaces the internal <code>StrMap_&lt;T&gt;</code> template), generic classes and enums (generic functions, generic records, <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code> exist)</li>
 <li>[ ] <code>const</code> for any expression, evaluated once; compile-time constants in types (<code>[int; 8]</code>)</li>
-<li>done in 0.4.8: local constants and read-only checks; still to do: evaluate once, <code>[int; 8]</code></li>
-</ul>
-<h3 id="06-functions-and-concurrency">0.6 -- functions and concurrency</h3>
-<ul>
-<li>[ ] <strong>Function values and closures</strong>: callbacks, <code>spawn(|| ...)</code> capturing variables, iterators with <code>map</code> / <code>filter</code></li>
-<li>[ ] Real <code>thread:</code> blocks capturing locals; channels, condition variables, thread pools, thread-safe collections as pieces</li>
+<li>[ ] <code>spawn</code> with closures, real <code>thread:</code> blocks; channels, condition variables, thread pools, thread-safe collections as pieces</li>
 <li>[ ] <code>async</code> / <code>await</code> on top of the thread pool</li>
-</ul>
-<h3 id="07-safety">0.7 -- safety</h3>
-<ul>
-<li>[ ] <strong>Error propagation</strong>: <code>?</code> on <code>Result</code>, <code>try</code>/<code>catch</code> mapped onto it, <code>panic</code> with source location and backtrace</li>
 <li>[ ] <strong>Nullable types</strong> checked by the compiler (<code>T?</code>), no implicit null</li>
 <li>[ ] <strong>Traits / interfaces</strong> for shared behaviour without inheritance, operator overloading</li>
-<li>[ ] Overflow checks in debug builds, bounds-check elimination in release</li>
+<li>[ ] <code>panic</code> with source location and backtrace; overflow checks in debug builds, bounds-check elimination in release</li>
 </ul>
-<h3 id="08-systems-and-portability">0.8 -- systems and portability</h3>
+<h3 id="090-systems-portability-and-ecosystem">0.9.0 -- systems, portability and ecosystem</h3>
 <ul>
 <li>[ ] <code>unsafe</code> blocks, <code>volatile</code>, packed structs, <code>@section</code> / <code>@no_mangle</code> attributes, inline assembly</li>
 <li>[ ] A libc-free <code>core</code> piece (own allocator, string and list runtime) so kernels need no C</li>
 <li>[ ] Debug information (lines and variables visible in gdb / lldb)</li>
 <li>[ ] A shell-free runtime on every OS (the remaining shell uses in <code>std.fs</code>, <code>std.process</code>, <code>std.git</code> replaced by system calls)</li>
 <li>[ ] First-class Windows and macOS: all releases built and tested from the stage-3 compiler</li>
-</ul>
-<h3 id="09-ecosystem-and-tooling">0.9 -- ecosystem and tooling</h3>
-<ul>
 <li>[ ] Language server (diagnostics, go to definition, completion), AST-based <code>kite fmt</code>, <code>kite doc</code> as HTML, <code>kite bench</code> with comparison</li>
 <li>[ ] Remote registry mirror, signed pieces, <code>kite audit</code>, reproducible builds</li>
 <li>[ ] More pieces: <code>regex</code>, <code>json</code> with a value tree, <code>net</code> (sockets), <code>crypto</code> (hashes, HMAC, AES), <code>compress</code>, <code>sqlite</code>, <code>tui</code></li>
@@ -178,11 +150,11 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
 <ul>
 <li>[ ] <code>print(float)</code> uses <code>%f</code> while <code>str(float)</code> uses <code>%g</code>: make them agree</li>
 <li>[ ] String <code>+</code> is O(n) (use <code>join</code>): a string builder or rope</li>
-<li>[ ] <code>StrMap</code> has no <code>remove</code></li>
+<li>[x] <code>StrMap</code> has no <code>remove</code> (done: <code>m.remove(key)</code>)</li>
 <li>[ ] <code>read_file</code> returns "" on error: give it a failure channel</li>
 <li>[ ] <code>try</code> / <code>failed</code> blocks are parsed but <code>failed</code> never runs</li>
 <li>[ ] Variables are function-scoped and keep one type; empty list literals need a type</li>
-<li>[ ] Diagnostics are plain text: add colour and underlined spans</li>
+<li>[ ] Diagnostics are plain text: add colour and underlined spans (colour done: <code>NO_COLOR</code>, <code>KITE_COLOR</code>; multi-line spans still to do)</li>
 <li>[ ] <code>kite fmt</code> only fixes whitespace; <code>kite doc</code> is markdown only; <code>kite bench</code> uses integer microseconds</li>
 </ul>
 <h2 id="not-scheduled-no-date-no-stage">Not scheduled (no date, no stage)</h2>
@@ -190,11 +162,11 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
 <li>[ ] <strong>Remove LLVM IR for a custom optimisation and compilation multi arch like rust</strong>: replace the LLVM IR text
   back end with Kite's own mid-level IR, its own optimisation passes and its own code generators for several
   architectures (x86-64, AArch64, RISC-V, ...), so a Kite toolchain needs neither clang nor LLVM to produce a binary.
-  <strong>Status (0.4.4)</strong>: started. <code>kite build --backend native</code> has an x86-64 Linux generator and ELF writer for the integer subset.
+  <strong>Status (0.5.0)</strong>: started. <code>kite build --backend native</code> has an x86-64 Linux generator and ELF writer for the integer subset.
   Next: lists, strings and structs (reuse the core runtime), floats (SSE), AArch64 and RISC-V encoders, Mach-O and PE writers,
   register allocation, more passes (CSE, dead code, inlining); then make it the default and drop clang.
   <strong>Size options (<code>--storage</code>)</strong>: since that back end owns the whole compilation, it gets the size options a general-purpose toolchain cannot offer.
-  Done in 0.5.1 for the current path (any back end): <code>kite build --storage</code> removes every function the program cannot reach, also inside the
+  Done for the current path (any back end): <code>kite build --storage</code> removes every function the program cannot reach, also inside the
   pieces it uses (<code>compiler/src/shake.ki</code>), compiles with <code>-Os</code>, one section per function and datum, linker garbage collection and stripped symbols.
   Planned for the native back end: no libc at all (own start-up code, <code>print</code> and number formatting written for the program's exact use),
   merging of identical functions, string and constant deduplication and tail merging, shortest instruction encodings and short jumps,
@@ -204,7 +176,7 @@ compiler, and the syntax and the default pieces' API are frozen.</strong></p>
 <footer class="pager"><a class="prev" href="/es/reference/editors/"><small>Anterior</small>← Editores</a><a class="next" href="/es/project/changelog/"><small>Siguiente</small>Registro de cambios →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/ROADMAP.md">Editar esta página en GitHub</a></p>
 </main>
-<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#done">Done</a></li><li class="l2"><a href="#road-to-100">Road to 1.0.0</a></li><li class="l3"><a href="#05-language-foundations">0.5 -- language foundations</a></li><li class="l3"><a href="#06-functions-and-concurrency">0.6 -- functions and concurrency</a></li><li class="l3"><a href="#07-safety">0.7 -- safety</a></li><li class="l3"><a href="#08-systems-and-portability">0.8 -- systems and portability</a></li><li class="l3"><a href="#09-ecosystem-and-tooling">0.9 -- ecosystem and tooling</a></li><li class="l3"><a href="#100-stability">1.0.0 -- stability</a></li><li class="l3"><a href="#small-finishing-touches-before-100-10-polish">Small finishing touches before 1.0.0 (1.0 polish)</a></li><li class="l2"><a href="#not-scheduled-no-date-no-stage">Not scheduled (no date, no stage)</a></li></ul></nav>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#done">Done</a></li><li class="l2"><a href="#road-to-100">Road to 1.0.0</a></li><li class="l3"><a href="#080-language-foundations-concurrency-and-safety">0.8.0 -- language foundations, concurrency and safety</a></li><li class="l3"><a href="#090-systems-portability-and-ecosystem">0.9.0 -- systems, portability and ecosystem</a></li><li class="l3"><a href="#100-stability">1.0.0 -- stability</a></li><li class="l3"><a href="#small-finishing-touches-before-100-10-polish">Small finishing touches before 1.0.0 (1.0 polish)</a></li><li class="l2"><a href="#not-scheduled-no-date-no-stage">Not scheduled (no date, no stage)</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
 <script src="/docs.js"></script>

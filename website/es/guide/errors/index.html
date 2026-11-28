@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Errores: Result, Option y ? — Kite</title>
+<meta name="description" content="Kite no tiene excepciones. Una función que puede fallar devuelve un Result, y una función que puede no tener nada que devolver da un Option. Ambos son simples registros genéricos d">
+<link rel="icon" href="/kite-32.png">
+<link rel="canonical" href="https://kite-lang.pages.dev/es/guide/errors/">
+<link rel="alternate" hreflang="en" href="https://kite-lang.pages.dev/guide/errors/">
+<link rel="alternate" hreflang="fr" href="https://kite-lang.pages.dev/fr/guide/errors/">
+<link rel="alternate" hreflang="es" href="https://kite-lang.pages.dev/es/guide/errors/">
+<link rel="alternate" hreflang="x-default" href="https://kite-lang.pages.dev/guide/errors/">
+<link rel="stylesheet" href="/docs.css">
+</head>
+<body>
+<a class="skip" href="#content">Saltar al contenido</a>
+<header class="top">
+  <button id="menu" aria-label="Menú">☰</button>
+  <a class="brand" href="/es/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
+  <span class="ver">v0.7.0</span>
+  <nav><a href="/es/">Documentación</a><a href="/es/installation/">Instalación</a><a href="/es/project/roadmap/">Hoja de ruta</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
+  <div class="langs" aria-label="Idioma"><a href="/guide/errors/" hreflang="en" lang="en">EN</a><a href="/fr/guide/errors/" hreflang="fr" lang="fr">FR</a><a class="on" href="/es/guide/errors/" hreflang="es" lang="es">ES</a></div>
+</header>
+<div class="layout">
+<aside id="side"><input id="filter" type="search" placeholder="Filtrar páginas…" aria-label="Filtrar páginas…">
+<details class="grp" open><summary>Primeros pasos</summary><ul>
+<li><a href="/es/">Introducción</a></li>
+<li><a href="/es/installation/">Instalación</a></li>
+</ul></details>
+<details class="grp" open><summary>Guía</summary><ul>
+<li><a href="/es/guide/first-project/">Tu primer proyecto</a></li>
+<li><a href="/es/guide/variables/">Variables y tipos</a></li>
+<li><a href="/es/guide/control-flow/">Control de flujo</a></li>
+<li><a href="/es/guide/functions/">Funciones y constantes</a></li>
+<li><a href="/es/guide/collections/">Colecciones</a></li>
+<li><a href="/es/guide/records/">Registros, clases y enums</a></li>
+<li><a href="/es/guide/function-values/">Valores de función y lambdas</a></li>
+<li><a href="/es/guide/generics/">Genéricos</a></li>
+<li><a class="cur" aria-current="page" href="/es/guide/errors/">Errores: Result, Option y ?</a></li>
+<li><a href="/es/guide/pieces/">Piezas (paquetes)</a></li>
+<li><a href="/es/guide/conditional/">Compilación condicional</a></li>
+<li><a href="/es/guide/memory/">Memoria, punteros e hilos</a></li>
+<li><a href="/es/guide/style/">Escribir Kite legible</a></li>
+<li><a href="/es/guide/cheatsheet/">Hoja de referencia rápida</a></li>
+<li><a href="/es/guide/troubleshooting/">Solución de problemas</a></li>
+</ul></details>
+<details class="grp" open><summary>Referencia</summary><ul>
+<li><a href="/es/reference/language/">Referencia del lenguaje</a></li>
+<li><a href="/es/reference/builtins/">Funciones integradas</a></li>
+<li><a href="/es/reference/std-pieces/">Piezas estándar</a></li>
+<li><a href="/es/reference/cli/">El comando kite</a></li>
+<li><a href="/es/reference/pieces-registry/">Piezas y registro</a></li>
+<li><a href="/es/reference/targets/">Destinos, SO y freestanding</a></li>
+<li><a href="/es/reference/c-interop/">Llamar a C</a></li>
+<li><a href="/es/reference/memory/">Modelo de memoria</a></li>
+<li><a href="/es/reference/editors/">Editores</a></li>
+</ul></details>
+<details class="grp" open><summary>Proyecto</summary><ul>
+<li><a href="/es/project/roadmap/">Hoja de ruta</a></li>
+<li><a href="/es/project/changelog/">Registro de cambios</a></li>
+<li><a href="/es/project/architecture/">Arquitectura</a></li>
+<li><a href="/es/project/bootstrap/">Bootstrap</a></li>
+</ul></details>
+</aside>
+<main id="content">
+<div class="crumbs">Guía › Errores: Result, Option y ?</div>
+<article>
+<h1 id="errores-result-option-y">Errores: Result, Option y <code>?</code></h1>
+<p>Kite no tiene excepciones. Una función que puede fallar devuelve un <strong><code>Result</code></strong>, y una función que puede no tener nada que devolver da un
+<strong><code>Option</code></strong>. Ambos son simples registros genéricos de las piezas por defecto <code>std.result</code> y <code>std.option</code>.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.result
+
+<span class="k">make</span> digit(c: <span class="t">string</span>) -&gt; Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;:
+    r = Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;()                  <span class="c">// un Result vacío que se rellena</span>
+    <span class="k">if</span> c &gt;= <span class="s">&quot;0&quot;</span> <span class="k">and</span> c &lt;= <span class="s">&quot;9&quot;</span>:
+        <span class="k">return</span> result.ok(r, to_int(c))
+    <span class="k">return</span> result.err(r, <span class="s">f&quot;not a digit: {c}&quot;</span>)
+
+<span class="k">make</span> main():
+    r = digit(<span class="s">&quot;x&quot;</span>)
+    <span class="k">if</span> result.is_err(r):
+        print(result.error(r))                 <span class="c">// not a digit: x</span>
+    print(result.unwrap_or(digit(<span class="s">&quot;7&quot;</span>), <span class="n">0</span>))     <span class="c">// 7</span>
+</code></pre></div>
+<h2 id="el-operador">El operador <code>?</code></h2>
+<p>Llamar a varias funciones que pueden fallar exigiría un <code>if</code> tras cada llamada. Pon <strong><code>?</code></strong> después de la llamada: cuando la llamada falla, la
+función actual devuelve ese fallo de inmediato; cuando tiene éxito, obtienes el valor.</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">make</span> two_digits(a: <span class="t">string</span>, b: <span class="t">string</span>) -&gt; Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;:
+    x = digit(a)?                              <span class="c">// ante un error: devolverlo desde two_digits</span>
+    y = digit(b)?
+    r = Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;()
+    <span class="k">return</span> result.ok(r, x * <span class="n">10</span> + y)
+
+<span class="k">make</span> sum3(a: <span class="t">string</span>, b: <span class="t">string</span>, c: <span class="t">string</span>) -&gt; Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;:
+    r = Result&lt;<span class="t">int</span>, <span class="t">string</span>&gt;()
+    <span class="k">return</span> result.ok(r, digit(a)? + digit(b)? + digit(c)?)   <span class="c">// varios `?` en una expresión, de izquierda a derecha</span>
+</code></pre></div>
+<p>Funciona igual con <code>Option</code>: <code>i = find(xs, 6)?</code> devuelve un <code>Option</code> vacío desde la función actual cuando no se encontró nada.</p>
+<p>Reglas:</p>
+<ul>
+<li>La función que usa <code>?</code> debe devolver a su vez un <code>Result&lt;T, E&gt;</code> (con el mismo tipo de error <code>E</code>) o un <code>Option&lt;T&gt;</code>: si no, error <code>E0144</code>.</li>
+<li><code>?</code> puede aparecer en una asignación, una instrucción de llamada, un <code>return</code> o la condición de un <code>if</code>. No puede usarse en la condición de un bucle, a la derecha de <code>and</code> / <code>or</code>
+  (podría no ejecutarse), ni dentro de una lambda (<code>E0141</code>, <code>E0142</code>); en cualquier otro sitio es el error <code>E0143</code>.</li>
+<li>Es solo un atajo para un <code>if</code>: sigues pudiendo mirar <code>r.is_ok</code>, <code>r.value</code> y <code>r.error</code> tú mismo.</li>
+</ul>
+</article>
+<footer class="pager"><a class="prev" href="/es/guide/generics/"><small>Anterior</small>← Genéricos</a><a class="next" href="/es/guide/pieces/"><small>Siguiente</small>Piezas (paquetes) →</a></footer>
+<p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/i18n/es/book/16-errors.md">Editar esta página en GitHub</a></p>
+</main>
+<nav class="toc" aria-label="En esta página"><h5>En esta página</h5><ul><li class="l2"><a href="#el-operador">El operador ?</a></li></ul></nav>
+</div>
+<script>window.KITE_I18N = {copy: "Copiar", copied: "Copiado"};</script>
+<script src="/docs.js"></script>
+</body>
+</html>

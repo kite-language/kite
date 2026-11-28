@@ -1,0 +1,46 @@
+// bits -- helpers on the bit operators `& | ^ << >> ~`.
+
+make bits_get(n: int, i: int) -> bool:
+    return ((n >> i) & 1) == 1
+
+make bits_set(n: int, i: int) -> int:
+    return n | (1 << i)
+
+make bits_clear(n: int, i: int) -> int:
+    return n & ~(1 << i)
+
+make bits_toggle(n: int, i: int) -> int:
+    return n ^ (1 << i)
+
+make bits_popcount(n: int) -> int:
+    count = 0
+    i = 0
+    while i < 64:
+        if ((n >> i) & 1) == 1:
+            count += 1
+        i += 1
+    return count
+
+make bits_is_power_of_two(n: int) -> bool:
+    return n > 0 and (n & (n - 1)) == 0
+
+// Smallest power of two >= n (n >= 1).
+make bits_next_pow2(n: int) -> int:
+    p = 1
+    while p < n:
+        p = p << 1
+    return p
+
+// Rotate the low 32 bits left by k.
+make bits_rotl32(x: int, k: int) -> int:
+    v = x & 4294967295
+    return ((v << k) | (v >> (32 - k))) & 4294967295
+
+// Number of trailing zero bits (64 for 0).
+make bits_trailing_zeros(n: int) -> int:
+    if n == 0:
+        return 64
+    i = 0
+    while ((n >> i) & 1) == 0:
+        i += 1
+    return i

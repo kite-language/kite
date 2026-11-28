@@ -18,7 +18,7 @@
 <header class="top">
   <button id="menu" aria-label="Menu">☰</button>
   <a class="brand" href="/"><img src="/kite-64.png" alt="" width="28" height="28"> Kite</a>
-  <span class="ver">v0.5.2</span>
+  <span class="ver">v0.7.0</span>
   <nav><a href="/">Docs</a><a href="/installation/">Install</a><a href="/project/roadmap/">Roadmap</a><a href="https://github.com/kite-language/kite">GitHub</a></nav>
   <div class="langs" aria-label="Language"><a class="on" href="/guide/pieces/" hreflang="en" lang="en">EN</a><a href="/fr/guide/pieces/" hreflang="fr" lang="fr">FR</a><a href="/es/guide/pieces/" hreflang="es" lang="es">ES</a></div>
 </header>
@@ -35,7 +35,9 @@
 <li><a href="/guide/functions/">Functions and constants</a></li>
 <li><a href="/guide/collections/">Collections</a></li>
 <li><a href="/guide/records/">Records, classes and enums</a></li>
+<li><a href="/guide/function-values/">Function values and lambdas</a></li>
 <li><a href="/guide/generics/">Generics</a></li>
+<li><a href="/guide/errors/">Errors: Result, Option and ?</a></li>
 <li><a class="cur" aria-current="page" href="/guide/pieces/">Pieces (packages)</a></li>
 <li><a href="/guide/conditional/">Conditional compilation</a></li>
 <li><a href="/guide/memory/">Memory, pointers and threads</a></li>
@@ -120,11 +122,22 @@ pub <span class="k">make</span> dist(a: Point, b: Point) -&gt; <span class="t">i
 from another piece is error <code>E0080</code>. The <a href="/reference/std-pieces/">standard pieces</a> reference lists only the <code>pub</code> items of a piece that uses <code>pub</code>.</p>
 <blockquote class="callout tip"><p><strong>Tip:</strong> start private, and mark <code>pub</code> only what users of your piece need: it keeps the interface small and lets you change the rest freely.</p>
 </blockquote>
+<h2 id="importing-names">Importing names</h2>
+<p>Instead of writing <code>piece.function()</code> every time, import the functions you use by name:</p>
+<div class="codeblock"><span class="lang">kite</span><button class="copy" type="button">copy</button><pre class="code"><code><span class="k">use</span> std.strings.{upper, lower}       <span class="c">// or: from std.strings import upper, lower</span>
+<span class="k">use</span> std.option.{some, unwrap_or}
+
+<span class="k">make</span> main():
+    print(upper(<span class="s">&quot;kite&quot;</span>) + lower(<span class="s">&quot;ABC&quot;</span>))   <span class="c">// KITEabc</span>
+    print(unwrap_or(some(<span class="n">41</span>), <span class="n">0</span>))
+</code></pre></div>
+<p><code>upper</code> then stands for <code>strings.upper</code> in that file (a function of your own with the same name wins). Naming a function the piece
+does not have is error <code>E0128</code>. The qualified form <code>strings.upper(...)</code> always keeps working.</p>
 </article>
-<footer class="pager"><a class="prev" href="/guide/generics/"><small>Previous</small>← Generics</a><a class="next" href="/guide/conditional/"><small>Next</small>Conditional compilation →</a></footer>
+<footer class="pager"><a class="prev" href="/guide/errors/"><small>Previous</small>← Errors: Result, Option and ?</a><a class="next" href="/guide/conditional/"><small>Next</small>Conditional compilation →</a></footer>
 <p class="edit"><a href="https://github.com/kite-language/kite/blob/main/docs/book/07-pieces.md">Edit this page on GitHub</a></p>
 </main>
-<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#two-kinds">Two kinds</a></li><li class="l2"><a href="#calling-pieces">Calling pieces</a></li><li class="l2"><a href="#managing-dependencies">Managing dependencies</a></li><li class="l2"><a href="#publishing">Publishing</a></li><li class="l2"><a href="#public-and-private-items">Public and private items</a></li></ul></nav>
+<nav class="toc" aria-label="On this page"><h5>On this page</h5><ul><li class="l2"><a href="#two-kinds">Two kinds</a></li><li class="l2"><a href="#calling-pieces">Calling pieces</a></li><li class="l2"><a href="#managing-dependencies">Managing dependencies</a></li><li class="l2"><a href="#publishing">Publishing</a></li><li class="l2"><a href="#public-and-private-items">Public and private items</a></li><li class="l2"><a href="#importing-names">Importing names</a></li></ul></nav>
 </div>
 <script>window.KITE_I18N = {copy: "Copy", copied: "Copied"};</script>
 <script src="/docs.js"></script>

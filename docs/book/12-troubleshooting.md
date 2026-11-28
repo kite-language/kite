@@ -37,3 +37,7 @@ A `string` field of a freshly created record is a null pointer until you set it.
 ## Windows: link errors about `printf` or `timespec_get`
 
 Update to the latest version (these symbols are provided by Kite's own shims). Run `kite build` again and report the full output if it still fails.
+
+## Colours in error messages
+
+Errors are coloured on a terminal. Set `NO_COLOR=1` to turn the colours off, or `KITE_COLOR=always` / `KITE_COLOR=never` to force them on or off (for example in a CI log).

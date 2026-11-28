@@ -7,6 +7,12 @@
 //   Program        ""      [List imports, List structs, List enums, List functions]
 //   ImportModule   path    []
 //   ImportItems    path    [Name...]
+//   Propagate      ""      [expr]   `expr?` (the desugar pass hoists it into `tmp = expr; if not tmp.is_ok: return ...`)
+//   Lambda         ""      [List of Param (Type | -1), body expression]   (sema lifts it and turns it into FnRef)
+//   FnRef          name    []   a function used as a value (name = the `__fv` wrapper or the lifted lambda, both take the closure block first)
+//   Closure        name    [Ident...]   a lambda with captured variables: allocates the closure block
+//   EnvLoad        "k|type"  []   inside a lifted lambda: the k-th captured value of the closure block
+//   CallFn         IR-ret-type  [Ident of the function variable, args...]
 //   Struct         name    [Name base | -1, List fields]
 //   Field          name    [Type]
 //   Enum           name    [List variants]
