@@ -113,6 +113,7 @@ class Desugarer:
     ast: Ast
     diags: Diags
     tmp: int
+    cur_ret: string
     prog: int
     // class tables
     bases: StrMap_string
@@ -649,6 +650,89 @@ class Desugarer:
             append(out, self.ast.add1("Return", "", span, -1))
         return out
 
+    // ---- the `?` operator ----------------------------------------------------------------
+    // Does the expression tree under `e` contain a `?`?
+    make has_propagate(self, e: int) -> bool:
+        if e < 0:
+            return false
+        if self.ast.nodes[e].kind == "Propagate":
+            return true
+        kl = self.ast.nodes[e].kids
+        for c in kl:
+            if self.has_propagate(c):
+                return true
+        return false
+
+    // Rewrites the `?` nodes under `e` (children first) into `tmp.value`, appending to `pre` the statements that run before:
+    // `tmp = inner` and `if not tmp.is_ok: ...return an empty/error value of the function's own type`. Returns the new node for `e`.
+    make hoist_expr(self, e: int, pre: [int]) -> int:
+        if e < 0:
+            return e
+        k = self.ast.nodes[e].kind
+        if k == "Lambda":
+            if self.has_propagate(e):
+                self.err("E0142", "`?` cannot be used inside a lambda", self.ast.nodes[e].span)
+            return e
+        kl = self.ast.nodes[e].kids
+        if k == "Binary" and (self.ast.nodes[e].text == "And" or self.ast.nodes[e].text == "Or") and self.has_propagate(kl[1]):
+            self.err("E0141", "`?` cannot be used on the right of `and` / `or` (it might not run): put it on its own line", self.ast.nodes[e].span)
+            return e
+        nk: [int] = []
+        for c in kl:
+            append(nk, self.hoist_expr(c, pre))
+        self.ast.nodes[e].kids = nk
+        if k != "Propagate":
+            return e
+        span = self.ast.nodes[e].span
+        is_result = starts_with(self.cur_ret, "Result<")
+        is_option = starts_with(self.cur_ret, "Option<")
+        if not is_result and not is_option:
+            self.err("E0144", "`?` needs the function to return a `Result<T, E>` or an `Option<T>` (std.result / std.option)", span)
+            return nk[0]
+        tmp = "__q" + str(self.tmp)
+        self.tmp += 1
+        append(pre, self.mk_assign(self.mk_lident(tmp), -1, nk[0], span))
+        ok_field = "is_ok"
+        if is_option:
+            ok_field = "has"
+        cond = self.ast.add1("Unary", "Not", span, self.mk_field(self.mk_ident(tmp, span), ok_field, span))
+        rv = "__qr" + str(self.tmp)
+        self.tmp += 1
+        body: [int] = []
+        no_args: [int] = []
+        append(body, self.mk_assign(self.mk_lident(rv), -1, self.mk_call(self.cur_ret, no_args, span), span))
+        if is_result:
+            append(body, self.mk_assign(self.mk_lfield(self.mk_ident(rv, span), "error", span), -1, self.mk_field(self.mk_ident(tmp, span), "error", span), span))
+        append(body, self.ast.add1("Return", "", span, self.mk_ident(rv, span)))
+        thenb = self.mk_block(body, span)
+        no_elifs: [int] = []
+        elifs = self.mk_list(no_elifs, span)
+        append(pre, self.ast.add4("If", "", span, cond, thenb, elifs, -1))
+        return self.mk_field(self.mk_ident(tmp, span), "value", span)
+
+    // The statements to run before `st` once its `?` nodes are hoisted (and `st` itself is rewritten in place).
+    make hoist_statement(self, st: int) -> [int]:
+        pre: [int] = []
+        k = self.ast.nodes[st].kind
+        kids = self.ast.nodes[st].kids
+        slot = -1
+        if k == "Assign":
+            slot = 2
+        orif k == "ExprStmt" or k == "Return" or k == "If":
+            slot = 0
+        if k == "While" or k == "Until":
+            if self.has_propagate(kids[0]):
+                self.err("E0141", "`?` cannot be used in a loop condition: assign it to a variable inside the loop", self.ast.nodes[st].span)
+            return pre
+        if slot < 0 or kids[slot] < 0:
+            return pre
+        if self.has_propagate(kids[slot]):
+            nk2 = self.hoist_expr(kids[slot], pre)
+            kids2 = self.ast.nodes[st].kids
+            kids2[slot] = nk2
+            self.ast.nodes[st].kids = kids2
+        return pre
+
     // ---- statement / expression walkers ----------------------------------------------------
     make walk_block(self, b: int):
         old = self.ast.nodes[b].kids
@@ -663,6 +747,10 @@ class Desugarer:
                 for s in iter_14:
                     append(out, s)
                 continue
+            pre = self.hoist_statement(st)
+            for ps in pre:
+                self.walk_stmt(ps)
+                append(out, ps)
             self.walk_stmt(st)
             if k == "Unpack":
                 span = self.ast.nodes[st].span
@@ -1024,6 +1112,9 @@ class Desugarer:
                     self.tenv.set(pname, ty_list_of(pty))
                 else:
                     self.tenv.set(pname, pty)
+            self.cur_ret = ""
+            if fk[1] >= 0:
+                self.cur_ret = self.ast.nodes[fk[1]].text
             if fk[3] >= 0:
                 self.walk_block(fk[3])
             for p in params:

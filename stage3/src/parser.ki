@@ -199,6 +199,25 @@ class Parser:
             if len(path) == 0:
                 return -1
             node = self.ast.add0("ImportModule", path, start)
+            if self.at("Dot") and self.peek_at(1) == "LBrace":
+                // `use std.strings.{upper, lower}`: the same as `from std.strings import upper, lower`
+                self.advance()
+                self.advance()
+                names: [int] = []
+                while true:
+                    nt = self.expect_identifier()
+                    if nt < 0:
+                        return -1
+                    append(names, self.ast.add0("Name", self.ttext(nt), self.tspan(nt)))
+                    if self.at("Comma"):
+                        self.advance()
+                        if self.at("RBrace"):
+                            break
+                    else:
+                        break
+                if self.expect("RBrace") < 0:
+                    return -1
+                node = self.ast.addl("ImportItems", path, start, names)
         else:
             if self.expect("From") < 0:
                 return -1
@@ -230,6 +249,8 @@ class Parser:
             return ""
         path = self.ttext(t)
         while self.at("Dot"):
+            if self.peek_at(1) == "LBrace":
+                break
             self.advance()
             t2 = self.expect_identifier()
             if t2 < 0:
@@ -436,6 +457,31 @@ class Parser:
             if self.expect("Gt") < 0:
                 return -1
             return self.ast.add0("Type", "ptr<" + self.ast.text_of(inner) + ">", span)
+        if k == "Identifier" and self.ttext(self.cur()) == "fn" and self.peek_at(1) == "LParen":
+            // a function type: `fn(int, string) -> bool` (text `fn(int,string)->bool`, `->()` when nothing is returned)
+            self.advance()
+            self.advance()
+            ptexts: [string] = []
+            if not self.at("RParen"):
+                while true:
+                    pty = self.parse_type()
+                    if pty < 0:
+                        return -1
+                    append(ptexts, self.ast.text_of(pty))
+                    if self.at("Comma"):
+                        self.advance()
+                    else:
+                        break
+            if self.expect("RParen") < 0:
+                return -1
+            rtext = "()"
+            if self.at("Arrow"):
+                self.advance()
+                rty = self.parse_type()
+                if rty < 0:
+                    return -1
+                rtext = self.ast.text_of(rty)
+            return self.ast.add0("Type", "fn(" + join(ptexts, ",") + ")->" + rtext, span)
         if k == "Identifier":
             t = self.advance()
             if self.at("Lt"):
@@ -1428,6 +1474,10 @@ class Parser:
                     e = self.ast.addl("MethodCall", self.member_text(ft), span_to(self.ast.span_of(e), self.tspan(et)), kids)
                 else:
                     e = self.ast.add1("Field", self.member_text(ft), span_to(self.ast.span_of(e), self.tspan(ft)), e)
+            orif k == "Question":
+                // `expr?`: on an error / empty value, return it from the function (expanded by the desugar pass)
+                qt = self.advance()
+                e = self.ast.add1("Propagate", "", span_to(self.ast.span_of(e), self.tspan(qt)), e)
             orif k == "LBracket":
                 self.advance()
                 index = self.parse_expr()
@@ -1450,9 +1500,43 @@ class Parser:
                 break
         return e
 
+    // A lambda: `|x: int, y| x + y` (parameter types may be left out where the expected function type gives them).
+    make parse_lambda(self) -> int:
+        start = self.peek_span()
+        self.advance()
+        params: [int] = []
+        if self.at("Pipe"):
+            self.advance()
+        else:
+            while true:
+                pt = self.expect_identifier()
+                if pt < 0:
+                    return -1
+                ty = -1
+                if self.at("Colon"):
+                    self.advance()
+                    ty = self.parse_type()
+                    if ty < 0:
+                        return -1
+                fl = self.ast.add0("Flags", "", self.tspan(pt))
+                append(params, self.ast.add3("Param", self.ttext(pt), self.tspan(pt), ty, -1, fl))
+                if self.at("Comma"):
+                    self.advance()
+                else:
+                    break
+            if self.expect("Pipe") < 0:
+                return -1
+        body = self.parse_expr()
+        if body < 0:
+            return -1
+        pl = self.ast.addl("List", "", start, params)
+        return self.ast.add2("Lambda", "", span_to(start, self.ast.span_of(body)), pl, body)
+
     make parse_primary(self) -> int:
         span = self.peek_span()
         k = self.peek()
+        if k == "Pipe":
+            return self.parse_lambda()
         if k == "IntLiteral":
             t = self.advance()
             return self.ast.add0("Int", self.ttext(t), span)

@@ -196,6 +196,8 @@ class Cg:
     tid_count: int
     used_realloc: bool
     used_threads: bool
+    fv_names: [string]
+    fv_sigs: [string]
 
     make reg(self) -> string:
         v = self.ctr
@@ -214,6 +216,17 @@ class Cg:
 
     make w(self, s: string):
         self.out.w(s)
+
+    // Remembers that `@name.fv` (the static closure block of a function) is needed, with the function's LLVM signature.
+    make note_fv(self, name: string, ret: string, params: [string]):
+        if index_of_str(self.fv_names, name) >= 0:
+            return
+        lp: [string] = ["i64*"]
+        for p in params:
+            if len(p) > 0:
+                append(lp, llvm_type(p))
+        append(self.fv_names, name)
+        append(self.fv_sigs, ret + " (" + join(lp, ", ") + ")*")
 
     make intern(self, text: string):
         if not self.str_idx.has(text):
@@ -650,6 +663,79 @@ class Cg:
                 self.w("  " + d + " = call " + rty + " @" + i.name + "(" + join(cargs, ", ") + ")")
             else:
                 self.w("  call " + rty + " @" + i.name + "(" + join(cargs, ", ") + ")")
+        orif op == "FnAddr":
+            // a named function / lambda without captures: its static closure block `@name.fv`
+            fpar: [string] = []
+            if len(i.n2) > 0:
+                fpar = split(i.n2, ";")
+            self.note_fv(i.name, llvm_type(i.ty), fpar)
+            self.w("  " + d + " = bitcast [1 x i64]* @" + i.name + ".fv to i64*")
+        orif op == "MkClosure":
+            // a block [code pointer, captured values...] on the heap
+            mpar: [string] = []
+            if len(i.n2) > 0:
+                for mp in split(i.n2, ";"):
+                    append(mpar, llvm_type(mp))
+            mfty = llvm_type(i.ty) + " (" + join(mpar, ", ") + ")*"
+            mraw = self.pn()
+            self.w("  " + mraw + " = call i8* @malloc(i64 " + str(8 * (len(i.vals) + 1)) + ")")
+            self.w("  " + d + " = bitcast i8* " + mraw + " to i64*")
+            mcode = self.pn()
+            self.w("  " + mcode + " = ptrtoint " + mfty + " @" + i.name + " to i64")
+            self.w("  store i64 " + mcode + ", i64* " + d)
+            k5 = 0
+            while k5 < len(i.vals):
+                mv = self.value(i.vals[k5], i.argtys[k5])
+                mw = self.pn()
+                mt = i.argtys[k5]
+                if mt == "i64":
+                    self.w("  " + mw + " = add i64 " + mv + ", 0")
+                orif mt == "f64":
+                    self.w("  " + mw + " = bitcast double " + mv + " to i64")
+                orif mt == "bool":
+                    self.w("  " + mw + " = zext i1 " + mv + " to i64")
+                else:
+                    self.w("  " + mw + " = ptrtoint " + llvm_type(mt) + " " + mv + " to i64")
+                mslot = self.pn()
+                self.w("  " + mslot + " = getelementptr i64, i64* " + d + ", i64 " + str(k5 + 1))
+                self.w("  store i64 " + mw + ", i64* " + mslot)
+                k5 += 1
+        orif op == "EnvLoad":
+            ev5 = self.value(i.v1, "ptr<i64>")
+            eslot = self.pn()
+            ew = self.pn()
+            self.w("  " + eslot + " = getelementptr i64, i64* " + ev5 + ", i64 " + str(i.pos + 1))
+            self.w("  " + ew + " = load i64, i64* " + eslot)
+            if i.ty == "i64":
+                self.w("  " + d + " = add i64 " + ew + ", 0")
+            orif i.ty == "f64":
+                self.w("  " + d + " = bitcast i64 " + ew + " to double")
+            orif i.ty == "bool":
+                self.w("  " + d + " = trunc i64 " + ew + " to i1")
+            else:
+                self.w("  " + d + " = inttoptr i64 " + ew + " to " + llvm_type(i.ty))
+        orif op == "CallInd":
+            iargs: [string] = []
+            itys: [string] = ["i64*"]
+            k4 = 0
+            while k4 < len(i.vals):
+                s4 = self.value(i.vals[k4], i.argtys[k4])
+                append(iargs, llvm_type(i.argtys[k4]) + " " + s4)
+                append(itys, llvm_type(i.argtys[k4]))
+                k4 += 1
+            ifty = llvm_type(i.ty) + " (" + join(itys, ", ") + ")*"
+            fv4 = self.value(i.v1, "ptr<i64>")
+            fcode = self.pn()
+            fc = self.pn()
+            self.w("  " + fcode + " = load i64, i64* " + fv4)
+            self.w("  " + fc + " = inttoptr i64 " + fcode + " to " + ifty)
+            callargs = "i64* " + fv4
+            if len(iargs) > 0:
+                callargs = callargs + ", " + join(iargs, ", ")
+            if i.dest >= 0:
+                self.w("  " + d + " = call " + llvm_type(i.ty) + " " + fc + "(" + callargs + ")")
+            else:
+                self.w("  call " + llvm_type(i.ty) + " " + fc + "(" + callargs + ")")
         orif op == "Print":
             self.print_value(i.v1, i.ty)
         orif op == "ListIndexGet":
@@ -1005,7 +1091,7 @@ make collect_string_constants(cg: Cg, f: IrFn) -> int:
             collect_strings_val(cg, i.v1)
             if op == "FieldSet":
                 collect_strings_val(cg, i.v1)
-        orif op == "InitAggregate" or op == "ListInit" or op == "Call" or op == "CallAgg":
+        orif op == "InitAggregate" or op == "ListInit" or op == "Call" or op == "CallAgg" or op == "CallInd" or op == "MkClosure":
             for v in i.vals:
                 collect_strings_val(cg, v)
         orif op == "CharAt" or op == "BinOp" or op == "WriteFile":
@@ -1025,6 +1111,13 @@ make collect_string_constants(cg: Cg, f: IrFn) -> int:
             if i.flag:
                 collect_strings_val(cg, i.v1)
     return 0
+
+// The static closure blocks (`@f.fv`) of the functions used as values.
+make emit_fv_globals(cg: Cg, mod: Out):
+    k = 0
+    while k < len(cg.fv_names):
+        mod.w("@" + cg.fv_names[k] + ".fv = internal constant [1 x i64] [i64 ptrtoint (" + cg.fv_sigs[k] + " @" + cg.fv_names[k] + " to i64)]")
+        k += 1
 
 make emit_function(cg: Cg, f: IrFn, freestanding: bool, mod: Out) -> int:
     is_main = f.name == "main" and not freestanding
@@ -1149,6 +1242,7 @@ make emit_module_hosted(prog: IrProg, triple: string, meta: string) -> string:
     for f2 in prog.fns:
         emit_function(cg, f2, freestanding, mod)
         mod.w("")
+    emit_fv_globals(cg, mod)
     // Windows: `timespec_get` is an inline function of the UCRT headers, not a library symbol; provide it (through
     // kernel32) for programs that declare it, e.g. through `std.time`. Same text as the Rust backend.
     if win and index_of_name_ex(prog.ex_names, "timespec_get") >= 0:
@@ -1267,6 +1361,7 @@ make emit_module_free(prog: IrProg, triple: string, meta: string, heap: int) -> 
     for f2 in prog.fns:
         emit_function(cg, f2, true, fbody)
         fbody.w("")
+    emit_fv_globals(cg, fbody)
     text = join(fbody.lines, "\n")
     defined = StrMap_int()
     for f3 in prog.fns:

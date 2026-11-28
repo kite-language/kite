@@ -6,6 +6,7 @@
 use diag
 use ast
 use types
+use irdef
 use std.sys
 
 type SigT:
@@ -147,6 +148,48 @@ make split_top(text: string) -> [string]:
     append(out, cur)
     return out
 
+// ---- function values (`fn(int, string) -> bool`) -----------------------------------------------------------
+make ty_is_fn(t: string) -> bool:
+    return starts_with(t, "fn(")
+
+// Index of the `)` that closes the parameter list of the function type `t`.
+make fn_close(t: string) -> int:
+    depth = 0
+    i = 2
+    while i < len(t):
+        c = char_at(t, i)
+        if c == 40:
+            depth += 1
+        orif c == 41:
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return len(t) - 1
+
+make ty_fn_params(t: string) -> [string]:
+    inner = substr(t, 3, fn_close(t))
+    if len(inner) == 0:
+        out: [string] = []
+        return out
+    return split_top(inner)
+
+make ty_fn_ret(t: string) -> string:
+    return substr(t, fn_close(t) + 3, len(t))
+
+// Function values pass and return scalars, strings and pointers (aggregates need another calling convention).
+make fn_value_type_ok(t: string) -> bool:
+    return t == "int" or t == "float" or t == "bool" or t == "string" or t == "()" or ty_is_ptr(t) or starts_with(t, "@") or ty_is_fn(t)
+
+// The elements of `xs` from index `from_i` on.
+make slice_from(xs: [string], from_i: int) -> [string]:
+    out: [string] = []
+    i = from_i
+    while i < len(xs):
+        append(out, xs[i])
+        i += 1
+    return out
+
 class Sema:
     ast: Ast
     diags: Diags
@@ -171,6 +214,7 @@ class Sema:
     cur_has_ret: bool
     ret_blocked: bool
     loop_depth: int
+    lambda_count: int
     structs_l: int
     gstruct_idx: StrMap_int
     gstruct_nodes: [int]
@@ -522,6 +566,8 @@ class Sema:
                 return "int"
             self.err("E0091", "cannot infer the pointer type of `null` here -- annotate it, e.g. `p: ptr<int> = null`", span)
             return "int"
+        if self.ast.nodes[e].kind == "Lambda":
+            return self.check_lambda(e, expected)
         ety = self.check_expr(e)
         if expected == "num" and (ety == "int" or ety == "float"):
             self.wrap_num(e, ety)
@@ -640,6 +686,14 @@ class Sema:
             t = self.lookup(n.text)
             if len(t) > 0:
                 return t
+            if self.sig_idx.has(n.text) and not self.gen_idx.has(n.text):
+                // a function used as a value
+                fvt = self.fn_value_type(n.text, span)
+                if len(fvt) > 0:
+                    self.ast.nodes[e].text = self.ensure_fv_wrapper(n.text, span)
+                    self.ast.nodes[e].kind = "FnRef"
+                    return fvt
+                return "int"
             self.err("E0021", f"cannot find variable `{n.text}` in this scope", span)
             return "int"
         if k == "ListLit":
@@ -684,7 +738,23 @@ class Sema:
             return self.check_unary(e, n.text, kids[0], span)
         if k == "Binary":
             return self.check_binary(e, n.text, kids[0], kids[1], span)
+        if k == "Propagate":
+            self.err("E0143", "`?` can only be used in an assignment, a call statement, a `return` or an `if` condition of a function that returns a `Result` or an `Option`", span)
+            return "int"
+        if k == "Lambda":
+            return self.check_lambda(e, "")
+        // nodes this pass already rewrote (an expression can be checked twice)
+        if k == "FnRef" or k == "Closure":
+            fsig = self.sigs[self.sig_idx.get(n.text) - 1]
+            return "fn(" + join(slice_from(fsig.params, 1), ",") + ")->" + fsig.ret
+        if k == "EnvLoad":
+            return substr(n.text, find(n.text, "|") + 1, len(n.text))
+        if k == "CallFn":
+            return ty_fn_ret(self.lookup(self.ast.nodes[kids[0]].text))
         if k == "Call":
+            vt0 = self.lookup(n.text)
+            if len(vt0) > 0 and ty_is_fn(vt0):
+                return self.check_call_fn(e, n.text, vt0, kids, span)
             if self.gen_idx.has(n.text):
                 no_explicit: [string] = []
                 return self.check_generic_call(e, n.text, kids, span, no_explicit)
@@ -1002,6 +1072,235 @@ class Sema:
         for c in kl:
             self.walk_resolve(c)
 
+    // A named function used as a value is reached through `name__fv`, a function that takes the (unused) closure block first.
+    make ensure_fv_wrapper(self, name: string, span: Span) -> string:
+        wname = name + "__fv"
+        if self.sig_idx.has(wname):
+            return wname
+        sig0 = self.sigs[self.sig_idx.get(name) - 1]
+        envt = self.ast.add0("Type", "ptr<int>", span)
+        envf = self.ast.add0("Flags", "", span)
+        params: [int] = [self.ast.add3("Param", "__env", span, envt, -1, envf)]
+        cargs: [int] = []
+        i = 0
+        for pt in sig0.params:
+            pn = "p" + str(i)
+            ptn = self.ast.add0("Type", pt, span)
+            pf = self.ast.add0("Flags", "", span)
+            append(params, self.ast.add3("Param", pn, span, ptn, -1, pf))
+            append(cargs, self.ast.add0("Ident", pn, span))
+            i += 1
+        call = self.ast.addl("Call", name, span, cargs)
+        stmt = -1
+        rnode = -1
+        if sig0.ret != "()":
+            rnode = self.ast.add0("Type", sig0.ret, span)
+            stmt = self.ast.add1("Return", "", span, call)
+        else:
+            stmt = self.ast.add1("ExprStmt", "", span, call)
+        sl: [int] = [stmt]
+        blk = self.ast.addl("Block", "", span, sl)
+        plist = self.ast.addl("List", "", span, params)
+        flg = self.ast.add0("Flags", "", span)
+        fnode = self.ast.add4("Function", wname, span, plist, rnode, flg, blk)
+        sig = SigT()
+        append(sig.params, "ptr<int>")
+        for pt3 in sig0.params:
+            append(sig.params, pt3)
+        sig.ret = sig0.ret
+        sig.has_ret = true
+        append(self.sigs, sig)
+        self.sig_idx.set(wname, len(self.sigs))
+        append(self.pending, fnode)
+        return wname
+
+    // The variables of the enclosing function that the lambda body `body` uses (its captures), with their types.
+    make collect_captures(self, body: int, pnames: [string], cnames: [string], ctypes: [string]):
+        stack: [int] = [body]
+        while len(stack) > 0:
+            nd = pop(stack)
+            if nd < 0:
+                continue
+            k = self.ast.nodes[nd].kind
+            if k == "Ident" or k == "Call":
+                nm = self.ast.nodes[nd].text
+                if index_of_str(pnames, nm) < 0 and index_of_str(cnames, nm) < 0:
+                    vt = self.lookup(nm)
+                    if len(vt) > 0 and (k == "Ident" or ty_is_fn(vt)):
+                        append(cnames, nm)
+                        append(ctypes, vt)
+            kl = self.ast.nodes[nd].kids
+            for c in kl:
+                append(stack, c)
+
+    // The type of the function named `name` used as a value, or "" (with an error) when that is not possible.
+    make fn_value_type(self, name: string, span: Span) -> string:
+        sig = self.sigs[self.sig_idx.get(name) - 1]
+        if not sig.has_ret:
+            self.err("E0135", f"give `{name}` an explicit `-> Type` before using it as a value", span)
+            return ""
+        ok = fn_value_type_ok(sig.ret)
+        for pt in sig.params:
+            if not fn_value_type_ok(pt):
+                ok = false
+        if not ok:
+            self.err("E0131", f"`{name}` cannot be used as a value: function values take and return `int`, `float`, `bool`, `string`, pointers and enums only", span)
+            return ""
+        return "fn(" + join(sig.params, ",") + ")->" + sig.ret
+
+    // Calling a variable that holds a function: `f(3)`.
+    make check_call_fn(self, e: int, name: string, ft: string, args: [int], span: Span) -> string:
+        ps = ty_fn_params(ft)
+        if len(args) != len(ps):
+            self.err("E0136", f"`{name}` is a `{ty_disp(ft)}` and takes {str(len(ps))} argument(s), found {str(len(args))}", span)
+            self.check_all(args)
+            return ty_fn_ret(ft)
+        i = 0
+        irtys: [string] = []
+        while i < len(args):
+            at = self.check_expr_expecting(args[i], ps[i])
+            if at != ps[i] and not self.is_subtype(at, ps[i]):
+                self.err("E0137", f"argument {str(i + 1)} of `{name}` should be `{ty_disp(ps[i])}`, found `{ty_disp(at)}`", self.ast.nodes[args[i]].span)
+            i += 1
+        callee = self.ast.add0("Ident", name, span)
+        kl: [int] = [callee]
+        for a in args:
+            append(kl, a)
+        self.ast.nodes[e].kind = "CallFn"
+        self.ast.nodes[e].text = ir_type(ty_fn_ret(ft))
+        self.ast.nodes[e].kids = kl
+        return ty_fn_ret(ft)
+
+    // A lambda `|x, y| expr`: its parameter types come from the annotations or from the expected function type; the body
+    // is checked without access to the variables around it (closures cannot capture yet), then lifted to a function of its
+    // own, and the node becomes a reference to that function.
+    make check_lambda(self, e: int, expected: string) -> string:
+        lk = self.ast.nodes[e].kids
+        pl = self.ast.nodes[lk[0]].kids
+        body = lk[1]
+        span = self.ast.nodes[e].span
+        exp_params: [string] = []
+        exp_ret = "?"
+        if ty_is_fn(expected):
+            exp_params = ty_fn_params(expected)
+            exp_ret = ty_fn_ret(expected)
+            if len(exp_params) != len(pl):
+                self.err("E0138", f"this lambda takes {str(len(pl))} parameter(s) but a `{ty_disp(expected)}` is expected", span)
+                return expected
+        ptys: [string] = []
+        i = 0
+        while i < len(pl):
+            pk = self.ast.nodes[pl[i]].kids
+            ty = ""
+            if pk[0] >= 0:
+                ty = self.resolve_type_text(self.ast.nodes[pk[0]].text, span)
+                if self.enum_idx.has(ty):
+                    ty = "@" + ty
+            orif i < len(exp_params):
+                ty = exp_params[i]
+            if len(ty) == 0 or ty == "?":
+                self.err("E0133", f"cannot infer the type of the lambda parameter `{self.ast.nodes[pl[i]].text}`; write it like `|{self.ast.nodes[pl[i]].text}: int|`", self.ast.nodes[pl[i]].span)
+                ty = "int"
+            if not fn_value_type_ok(ty):
+                self.err("E0131", f"lambda parameters can be `int`, `float`, `bool`, `string`, pointers and enums only, found `{ty_disp(ty)}`", self.ast.nodes[pl[i]].span)
+            append(ptys, ty)
+            i += 1
+        // the variables of the enclosing function that the body uses are captured (copied when the lambda is created)
+        pnames: [string] = []
+        for pp in pl:
+            append(pnames, self.ast.nodes[pp].text)
+        cnames: [string] = []
+        ctypes: [string] = []
+        self.collect_captures(body, pnames, cnames, ctypes)
+        for ct in ctypes:
+            if not fn_value_type_ok(ct):
+                self.err("E0139", f"a lambda cannot capture a value of type `{ty_disp(ct)}` yet: captured variables are `int`, `float`, `bool`, `string`, pointers, enums or functions", span)
+        // check the body in a scope that holds the parameters and the captured variables
+        saved_names = self.var_names
+        saved_types = self.var_types
+        saved_marks = self.marks
+        fresh_n: [string] = []
+        fresh_t: [string] = []
+        fresh_m: [int] = []
+        self.var_names = fresh_n
+        self.var_types = fresh_t
+        self.marks = fresh_m
+        i = 0
+        while i < len(pl):
+            self.declare(self.ast.nodes[pl[i]].text, ptys[i])
+            i += 1
+        i = 0
+        while i < len(cnames):
+            self.declare(cnames[i], ctypes[i])
+            i += 1
+        bt = ""
+        if len(exp_ret) > 0 and exp_ret != "?" and exp_ret != "()":
+            bt = self.check_expr_expecting(body, exp_ret)
+        else:
+            bt = self.check_expr(body)
+        self.var_names = saved_names
+        self.var_types = saved_types
+        self.marks = saved_marks
+        ret = bt
+        if len(exp_ret) > 0 and exp_ret != "?" and exp_ret != "()" and bt != exp_ret and not self.is_subtype(bt, exp_ret):
+            self.err("E0134", f"this lambda returns `{ty_disp(bt)}` but a `{ty_disp(exp_ret)}` is expected", self.ast.nodes[body].span)
+            ret = exp_ret
+        if not fn_value_type_ok(ret):
+            self.err("E0131", f"a lambda can return `int`, `float`, `bool`, `string`, pointers and enums only, found `{ty_disp(ret)}`", self.ast.nodes[body].span)
+        // lift: a new top-level function `lambda__N`
+        lname = "lambda__" + str(self.lambda_count)
+        self.lambda_count += 1
+        params2: [int] = []
+        envt = self.ast.add0("Type", "ptr<int>", span)
+        envf = self.ast.add0("Flags", "", span)
+        append(params2, self.ast.add3("Param", "__env", span, envt, -1, envf))
+        i = 0
+        while i < len(pl):
+            tn2 = self.ast.add0("Type", ptys[i], span)
+            fl2 = self.ast.add0("Flags", "", span)
+            append(params2, self.ast.add3("Param", self.ast.nodes[pl[i]].text, self.ast.nodes[pl[i]].span, tn2, -1, fl2))
+            i += 1
+        plist = self.ast.addl("List", "", span, params2)
+        rnode = -1
+        if ret != "()":
+            rnode = self.ast.add0("Type", ret, span)
+        stmt = -1
+        if ret != "()":
+            stmt = self.ast.add1("Return", "", span, body)
+        else:
+            stmt = self.ast.add1("ExprStmt", "", span, body)
+        // the captured variables are loaded from the closure block first
+        sl: [int] = []
+        i = 0
+        while i < len(cnames):
+            lv = self.ast.add0("LIdent", cnames[i], span)
+            ev = self.ast.add0("EnvLoad", str(i) + "|" + ctypes[i], span)
+            append(sl, self.ast.add3("Assign", "", span, lv, -1, ev))
+            i += 1
+        append(sl, stmt)
+        blk = self.ast.addl("Block", "", span, sl)
+        flg = self.ast.add0("Flags", "", span)
+        fnode = self.ast.add4("Function", lname, span, plist, rnode, flg, blk)
+        sig = SigT()
+        append(sig.params, "ptr<int>")
+        for pt2 in ptys:
+            append(sig.params, pt2)
+        sig.ret = ret
+        sig.has_ret = true
+        append(self.sigs, sig)
+        self.sig_idx.set(lname, len(self.sigs))
+        append(self.pending, fnode)
+        nk: [int] = []
+        if len(cnames) == 0:
+            self.ast.nodes[e].kind = "FnRef"
+        else:
+            self.ast.nodes[e].kind = "Closure"
+            for cn in cnames:
+                append(nk, self.ast.add0("Ident", cn, span))
+        self.ast.nodes[e].text = lname
+        self.ast.nodes[e].kids = nk
+        return "fn(" + join(ptys, ",") + ")->" + ret
+
     make unify(self, pat: string, actual: string, tn: [string]) -> bool:
         if index_of_str(tn, pat) >= 0:
             j = index_of_str(self.ub_names, pat)
@@ -1010,6 +1309,19 @@ class Sema:
             append(self.ub_names, pat)
             append(self.ub_vals, actual)
             return true
+        if ty_is_fn(pat):
+            if not ty_is_fn(actual):
+                return false
+            fp = ty_fn_params(pat)
+            fa = ty_fn_params(actual)
+            if len(fp) != len(fa):
+                return false
+            fq = 0
+            while fq < len(fp):
+                if not self.unify(fp[fq], fa[fq], tn):
+                    return false
+                fq += 1
+            return self.unify(ty_fn_ret(pat), ty_fn_ret(actual), tn)
         if ty_is_list(pat):
             if not ty_is_list(actual):
                 return false
@@ -1077,7 +1389,10 @@ class Sema:
         pl = self.ast.nodes[fk[0]].kids
         ats: [string] = []
         for a in args:
-            append(ats, self.check_expr(a))
+            if self.ast.nodes[a].kind == "Lambda":
+                append(ats, "")
+            else:
+                append(ats, self.check_expr(a))
         if len(args) != len(pl):
             self.err("E0121", f"`{name}` takes {str(len(pl))} argument(s), found {str(len(args))}", span)
             return "()"
@@ -1096,9 +1411,26 @@ class Sema:
         i = 0
         while i < len(pl):
             pty = self.ast.nodes[self.ast.nodes[pl[i]].kids[0]].text
-            if not self.unify(pty, ats[i], tn):
+            if len(ats[i]) > 0 and not self.unify(pty, ats[i], tn):
                 self.err("E0122", f"argument {str(i + 1)} of `{name}` should be `{ty_disp(subst_type(pty, self.ub_names, self.ub_vals))}`, found `{ty_disp(ats[i])}`", self.ast.nodes[args[i]].span)
                 return "()"
+            i += 1
+        // lambdas last: their parameter types come from what the other arguments already fixed
+        i = 0
+        while i < len(pl):
+            if len(ats[i]) == 0:
+                pty2 = self.ast.nodes[self.ast.nodes[pl[i]].kids[0]].text
+                exp2 = subst_type(pty2, self.ub_names, self.ub_vals)
+                // a type parameter that is still unknown (usually the result type) is left to the lambda's body
+                for tpn in tn:
+                    if index_of_str(self.ub_names, tpn) < 0 and ty_is_fn(exp2):
+                        rpart = ty_fn_ret(exp2)
+                        if rpart == tpn:
+                            exp2 = substr(exp2, 0, fn_close(exp2) + 3) + "?"
+                ats[i] = self.check_lambda(args[i], exp2)
+                if not self.unify(pty2, ats[i], tn):
+                    self.err("E0122", f"argument {str(i + 1)} of `{name}` should be `{ty_disp(subst_type(pty2, self.ub_names, self.ub_vals))}`, found `{ty_disp(ats[i])}`", self.ast.nodes[args[i]].span)
+                    return "()"
             i += 1
         tv: [string] = []
         for t in tn:
@@ -1592,7 +1924,7 @@ make sema_program(ast: Ast, root: int, diags: Diags, require_main: bool, org_nam
                 append(live_s, st1)
         s.ast.nodes[structs_l].kids = live_s
     // generic functions leave the program; their instances join it
-    if len(s.gen_nodes) > 0:
+    if len(s.gen_nodes) > 0 or len(s.pending) > 0:
         live: [int] = []
         for f in fn_nodes:
             if not is_generic_fn(ast, f):

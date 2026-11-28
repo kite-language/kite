@@ -134,6 +134,51 @@ make count_lines(source: string) -> int:
         i += 1
     return n
 
+// Colours are used on a terminal (never when NO_COLOR is set); KITE_COLOR=always / never overrides the terminal check.
+make use_color() -> bool:
+    if len(sys.getenv("NO_COLOR")) > 0:
+        return false
+    mode = sys.getenv("KITE_COLOR")
+    if mode == "always":
+        return true
+    if mode == "never":
+        return false
+    if not sys.is_tty(2):
+        return false
+    if sys.is_windows():
+        return len(sys.getenv("WT_SESSION")) > 0 or len(sys.getenv("TERM")) > 0
+    return true
+
+// Adds ANSI colours to one rendered diagnostic: bold red `error[...]`, blue arrow, red carets, cyan help.
+make colorize_diag(text: string) -> string:
+    esc = chr_byte(27)
+    reset = esc + "[0m"
+    out = ""
+    for line in split(text, "\n"):
+        l2 = line
+        if starts_with(line, "error"):
+            c = find(line, ":")
+            if c > 0:
+                l2 = esc + "[1;31m" + substr(line, 0, c) + reset + esc + "[1m" + substr(line, c, len(line)) + reset
+        orif contains_str(line, "-->"):
+            a = find(line, "-->")
+            l2 = substr(line, 0, a) + esc + "[1;34m-->" + reset + substr(line, a + 3, len(line))
+        orif contains_str(line, "^") and contains_str(line, " | "):
+            a = find(line, "^")
+            b = a
+            while b < len(line) and char_at(line, b) == 94:
+                b += 1
+            l2 = substr(line, 0, a) + esc + "[1;31m" + substr(line, a, b) + reset + substr(line, b, len(line))
+        orif contains_str(line, "= help:"):
+            a = find(line, "= help:")
+            l2 = substr(line, 0, a) + esc + "[1;36m= help:" + reset + substr(line, a + 7, len(line))
+        out = out + l2 + "\n"
+    return substr(out, 0, len(out) - 1)
+
 make emit_diags(ds: Diags, default_file: string, default_source: string):
+    color = use_color()
     for d in ds.items:
-        sys.eprint(render_diag(d, default_file, default_source) + "\n")
+        text = render_diag(d, default_file, default_source)
+        if color:
+            text = colorize_diag(text)
+        sys.eprint(text + "\n")

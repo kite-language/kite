@@ -90,6 +90,14 @@ make quick_expr_type(ast: Ast, e: int, t: IrTab) -> string:
         if n.text == "Not":
             return "bool"
         return quick_expr_type(ast, n.kids[0], t)
+    if k == "FnRef" or k == "Closure":
+        return "ptr<i64>"
+    if k == "EnvLoad":
+        return ir_type(substr(n.text, find(n.text, "|") + 1, len(n.text)))
+    if k == "CallFn":
+        if n.text == "void":
+            return ""
+        return n.text
     if k == "Call":
         nm = n.text
         if nm == "len" or nm == "char_at":
@@ -1020,6 +1028,16 @@ class Lower:
             return rr(v_null(expected), expected)
         return self.lower_expr_inner(e)
 
+    // The signature of function `name` (return type in `ty`, parameter types joined by `;` in `n2`).
+    make fill_fn_sig(self, ins: Ins, name: string):
+        if self.t.sig_idx.has(name):
+            ins.ty = self.t.sig_ret[self.t.sig_idx.get(name) - 1]
+        if self.t.pt_idx.has(name):
+            ins.n2 = join(self.t.pt_tys[self.t.pt_idx.get(name) - 1].items, ";")
+
+    make lower_expr_inner_ident(self, name: string) -> R:
+        return rr(v_local(name), self.infer_local_type(name))
+
     make lower_expr_inner(self, e: int) -> R:
         n = self.ast.nodes[e]
         k = n.kind
@@ -1042,6 +1060,63 @@ class Lower:
             return self.lower_unary(n.text, kids[0])
         if k == "Binary":
             return self.lower_binary(n.text, kids[0], kids[1])
+        if k == "FnRef":
+            // a function used as a value: its static closure block
+            fd = self.fresh_temp()
+            fa = mk_ins("FnAddr")
+            fa.dest = fd
+            fa.name = n.text
+            self.fill_fn_sig(fa, n.text)
+            self.emit(fa)
+            return rr(v_temp(fd), "ptr<i64>")
+        if k == "Closure":
+            // a lambda with captured variables: a block with the code pointer and the captured values
+            mc = mk_ins("MkClosure")
+            mc.name = n.text
+            self.fill_fn_sig(mc, n.text)
+            ci3 = 0
+            while ci3 < len(kids):
+                cv = self.lower_expr(kids[ci3])
+                append(mc.vals, cv.v)
+                append(mc.argtys, cv.ty)
+                ci3 += 1
+            md = self.fresh_temp()
+            mc.dest = md
+            self.emit(mc)
+            return rr(v_temp(md), "ptr<i64>")
+        if k == "EnvLoad":
+            ev = self.lower_expr_inner_ident("__env")
+            el = mk_ins("EnvLoad")
+            el.v1 = ev.v
+            el.pos = to_int(substr(n.text, 0, find(n.text, "|")))
+            eir = ir_type(substr(n.text, find(n.text, "|") + 1, len(n.text)))
+            el.ty = eir
+            ed = self.fresh_temp()
+            el.dest = ed
+            self.emit(el)
+            return rr(v_temp(ed), eir)
+        if k == "CallFn":
+            // a call through a variable that holds a function
+            fv = self.lower_expr(kids[0])
+            cav = CallArgs()
+            ai2 = 1
+            while ai2 < len(kids):
+                av2 = self.lower_expr(kids[ai2])
+                append(cav.vals, av2.v)
+                append(cav.tys, av2.ty)
+                ai2 += 1
+            ci2 = mk_ins("CallInd")
+            ci2.v1 = fv.v
+            ci2.vals = cav.vals
+            ci2.argtys = cav.tys
+            ci2.ty = n.text
+            if n.text == "void":
+                self.emit(ci2)
+                return rr(v_int(0), "void")
+            cd = self.fresh_temp()
+            ci2.dest = cd
+            self.emit(ci2)
+            return rr(v_temp(cd), n.text)
         if k == "Call":
             return self.lower_call(n.text, kids)
         if k == "Await":

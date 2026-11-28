@@ -332,6 +332,10 @@ class Loader:
         all_ok = true
         scope_names: [string] = []
         scope_roots: [string] = []
+        alias_pieces: [string] = []
+        alias_names: [string] = []
+        alias_spans: [Span] = []
+        alias_mods: [string] = []
         imp_list = fa.nodes[fa.nodes[root].kids[0]].kids
         for imp in imp_list:
             mod_path = fa.nodes[imp].text
@@ -361,6 +365,33 @@ class Loader:
             if len(scope_root) > 0 and index_of_name(scope_names, scope_name) < 0:
                 append(scope_names, scope_name)
                 append(scope_roots, scope_root)
+            if fa.nodes[imp].kind == "ImportItems":
+                // `from piece import a, b` / `use piece.{a, b}`: `a` stands for `piece_a`
+                for nm in fa.nodes[imp].kids:
+                    append(alias_pieces, scope_name)
+                    append(alias_names, fa.nodes[nm].text)
+                    append(alias_spans, fa.nodes[nm].span)
+                    append(alias_mods, mod_path)
+
+        // imported names: rewrite the calls of `a` into calls of `piece_a` (unless this file defines its own `a`)
+        if len(alias_names) > 0:
+            own: [string] = []
+            for of in fa.nodes[fa.nodes[root].kids[3]].kids:
+                append(own, fa.nodes[of].text)
+            ai = 0
+            while ai < len(alias_names):
+                an = alias_names[ai]
+                aq = alias_pieces[ai] + "_" + an
+                if self.org_idx.has(aq) and index_of_name(own, an) < 0:
+                    ni = 0
+                    while ni < len(fa.nodes):
+                        if fa.nodes[ni].kind == "Call" and fa.nodes[ni].text == an:
+                            fa.nodes[ni].text = aq
+                        ni += 1
+                orif not self.org_idx.has(an) and not self.org_idx.has(aq):
+                    self.error("E0128", f"`{alias_mods[ai]}` has no function `{an}`", alias_spans[ai], display, source, "list the functions of a piece with `kite doc` or in the reference")
+                    all_ok = false
+                ai += 1
 
         if not self.qualify_calls(fa, root, scope_names, scope_roots, display, source):
             all_ok = false
